@@ -107,13 +107,13 @@ async function recuperarSenha() {
     
     try {
         var result = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.href
+            redirectTo: 'https://douglasmenegasso.github.io/Kayla/reset-password.html'
         });
         
         if (result.error) {
             toast('Erro: ' + result.error.message, 'error');
         } else {
-            toast('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+            toast('📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
         }
         
     } catch (error) {
