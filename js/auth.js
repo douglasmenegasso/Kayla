@@ -3,11 +3,12 @@
 function abrirLogin(tipo) {
     perfilAtual = tipo;
     var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">' + (tipo === 'admin' ? ' Login Admin' : '👤 Login Usuário') + '</div>';
+    html += '<div class="modal-title">' + (tipo === 'admin' ? '👑 Login Admin' : '👤 Login Usuário') + '</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
     html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="checkbox-group"><input type="checkbox" id="lembrar-me"><label for="lembrar-me" style="color:var(--text2);font-size:13px">Lembrar de mim</label></div>';
+    html += '<div style="text-align:right;margin-bottom:12px"><button class="btn btn-sm btn-outline" onclick="recuperarSenha()" style="width:auto;padding:6px 12px;font-size:11px">🔑 Esqueci a senha</button></div>';
     html += '<button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
     html += '<button class="btn btn-outline" onclick="abrirCadastro(\'' + tipo + '\')">Criar Conta</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
@@ -50,7 +51,17 @@ async function fazerLogin() {
         });
         
         if (result.error) {
-            toast('E-mail ou senha incorretos', 'error');
+            var errorMsg = result.error.message.toLowerCase();
+            
+            if (errorMsg.includes('invalid login credentials') || errorMsg.includes('bad request')) {
+                toast('E-mail ou senha incorretos!\n\nSe esqueceu a senha, clique em "Esqueci a senha"', 'error');
+            } else if (errorMsg.includes('email not confirmed')) {
+                toast('Confirme seu e-mail antes de entrar', 'warning');
+            } else {
+                toast('Erro: ' + result.error.message, 'error');
+            }
+            
+            console.error('Erro login:', result.error);
             btn.innerText = texto;
             btn.disabled = false;
             return;
@@ -65,6 +76,45 @@ async function fazerLogin() {
         }
         
         await loginSucesso(result.data.user);
+        
+    } catch (error) {
+        toast('Erro de conexão: ' + error.message, 'error');
+        console.error(error);
+    }
+    
+    btn.innerText = texto;
+    btn.disabled = false;
+}
+
+async function recuperarSenha() {
+    var email = document.getElementById('email').value.trim();
+    
+    if (!email) { 
+        toast('Digite seu e-mail primeiro', 'warning'); 
+        document.getElementById('email').focus();
+        return; 
+    }
+    
+    if (!email.includes('@') || !email.includes('.')) {
+        toast('Digite um e-mail válido', 'error');
+        return;
+    }
+    
+    var btn = event.target;
+    var texto = btn.innerText;
+    btn.innerText = 'Enviando...';
+    btn.disabled = true;
+    
+    try {
+        var result = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.href
+        });
+        
+        if (result.error) {
+            toast('Erro: ' + result.error.message, 'error');
+        } else {
+            toast('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+        }
         
     } catch (error) {
         toast('Erro de conexão: ' + error.message, 'error');
