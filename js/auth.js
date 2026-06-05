@@ -2,7 +2,7 @@
 
 function abrirLogin(tipo) {
     perfilAtual = tipo;
-    var html = '<div class="modal-title">' + (tipo === 'admin' ? ' Login Admin' : '👤 Login Usuário') + '</div>';
+    var html = '<div class="modal-title">' + (tipo === 'admin' ? '👑 Login Admin' : '👤 Login Usuário') + '</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
     html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
@@ -42,47 +42,14 @@ async function fazerLogin() {
     btn.disabled = true;
     
     try {
-        // 1. Tenta fazer login
-        var result = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
+        // 1. Primeiro tenta fazer login
+        var loginResult = await supabaseClient.auth.signInWithPassword({ 
+            email: email, 
+            password: senha 
+        });
         
-        if (result.error) {
-            // 2. Se der erro de usuário não encontrado, tenta cadastrar
-            if (result.error.message.includes('Invalid login credentials') || result.error.message.includes('not found')) {
-                toast('Usuário não encontrado. Cadastrando...', 'warning');
-                
-                var signUpResult = await supabaseClient.auth.signUp({ email: email, password: senha });
-                
-                if (signUpResult.error) {
-                    toast('Erro ao cadastrar: ' + signUpResult.error.message, 'error');
-                } else {
-                    toast('Cadastro realizado! Fazendo login...', 'success');
-                    
-                    // Se o Supabase já logou automaticamente (sem confirmação de email)
-                    if (signUpResult.data.session) {
-                        if (lembrarMe) {
-                            localStorage.setItem('kayla_lembrar_me', 'true');
-                            localStorage.setItem('kayla_email', email);
-                        }
-                        await loginSucesso(signUpResult.data.user);
-                    } else {
-                        // Se não logou auto, tenta logar agora
-                        var loginResult = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
-                        if (loginResult.error) {
-                            toast('Cadastro feito! Verifique seu e-mail para confirmar.', 'warning');
-                        } else {
-                            if (lembrarMe) {
-                                localStorage.setItem('kayla_lembrar_me', 'true');
-                                localStorage.setItem('kayla_email', email);
-                            }
-                            await loginSucesso(loginResult.data.user);
-                        }
-                    }
-                }
-            } else {
-                toast('E-mail ou senha incorretos', 'error');
-            }
-        } else {
-            // 3. Login com sucesso
+        // 2. Se login funcionou, entra direto
+        if (loginResult.data && loginResult.data.user) {
             if (lembrarMe) {
                 localStorage.setItem('kayla_lembrar_me', 'true');
                 localStorage.setItem('kayla_email', email);
@@ -90,13 +57,77 @@ async function fazerLogin() {
                 localStorage.removeItem('kayla_lembrar_me');
                 localStorage.removeItem('kayla_email');
             }
-            await loginSucesso(result.data.user);
+            await loginSucesso(loginResult.data.user);
+            btn.innerText = texto;
+            btn.disabled = false;
+            return;
+        }
+        
+        // 3. Se login falhou, verifica se é usuário não encontrado
+        if (loginResult.error) {
+            var errorMsg = loginResult.error.message.toLowerCase();
+            
+            // Se é erro de credenciais inválidas, tenta cadastrar
+            if (errorMsg.includes('invalid login credentials') || 
+                errorMsg.includes('not found') ||
+                errorMsg.includes('email')) {
+                
+                toast('Usuário não encontrado. Cadastrando...', 'warning');
+                
+                // Tenta cadastrar
+                var signUpResult = await supabaseClient.auth.signUp({ 
+                    email: email, 
+                    password: senha 
+                });
+                
+                if (signUpResult.error) {
+                    // Se erro no cadastro, mostra mensagem específica
+                    if (signUpResult.error.message.includes('User already registered')) {
+                        toast('Usuário já existe! Verifique e-mail e senha.', 'error');
+                    } else {
+                        toast('Erro ao cadastrar: ' + signUpResult.error.message, 'error');
+                    }
+                } else {
+                    // Cadastro com sucesso
+                    toast('Cadastro realizado! Fazendo login...', 'success');
+                    
+                    // Verifica se já está logado (Supabase as vezes loga auto)
+                    if (signUpResult.data && signUpResult.data.user) {
+                        if (lembrarMe) {
+                            localStorage.setItem('kayla_lembrar_me', 'true');
+                            localStorage.setItem('kayla_email', email);
+                        }
+                        await loginSucesso(signUpResult.data.user);
+                    } else {
+                        // Tenta fazer login após cadastro
+                        setTimeout(async function() {
+                            var autoLogin = await supabaseClient.auth.signInWithPassword({ 
+                                email: email, 
+                                password: senha 
+                            });
+                            if (autoLogin.data && autoLogin.data.user) {
+                                if (lembrarMe) {
+                                    localStorage.setItem('kayla_lembrar_me', 'true');
+                                    localStorage.setItem('kayla_email', email);
+                                }
+                                await loginSucesso(autoLogin.data.user);
+                            } else {
+                                toast('Cadastro feito! Faça login com suas credenciais.', 'success');
+                            }
+                        }, 1000);
+                    }
+                }
+            } else {
+                // Outro erro de login
+                toast('E-mail ou senha incorretos', 'error');
+            }
         }
         
     } catch (error) {
-        toast('Erro de conexão', 'error');
+        toast('Erro de conexão: ' + error.message, 'error');
         console.error(error);
     }
+    
     btn.innerText = texto;
     btn.disabled = false;
 }
@@ -143,7 +174,7 @@ async function carregarDados() {
 
 async function sincronizarDados() {
     if (!isOnline || !currentUser) return;
-    toast(' Sincronizando...', 'warning');
+    toast('🔄 Sincronizando...', 'warning');
     await carregarDados();
     toast('✅ Dados sincronizados!', 'success');
 }
