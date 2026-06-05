@@ -2,7 +2,7 @@
 
 function abrirLogin(tipo) {
     perfilAtual = tipo;
-    var html = '<div class="modal-title">' + (tipo === 'admin' ? '👑 Login Admin' : '👤 Login Usuário') + '</div>';
+    var html = '<div class="modal-title">' + (tipo === 'admin' ? ' Login Admin' : '👤 Login Usuário') + '</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
     html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
@@ -42,26 +42,60 @@ async function fazerLogin() {
     btn.disabled = true;
     
     try {
+        // 1. Tenta fazer login
         var result = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
+        
         if (result.error) {
-            toast('E-mail ou senha incorretos', 'error');
-            btn.innerText = texto;
-            btn.disabled = false;
-            return;
-        }
-        
-        if (lembrarMe) {
-            localStorage.setItem('kayla_lembrar_me', 'true');
-            localStorage.setItem('kayla_email', email);
+            // 2. Se der erro de usuário não encontrado, tenta cadastrar
+            if (result.error.message.includes('Invalid login credentials') || result.error.message.includes('not found')) {
+                toast('Usuário não encontrado. Cadastrando...', 'warning');
+                
+                var signUpResult = await supabaseClient.auth.signUp({ email: email, password: senha });
+                
+                if (signUpResult.error) {
+                    toast('Erro ao cadastrar: ' + signUpResult.error.message, 'error');
+                } else {
+                    toast('Cadastro realizado! Fazendo login...', 'success');
+                    
+                    // Se o Supabase já logou automaticamente (sem confirmação de email)
+                    if (signUpResult.data.session) {
+                        if (lembrarMe) {
+                            localStorage.setItem('kayla_lembrar_me', 'true');
+                            localStorage.setItem('kayla_email', email);
+                        }
+                        await loginSucesso(signUpResult.data.user);
+                    } else {
+                        // Se não logou auto, tenta logar agora
+                        var loginResult = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
+                        if (loginResult.error) {
+                            toast('Cadastro feito! Verifique seu e-mail para confirmar.', 'warning');
+                        } else {
+                            if (lembrarMe) {
+                                localStorage.setItem('kayla_lembrar_me', 'true');
+                                localStorage.setItem('kayla_email', email);
+                            }
+                            await loginSucesso(loginResult.data.user);
+                        }
+                    }
+                }
+            } else {
+                toast('E-mail ou senha incorretos', 'error');
+            }
         } else {
-            localStorage.removeItem('kayla_lembrar_me');
-            localStorage.removeItem('kayla_email');
+            // 3. Login com sucesso
+            if (lembrarMe) {
+                localStorage.setItem('kayla_lembrar_me', 'true');
+                localStorage.setItem('kayla_email', email);
+            } else {
+                localStorage.removeItem('kayla_lembrar_me');
+                localStorage.removeItem('kayla_email');
+            }
+            await loginSucesso(result.data.user);
         }
-        
-        await loginSucesso(result.data.user);
         
     } catch (error) {
         toast('Erro de conexão', 'error');
+        console.error(error);
     }
     btn.innerText = texto;
     btn.disabled = false;
@@ -109,7 +143,7 @@ async function carregarDados() {
 
 async function sincronizarDados() {
     if (!isOnline || !currentUser) return;
-    toast('🔄 Sincronizando...', 'warning');
+    toast(' Sincronizando...', 'warning');
     await carregarDados();
     toast('✅ Dados sincronizados!', 'success');
 }
