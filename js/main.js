@@ -103,8 +103,8 @@ window.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('selectstart', function(e) { e.preventDefault(); }, false);
     document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
     
-    // Mostrar tela de seleção
-    mostrarTelaSelecao();
+    // Verificar se já existe sessão salva
+    verificarSessao();
     
     console.log('✅ App pronto!');
 });
