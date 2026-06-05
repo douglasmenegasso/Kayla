@@ -8,6 +8,7 @@ function abrirCadastro(tipo) {
     html += '<div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="reg-email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')document.getElementById(\'reg-senha\').focus()"></div>';
     html += '<div class="form-group"><label class="form-label">Senha *</label><input class="form-input" id="reg-senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')document.getElementById(\'reg-senha2\').focus()"></div>';
     html += '<div class="form-group"><label class="form-label">Confirmar Senha *</label><input class="form-input" id="reg-senha2" type="password" placeholder="Repita a senha" onkeypress="if(event.key===\'Enter\')fazerCadastro()"></div>';
+    html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text2)">💡 Dica: Use uma senha forte com pelo menos 6 caracteres</div>';
     html += '<button class="btn btn-primary" onclick="fazerCadastro()">✅ Criar Conta</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Voltar para Login</button>';
     document.getElementById('modal-body').innerHTML = html;
@@ -23,6 +24,11 @@ async function fazerCadastro() {
     if (!email || !senha || !senha2) { 
         toast('Preencha todos os campos', 'error'); 
         return; 
+    }
+    
+    if (!email.includes('@') || !email.includes('.')) {
+        toast('Digite um e-mail válido', 'error');
+        return;
     }
     
     if (senha.length < 6) { 
@@ -47,11 +53,19 @@ async function fazerCadastro() {
         });
         
         if (result.error) {
-            if (result.error.message.includes('User already registered')) {
-                toast('Este e-mail já está cadastrado! Faça login.', 'error');
+            var errorMsg = result.error.message.toLowerCase();
+            
+            if (errorMsg.includes('user already') || errorMsg.includes('already registered')) {
+                toast('Este e-mail já está cadastrado! Tente fazer login.', 'error');
+            } else if (errorMsg.includes('weak password')) {
+                toast('Senha muito fraca. Use pelo menos 6 caracteres.', 'error');
+            } else if (errorMsg.includes('invalid email')) {
+                toast('E-mail inválido', 'error');
             } else {
-                toast('Erro: ' + result.error.message, 'error');
+                toast('Erro ao cadastrar: ' + result.error.message, 'error');
             }
+            
+            console.error('Erro cadastro:', result.error);
             btn.innerText = texto;
             btn.disabled = false;
             return;
@@ -85,7 +99,7 @@ async function fazerCadastro() {
         
     } catch (error) {
         toast('Erro de conexão: ' + error.message, 'error');
-        console.error(error);
+        console.error('Erro:', error);
     }
     
     btn.innerText = texto;
