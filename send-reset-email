@@ -1,0 +1,180 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { email } = await req.json()
+
+    if (!email) {
+      throw new Error('Email é obrigatório')
+    }
+
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      throw new Error('Email inválido')
+    }
+
+    // Criar cliente Supabase Admin
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+
+    // Gerar link de recuperação
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: 'https://douglasmenegasso.github.io/Kayla/reset-password.html'
+      }
+    })
+
+    if (error) {
+      console.error('Erro ao gerar link:', error)
+      throw new Error('Erro ao gerar link de recuperação')
+    }
+
+    console.log('Dados do link:', JSON.stringify(data))
+
+    // Extrair o link correto
+    const recoveryLink = data.properties?.action_link || data.properties?.actionLink || data.link || data.hashed_token
+
+    if (!recoveryLink) {
+      console.error('Link não encontrado em:', JSON.stringify(data))
+      throw new Error('Não foi possível gerar o link de recuperação')
+    }
+
+    console.log('Link de recuperação:', recoveryLink)
+
+    // Enviar e-mail via SendGrid
+    const sendGridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SENDGRID_API_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [
+          {
+            to: [{ email: email }],
+            subject: ' Recuperação de Senha - Kayla Venda Consignada',
+          },
+        ],
+        from: {
+          email: Deno.env.get('SENDGRID_FROM_EMAIL') || 'kayla@4tdppb.onmicrosoft.com',
+          name: 'Kayla - Venda Consignada',
+        },
+        content: [
+          {
+            type: 'text/html',
+            value: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#0f0f13;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f13;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#1a1a24;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="padding:40px 30px;text-align:center;background:linear-gradient(135deg,#7c5cfc 0%,#9b82fc 100%);">
+              <div style="font-size:48px;margin-bottom:16px;"></div>
+              <h1 style="margin:0;font-size:28px;color:#fff;">Kayla - Venda Consignada</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:40px 30px;">
+              <h2 style="margin:0 0 20px 0;color:#fff;">Recuperação de Senha</h2>
+              <p style="margin:0 0 20px 0;color:#a0a0b0;font-size:16px;line-height:1.6;">
+                Olá!<br><br>
+                Recebemos uma solicitação para redefinir sua senha no <strong>Kayla - Venda Consignada</strong>.
+              </p>
+              <p style="margin:0 0 30px 0;color:#a0a0b0;font-size:16px;line-height:1.6;">
+                Clique no botão abaixo para criar uma nova senha:
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${recoveryLink}" style="display:inline-block;padding:16px 32px;background:#7c5cfc;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;">
+                      🔐 Redefinir Senha
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 20px 0;color:#606070;font-size:14px;line-height:1.6;">
+                Ou copie e cole este link no seu navegador:
+              </p>
+              <p style="margin:0 0 30px 0;padding:12px;background:#252530;border-radius:8px;word-break:break-all;color:#7c5cfc;font-size:13px;">
+                ${recoveryLink}
+              </p>
+              <hr style="border:none;border-top:1px solid #2a2a35;margin:30px 0;">
+              <p style="margin:0;color:#606070;font-size:12px;line-height:1.6;">
+                <strong>⚠️ Importante:</strong> Se você não solicitou esta recuperação de senha, ignore este e-mail.<br>
+                Sua conta está segura e nenhuma alteração foi feita.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 30px;background:#252530;text-align:center;">
+              <p style="margin:0;color:#606070;font-size:12px;">
+                Kayla - Venda Consignada v5.0.0<br>
+                Sistema de Gestão para Venda Consignada
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+          },
+        ],
+      }),
+    })
+
+    if (!sendGridResponse.ok) {
+      const errorData = await sendGridResponse.text()
+      console.error('SendGrid error:', errorData)
+      throw new Error('Erro ao enviar e-mail')
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'E-mail de recuperação enviado com sucesso!' 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    )
+
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Erro ao processar solicitação' 
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    )
+  }
+})
