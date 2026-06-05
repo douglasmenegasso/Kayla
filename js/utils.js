@@ -1,144 +1,144 @@
-// ============ FUNÇÕES AUXILIARES ============
+// ============ UTILITÁRIOS ============
 
-function toast(msg, tipo) {
-    var el = document.createElement('div');
-    el.className = 'toast ' + tipo;
-    el.textContent = msg;
-    document.getElementById('toast-container').appendChild(el);
-    setTimeout(function() { el.style.opacity = '0'; setTimeout(function() { el.remove(); }, 300); }, 3000);
+// Toast notifications
+function toast(mensagem, tipo) {
+  var container = document.getElementById('toast-container');
+  var div = document.createElement('div');
+  div.className = 'toast toast-' + (tipo || 'success');
+  div.textContent = mensagem;
+  container.appendChild(div);
+  setTimeout(function() { div.remove(); }, 3000);
 }
 
-function fecharModal(e) {
-    if (!e || e.target.id === 'modal-overlay') {
-        document.getElementById('modal-overlay').classList.remove('show');
-        document.getElementById('modal-body').innerHTML = '';
-    }
+// Custom Confirm Modal (substitui window.confirm)
+function confirmar(titulo, mensagem, callback, icone) {
+  var overlay = document.getElementById('confirm-overlay');
+  document.getElementById('confirm-icon').textContent = icone || '✅';
+  document.getElementById('confirm-title').textContent = titulo || 'Confirmação';
+  document.getElementById('confirm-message').textContent = mensagem || 'Deseja continuar?';
+  overlay.classList.add('show');
+  
+  var okBtn = document.getElementById('confirm-ok');
+  var cancelBtn = document.getElementById('confirm-cancel');
+  
+  // Remove listeners anteriores clonando
+  var newOk = okBtn.cloneNode(true);
+  var newCancel = cancelBtn.cloneNode(true);
+  okBtn.parentNode.replaceChild(newOk, okBtn);
+  cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+  
+  newOk.addEventListener('click', function() {
+    overlay.classList.remove('show');
+    if (callback) callback(true);
+  });
+  
+  newCancel.addEventListener('click', function() {
+    overlay.classList.remove('show');
+    if (callback) callback(false);
+  });
 }
 
-function verificarLimite(tipo) {
-    if (LIMITES.proAtivo) return true;
-    if (tipo === 'clientes' && clientes.length >= LIMITES.freeClientes) {
-        toast('Limite de ' + LIMITES.freeClientes + ' clientes atingido!', 'error');
-        return false;
-    }
-    if (tipo === 'produtos' && produtos.length >= LIMITES.freeProdutos) {
-        toast('Limite de ' + LIMITES.freeProdutos + ' produtos atingido!', 'error');
-        return false;
-    }
-    return true;
-}
-
-function verificarStatusPro() {
-    var chave = localStorage.getItem('kayla_pro_key');
-    if (chave && chave.startsWith('PRO-')) {
-        LIMITES.proAtivo = true;
-        localStorage.setItem('kayla_pro', 'true');
-    }
-}
-
-function atualizarBadgePlano() {
-    var badge = document.getElementById('plan-badge');
-    if (!badge) return;
-    if (LIMITES.proAtivo) {
-        badge.textContent = 'PRO';
-        badge.className = 'badge-pro';
-    } else {
-        badge.textContent = 'GRÁTIS';
-        badge.className = 'badge-free';
-    }
-}
-
-function atualizarBadgeConexao() {
-    var badge = document.getElementById('connection-badge');
-    if (!badge) return;
-    if (isOnline) {
-        badge.textContent = 'ONLINE';
-        badge.className = 'badge-online';
-    } else {
-        badge.textContent = 'OFFLINE';
-        badge.className = 'badge-offline';
-    }
-}
-
-function verificarConexao() {
-    isOnline = navigator.onLine;
-    atualizarBadgeConexao();
-}
-
-function carregarConfigEmpresa() {
-    var config = localStorage.getItem('kayla_config_empresa');
-    if (config) {
-        try { configEmpresa = JSON.parse(config); } catch(e) {}
-    }
-}
-
-function salvarConfigEmpresa() {
-    var configParaSalvar = Object.assign({}, configEmpresa);
-    delete configParaSalvar.logo;
-    localStorage.setItem('kayla_config_empresa', JSON.stringify(configParaSalvar));
-    if (configEmpresa.logo) {
-        localStorage.setItem('kayla_logo_local', configEmpresa.logo);
-    }
-}
-
-function carregarDadosLocais() {
-    var dados = localStorage.getItem('kayla_dados_locais');
-    if (dados) {
-        try {
-            var parsed = JSON.parse(dados);
-            if (parsed.clientes) clientes = parsed.clientes;
-            if (parsed.produtos) produtos = parsed.produtos;
-            if (parsed.pedidos) pedidos = parsed.pedidos;
-        } catch(e) {}
-    }
-}
-
-function salvarDadosLocais() {
-    var dados = {
-        clientes: clientes,
-        produtos: produtos,
-        pedidos: pedidos,
-        lastUpdate: new Date().toISOString()
-    };
-    localStorage.setItem('kayla_dados_locais', JSON.stringify(dados));
-}
-
-function mostrarTelaSelecao() {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
+// Modal functions
+function fecharModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
 }
 
 function mostrarApp() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    atualizarBadgePlano();
-    atualizarBadgeConexao();
-    mudarAba('scan');
+  document.getElementById('selection-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('bottom-nav').style.display = 'flex';
+  atualizarBadges();
+  mudarAba('scan');
 }
 
-function onBackButton() {
-    var modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay && modalOverlay.classList.contains('show')) {
-        fecharModal();
-        return;
-    }
-    
-    var currentTime = Date.now();
-    if (currentTime - lastBackPress < 2000) {
-        if (navigator.app && navigator.app.exitApp) {
-            navigator.app.exitApp();
-        } else {
-            window.close();
-        }
+function mostrarTelaSelecao() {
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('selection-screen').classList.remove('hidden');
+}
+
+// Badges
+function atualizarBadges() {
+  var plano = document.getElementById('badge-plano');
+  var conexao = document.getElementById('badge-conexao');
+  
+  if (plano) {
+    if (LIMITES && LIMITES.proAtivo) {
+      plano.textContent = 'PRO';
+      plano.className = 'badge badge-pro';
     } else {
-        lastBackPress = currentTime;
-        var exitToast = document.getElementById('exit-toast');
-        exitToast.style.display = 'block';
-        setTimeout(function() {
-            exitToast.style.display = 'none';
-            lastBackPress = 0;
-        }, 2000);
+      plano.textContent = 'GRÁTIS';
+      plano.className = 'badge badge-free';
     }
+  }
+  
+  if (conexao) {
+    if (isOnline !== false) {
+      conexao.textContent = 'ONLINE';
+      conexao.className = 'badge badge-online';
+    } else {
+      conexao.textContent = 'OFFLINE';
+      conexao.className = 'badge badge-offline';
+    }
+  }
+}
+
+function atualizarBadgeConexao() {
+  atualizarBadges();
+}
+
+// Conexão
+function verificarConexao() {
+  isOnline = navigator.onLine;
+  atualizarBadges();
+}
+
+// LocalStorage
+function salvarDadosLocais() {
+  try {
+    localStorage.setItem('kayla_clientes', JSON.stringify(clientes || []));
+    localStorage.setItem('kayla_produtos', JSON.stringify(produtos || []));
+    localStorage.setItem('kayla_pedidos', JSON.stringify(pedidos || []));
+  } catch(e) { console.error('Erro ao salvar:', e); }
+}
+
+function carregarDadosLocais() {
+  try {
+    var c = localStorage.getItem('kayla_clientes');
+    var p = localStorage.getItem('kayla_produtos');
+    var pe = localStorage.getItem('kayla_pedidos');
+    if (c) clientes = JSON.parse(c);
+    if (p) produtos = JSON.parse(p);
+    if (pe) pedidos = JSON.parse(pe);
+  } catch(e) { console.error('Erro ao carregar:', e); }
+}
+
+// Formatar moeda
+function formatarMoeda(valor) {
+  return 'R$ ' + (valor || 0).toFixed(2).replace('.', ',');
+}
+
+// Formatar data
+function formatarData(data) {
+  if (!data) return '';
+  var d = new Date(data);
+  return d.toLocaleDateString('pt-BR');
+}
+
+// Gerar ID
+function gerarId() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+// Back button
+function onBackButton(e) {
+  var modal = document.getElementById('modal-overlay');
+  var confirm = document.getElementById('confirm-overlay');
+  if (confirm.classList.contains('show')) {
+    confirm.classList.remove('show');
+  } else if (modal.classList.contains('show')) {
+    fecharModal();
+  }
 }
 
 console.log('✅ Utils.js carregado');
