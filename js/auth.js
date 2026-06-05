@@ -106,14 +106,23 @@ async function recuperarSenha() {
     btn.disabled = true;
     
     try {
-        var result = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://douglasmenegasso.github.io/Kayla/reset-password.html'
+        // Chamar Edge Function personalizada
+        var response = await fetch(SUPABASE_EDGE_URL + '/send-reset-email', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'apikey': SUPABASE_KEY
+            },
+            body: JSON.stringify({ email: email })
         });
         
-        if (result.error) {
-            toast('Erro: ' + result.error.message, 'error');
-        } else {
+        var result = await response.json();
+        
+        if (result.success) {
             toast('📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+        } else {
+            toast('Erro: ' + (result.error || 'Falha ao enviar e-mail'), 'error');
         }
         
     } catch (error) {
