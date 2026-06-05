@@ -1,3 +1,44 @@
+#  Histórico de Alterações - Kayla App
+
+## 🚀 Versão 5.0.0 (Modularização e Sistema de Assinatura)
+
+### ️ Refatoração de Arquitetura
+- **Modularização do Código**: O arquivo monolítico `kayla.html` foi separado em uma estrutura de módulos JavaScript para facilitar a manutenção e evitar quebras durante edições.
+- **Nova Estrutura de Pastas**:
+  - `index.html`: Contém apenas a estrutura HTML e o CSS.
+  - `js/`: Pasta contendo todos os scripts separados por responsabilidade.
+    - `config.js`: Variáveis globais, configuração do Supabase e limites.
+    - `utils.js`: Funções auxiliares (toast, modal, badges, localStorage).
+    - `auth.js`: Autenticação, login, logout e sincronização de dados.
+    - `clients.js`: CRUD de clientes.
+    - `products.js`: CRUD de produtos (incluindo edição que antes estava "Em breve").
+    - `sales.js`: Fluxo de vendas, scanner, carrinho e seleção de produtos.
+    - `orders.js`: Gestão de pedidos, devoluções e tela de histórico.
+    - `payments.js`: Seleção de planos e ativação de keys PRO.
+    - `devices.js`: Geração de ID de dispositivo e gerenciamento (remoção).
+    - `pdf.js`: Geração de PDF dos pedidos.
+    - `main.js`: Navegação entre abas, tela de configurações e inicialização do app.
+
+###  Correções de Bugs
+- **Erro ao Editar Cliente/Produto**: Corrigido o erro `400 Bad Request` causado pelo envio do campo `updated_at` que não existia na tabela.
+- **Edição de Produtos**: A função `editarProduto()`, que antes apenas mostrava um toast "Em breve", foi totalmente implementada com modal e salvamento no banco.
+- **Escopo de Funções**: A função `abrirLogin()` foi movida para o escopo global correto para evitar o erro `ReferenceError: abrirLogin is not defined`.
+
+### ✨ Novas Funcionalidades
+- **Sistema de Assinatura (PRO)**:
+  - Integração com Edge Functions do Supabase (`validate-key` e `remove-device`).
+  - Controle de dispositivos simultâneos por key.
+  - Tela de escolha de planos (Mensal, Trimestral, Semestral, Anual).
+  - Badges visuais de status (GRÁTIS/PRO) e conexão (ONLINE/OFFLINE).
+- **Gerenciamento de Dispositivos**: Tela nas configurações para visualizar e remover o dispositivo atual, liberando slot para novas ativações.
+
+### 📝 Observações Técnicas
+- **CORS**: As Edge Functions foram configuradas com headers `Access-Control-Allow-Origin: *` para permitir requisições do GitHub Pages.
+- **JWT**: A verificação JWT legacy foi desativada nas Edge Functions para permitir chamadas públicas de validação de key.
+- **Versão**: Atualizada de `v4.4.0` para `v5.0.0`.
+
+---
+*Última atualização: Junho de 2026*
 # 📋 HISTÓRICO DE VERSIONAMENTO - KAYLA CONSIGNADO
 
 > Registro completo de todas as versões, mudanças e correções do sistema.
