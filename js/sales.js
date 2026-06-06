@@ -223,17 +223,30 @@ async function finalizarPedido() {
             itens: totalItens,
             total: total,
             itens_json: JSON.stringify(itensDetalhes),
+            itens_detalhes: JSON.stringify(itensDetalhes), // Fallback
             user_id: currentUser ? currentUser.id : 'local',
             created_at: new Date().toISOString()
         };
         
         if (isOnline && supabaseClient) {
+            // Tentar salvar com itens_json
             var result = await supabaseClient.from('pedidos').insert(pedidoData).select();
+            
+            // Se falhar, tentar sem itens_json mas com itens_detalhes
             if (result.error) {
+                console.warn('⚠️ Erro ao salvar com itens_json, tentando com itens_detalhes:', result.error);
                 delete pedidoData.itens_json;
+                result = await supabaseClient.from('pedidos').insert(pedidoData).select();
+            }
+            
+            // Se ainda falhar, tentar sem ambos
+            if (result.error) {
+                console.warn('⚠️ Erro ao salvar com itens_detalhes, tentando sem detalhes:', result.error);
+                delete pedidoData.itens_detalhes;
                 result = await supabaseClient.from('pedidos').insert(pedidoData).select();
                 if (result.error) throw result.error;
             }
+            
             await carregarDados();
         } else {
             pedidos.unshift(pedidoData);
@@ -252,13 +265,12 @@ async function finalizarPedido() {
         
     } catch (error) {
         toast('Erro: ' + error.message, 'error');
-        console.error(error);
+        console.error('❌ Erro ao finalizar pedido:', error);
     }
     
     btn.innerText = texto;
     btn.disabled = false;
 }
-
 // ============ MODAL ADICIONAR PRODUTO ============
 
 function abrirModalAdicionarProduto() {
