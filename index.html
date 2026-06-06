@@ -6,6 +6,7 @@
 <meta name="google" content="notranslate">
 <title>Kayla - Venda Consignada</title>
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon-dark.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -96,8 +97,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <div class="login-title">Kayla - Venda Consignada</div>
         <div class="login-sub">Selecione seu perfil de acesso</div>
         <button class="btn btn-primary" onclick="abrirLogin('admin')">👑 Administrador</button>
-        <button class="btn btn-outline" onclick="abrirLogin('user')"> Usuário</button>
-        <div style="font-size:11px;color:var(--text3);margin-top:20px">v5.0.0</div>
+        <button class="btn btn-outline" onclick="abrirLogin('user')"> 👤 Usuário</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:20px">v5.0.1</div>
     </div>
 </div>
 
@@ -106,7 +107,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="header">
         <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
-                <div class="header-title"> Kayla - Venda Consignada</div>
+                <div class="header-title">⚡ Kayla - Venda Consignada</div>
                 <div class="header-sub" id="header-sub">Nova Venda</div>
             </div>
             <div class="header-actions">
@@ -119,9 +120,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <div class="nav">
         <button class="nav-btn active" onclick="mudarAba('scan')"><span class="icon">⚡</span>Vender</button>
         <button class="nav-btn" onclick="mudarAba('clients')"><span class="icon">👥</span>Clientes</button>
-        <button class="nav-btn" onclick="mudarAba('products')"><span class="icon">️</span>Produtos</button>
-        <button class="nav-btn" onclick="mudarAba('orders')"><span class="icon"></span>Pedidos</button>
-        <button class="nav-btn" onclick="mudarAba('history')"><span class="icon"></span>Histórico</button>
+        <button class="nav-btn" onclick="mudarAba('products')"><span class="icon">🏷️</span>Produtos</button>
+        <button class="nav-btn" onclick="mudarAba('orders')"><span class="icon">📦</span>Pedidos</button>
+        <button class="nav-btn" onclick="mudarAba('history')"><span class="icon">📊</span>Histórico</button>
         <button class="nav-btn" onclick="mudarAba('settings')"><span class="icon">⚙️</span>Config</button>
     </div>
 </div>
