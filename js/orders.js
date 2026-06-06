@@ -130,7 +130,15 @@ async function carregarItensParaDevolucao(pedidoId) {
             html += '<div class="item-name">' + (item.nome || 'Sem nome') + '</div>';
             html += '<div class="item-detail">Código: ' + (item.codigo || 'N/A') + '<br>Qtd: ' + (item.qtd || 0) + ' • R$ ' + parseFloat(item.total || 0).toFixed(2).replace('.',',') + '</div>';
             html += '</div>';
-            html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ', \'' + (item.id || '') + '\')" style="margin:0">🗑️</button>';
+            
+            // Controles de quantidade
+            html += '<div style="display:flex;align-items:center;gap:8px">';
+            html += '<button class="qty-btn" onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', -1)" style="width:32px;height:32px;font-size:18px">−</button>';
+            html += '<div style="min-width:30px;text-align:center;font-weight:700">' + (item.qtd || 0) + '</div>';
+            html += '<button class="qty-btn" onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', 1)" style="width:32px;height:32px;font-size:18px">+</button>';
+            html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ', \'' + (item.id || '') + '\')" style="margin:0;margin-left:8px">🗑️</button>';
+            html += '</div>';
+            
             html += '</div>';
         });
         html += '</div>';
@@ -259,6 +267,76 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
         }
         
         toast('✅ Item removido: ' + item.nome, 'success');
+        carregarItensParaDevolucao(pedidoId);
+        
+    } catch(e) {
+        toast('Erro: ' + e.message, 'error');
+        console.error(e);
+    }
+}
+
+async function alterarQuantidadeItem(pedidoId, itemId, delta) {
+    if (!isOnline || !supabaseClient || !itemId) {
+        toast('Apenas online', 'error');
+        return;
+    }
+    
+    try {
+        // Buscar item atual
+        var itemResult = await supabaseClient
+            .from('pedido_itens')
+            .select('*')
+            .eq('id', itemId)
+            .single();
+        
+        if (!itemResult.data) {
+            toast('Item não encontrado', 'error');
+            return;
+        }
+        
+        var item = itemResult.data;
+        var novaQtd = (item.qtd || 0) + delta;
+        
+        // Se quantidade chegar a 0, remover item
+        if (novaQtd <= 0) {
+            if (!confirm('Remover este item completamente?')) return;
+            await removerItemIndividual(pedidoId, 0, itemId);
+            return;
+        }
+        
+        // Atualizar quantidade
+        var novoTotal = novaQtd * parseFloat(item.preco || 0);
+        
+        var updateResult = await supabaseClient
+            .from('pedido_itens')
+            .update({ 
+                qtd: novaQtd,
+                total: novoTotal
+            })
+            .eq('id', itemId);
+        
+        if (updateResult.error) {
+            toast('Erro: ' + updateResult.error.message, 'error');
+            return;
+        }
+        
+        // Atualizar pedido
+        var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+        if (pedido) {
+            var diferencaTotal = novoTotal - parseFloat(item.total || 0);
+            var novoTotalPedido = Math.max(0, parseFloat(pedido.total) + diferencaTotal);
+            
+            await supabaseClient
+                .from('pedidos')
+                .update({ 
+                    total: novoTotalPedido
+                })
+                .eq('id', pedidoId);
+            
+            await carregarDados();
+        }
+        
+        toast('✅ Quantidade atualizada', 'success');
         carregarItensParaDevolucao(pedidoId);
         
     } catch(e) {
