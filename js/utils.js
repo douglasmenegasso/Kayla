@@ -1,6 +1,8 @@
 // ============ FUNÇÕES AUXILIARES ============
 
 function toast(msg, tipo) {
+    var container = document.getElementById('toast-container');
+    if (!container) return;
     var el = document.createElement('div');
     el.className = 'toast ' + tipo;
     el.textContent = msg;
