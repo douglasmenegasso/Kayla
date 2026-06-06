@@ -51,9 +51,13 @@ async function devolverPedido(pedidoId) {
         return;
     }
     
+    console.log('🔍 DEBUG - Pedido completo:', pedido);
+    console.log('🔍 DEBUG - Tipo de pedido.itens:', typeof pedido.itens);
+    console.log('🔍 DEBUG - Campos do pedido:', Object.keys(pedido));
+    
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">↩️ Devolução</div>';
-    html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + ' - ' + pedido.cliente_nome + '</div>';
+    html += '<div class="modal-sub">' + pedido.cliente_nome + ' • Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     
     // Scanner de código de barras
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
@@ -67,38 +71,70 @@ async function devolverPedido(pedidoId) {
     
     // Lista de itens
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + pedido.itens + ')</strong></div>';
+    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
     
     var itens = [];
     var historicoDevolucoes = [];
     var errorMsg = null;
+    var itensCarregados = 0;
     
     // Tentar carregar itens de diferentes formas
     try {
+        // Método 1: itens_json
         if (pedido.itens_json) {
+            console.log('📦 Tentando carregar de itens_json...');
             itens = JSON.parse(pedido.itens_json);
-        } else if (pedido.itens_detalhes) {
+            console.log('✅ Carregou de itens_json:', itens.length, 'itens');
+        }
+        // Método 2: itens_detalhes
+        else if (pedido.itens_detalhes) {
+            console.log('📦 Tentando carregar de itens_detalhes...');
             itens = JSON.parse(pedido.itens_detalhes);
-        } else if (window.pedidoItens && Array.isArray(window.pedidoItens)) {
-            // Fallback: usar variável global se existir
-            itens = window.pedidoItens;
+            console.log('✅ Carregou de itens_detalhes:', itens.length, 'itens');
+        }
+        // Método 3: items (inglês)
+        else if (pedido.items) {
+            console.log('📦 Tentando carregar de items...');
+            itens = Array.isArray(pedido.items) ? pedido.items : JSON.parse(pedido.items);
+            console.log('✅ Carregou de items:', itens.length, 'itens');
+        }
+        // Método 4: dados (campo genérico)
+        else if (pedido.dados) {
+            console.log('📦 Tentando carregar de dados...');
+            var dados = typeof pedido.dados === 'string' ? JSON.parse(pedido.dados) : pedido.dados;
+            if (dados.itens) {
+                itens = dados.itens;
+                console.log('✅ Carregou de dados.itens:', itens.length, 'itens');
+            }
         }
         
+        // Carregar histórico
         if (pedido.historico_devolucoes) {
             historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
         }
+        
+        itensCarregados = itens.length;
+        
     } catch(e) {
         errorMsg = 'Erro ao carregar itens: ' + e.message;
-        console.error('Erro ao parsear itens:', e, 'Pedido:', pedido);
+        console.error('❌ Erro ao parsear itens:', e);
+        console.error('❌ Dados do pedido:', pedido);
     }
     
+    // Debug final
+    console.log('📊 DEBUG FINAL - Itens encontrados:', itensCarregados);
+    console.log('📊 DEBUG FINAL - Array itens:', itens);
+    
     if (errorMsg) {
-        html += '<p style="color:var(--error);padding:12px;background:var(--bg2);border-radius:8px">' + errorMsg + '</p>';
-        html += '<p style="color:var(--text2);font-size:12px;margin-top:8px">Total de itens registrados: ' + pedido.itens + '</p>';
+        html += '<p style="color:var(--error);padding:12px;background:var(--bg2);border-radius:8px;margin-bottom:12px">' + errorMsg + '</p>';
+        html += '<p style="color:var(--text2);font-size:12px">Total de itens registrados: ' + pedido.itens + '</p>';
+        html += '<p style="color:var(--warning);font-size:11px;margin-top:8px">💡 Verifique o console (F12) para mais detalhes</p>';
     } else if (!itens || itens.length === 0) {
-        html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item no pedido</p>';
-        html += '<p style="color:var(--text2);font-size:12px;text-align:center">Total registrado: ' + pedido.itens + ' itens</p>';
+        html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item encontrado</p>';
+        html += '<p style="color:var(--text2);font-size:12px;text-align:center">Total registrado no pedido: <strong>' + pedido.itens + ' itens</strong></p>';
+        html += '<p style="color:var(--warning);font-size:11px;text-align:center;margin-top:8px">💡 Verifique o console (F12) para ver a estrutura dos dados</p>';
     } else {
+        html += '<p style="color:var(--success);font-size:13px;margin-bottom:12px">✅ ' + itens.length + ' itens carregados</p>';
         html += '<div class="item-list">';
         itens.forEach(function(item, idx) {
             // Verificar se item já foi devolvido
@@ -116,8 +152,8 @@ async function devolverPedido(pedidoId) {
             
             html += '<div class="item-card" style="margin-bottom:8px;' + statusStyle + '">';
             html += '<div class="item-info">';
-            html += '<div class="item-name">' + (item.nome || 'Sem nome') + statusBadge + '</div>';
-            html += '<div class="item-detail">Código: ' + (item.codigo || 'N/A') + '<br>Qtd: ' + (item.qtd || item.quantidade || 0) + ' • R$ ' + (item.total || item.preco || 0).toFixed(2).replace('.',',') + '</div>';
+            html += '<div class="item-name">' + (item.nome || item.name || 'Sem nome') + statusBadge + '</div>';
+            html += '<div class="item-detail">Código: ' + (item.codigo || item.code || item.produto_codigo || 'N/A') + '<br>Qtd: ' + (item.qtd || item.quantidade || 0) + ' • R$ ' + (item.total || item.preco || item.valor || 0).toFixed(2).replace('.',',') + '</div>';
             html += '</div>';
             
             if (!jaDevolvido) {
@@ -158,7 +194,6 @@ async function devolverPedido(pedidoId) {
         if (scanner) scanner.focus(); 
     }, 100);
 }
-
 async function removerItemPorCodigo(pedidoId) {
     var codigo = document.getElementById('scanner-codigo-devolucao').value.trim();
     if (!codigo) {
