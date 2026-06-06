@@ -252,7 +252,6 @@ async function finalizarPedido() {
             var resultItens = await supabaseClient.from('pedido_itens').insert(itensParaSalvar);
             if (resultItens.error) {
                 console.warn('⚠️ Erro ao salvar itens:', resultItens.error);
-                // Não falha o pedido se der erro nos itens
             } else {
                 console.log('✅ ' + itensParaSalvar.length + ' itens salvos em pedido_itens');
             }
@@ -285,6 +284,7 @@ async function finalizarPedido() {
     btn.innerText = texto;
     btn.disabled = false;
 }
+
 // ============ MODAL ADICIONAR PRODUTO ============
 
 function abrirModalAdicionarProduto() {
