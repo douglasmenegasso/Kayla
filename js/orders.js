@@ -180,57 +180,83 @@ async function removerItemPorCodigo(pedidoId) {
     if (!pedido) return;
     
     try {
-        var itens = JSON.parse(pedido.itens_json || '[]');
-        var historicoDevolucoes = JSON.parse(pedido.historico_devolucoes || '[]');
+        var itens = [];
+        var historicoDevolucoes = [];
+        var itemId = null;
         
-        // Encontrar item pelo código
-        var idx = itens.findIndex(function(item) { 
-            return item.codigo === codigo; 
-        });
+        // Buscar itens do Supabase
+        if (isOnline && supabaseClient) {
+            var result = await supabaseClient
+                .from('pedido_itens')
+                .select('*')
+                .eq('pedido_id', pedidoId)
+                .eq('codigo', codigo);
+            
+            if (result.data && result.data.length > 0) {
+                itens = result.data;
+                itemId = itens[0].id;
+            }
+        }
         
-        if (idx === -1) {
+        // Fallback local
+        if (itens.length === 0 && pedido.itens_json) {
+            itens = JSON.parse(pedido.itens_json).filter(function(i) { return i.codigo === codigo; });
+        }
+        
+        if (itens.length === 0) {
             toast('Item não encontrado no pedido', 'error');
             return;
         }
         
-        // Verificar se já foi devolvido
-        var jaDevolvido = historicoDevolucoes.some(function(dev) {
-            return dev.itens.some(function(devItem) {
-                return devItem.codigo === codigo;
-            });
-        });
+        var itemRemovido = itens[0];
         
-        if (jaDevolvido) {
-            toast('Este item já foi devolvido anteriormente', 'warning');
-            return;
+        // Verificar se já foi devolvido
+        if (pedido.historico_devolucoes) {
+            historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+            var jaDevolvido = historicoDevolucoes.some(function(dev) {
+                return dev.itens && dev.itens.some(function(devItem) {
+                    return devItem.codigo === codigo;
+                });
+            });
+            
+            if (jaDevolvido) {
+                toast('Este item já foi devolvido anteriormente', 'warning');
+                return;
+            }
         }
         
-        // Remover item
-        var itemRemovido = itens.splice(idx, 1)[0];
+        // Remover do banco
+        if (isOnline && supabaseClient && itemId) {
+            var result = await supabaseClient.from('pedido_itens').delete().eq('id', itemId);
+            if (result.error) {
+                toast('Erro ao remover: ' + result.error.message, 'error');
+                return;
+            }
+        }
         
         // Registrar no histórico
         historicoDevolucoes.push({
             data: new Date().toISOString(),
             itens: [itemRemovido],
-            motivo: 'Devolução individual'
+            motivo: 'Devolução via scanner'
         });
         
         // Atualizar pedido
+        var novosItensCount = Math.max(0, pedido.itens - itemRemovido.qtd);
+        var novoTotal = Math.max(0, parseFloat(pedido.total) - itemRemovido.total);
+        
         var updateData = {
-            itens_json: JSON.stringify(itens),
-            itens: itens.length,
-            total: itens.reduce(function(sum, item) { return sum + item.total; }, 0),
+            itens: novosItensCount,
+            total: novoTotal,
             historico_devolucoes: JSON.stringify(historicoDevolucoes)
         };
         
-        // Se não houver mais itens, marcar como devolvido
-        if (itens.length === 0) {
+        if (novosItensCount === 0) {
             updateData.status = 'devolvido';
         }
         
         if (isOnline && supabaseClient) {
-            var result = await supabaseClient.from('pedidos').update(updateData).eq('id', pedidoId);
-            if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+            await supabaseClient.from('pedidos').update(updateData).eq('id', pedidoId);
             await carregarDados();
         } else {
             Object.assign(pedido, updateData);
@@ -238,32 +264,62 @@ async function removerItemPorCodigo(pedidoId) {
         }
         
         toast('✅ Item removido: ' + itemRemovido.nome, 'success');
-        devolverPedido(pedidoId); // Recarregar modal
+        devolverPedido(pedidoId);
         
     } catch(e) {
         toast('Erro ao processar: ' + e.message, 'error');
+        console.error(e);
     }
 }
-
-async function removerItemIndividual(pedidoId, idx) {
+async function removerItemIndividual(pedidoId, idx, itemId) {
     if (!confirm('Deseja remover este item da devolução?')) return;
     
     var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
     if (!pedido) return;
     
     try {
-        var itens = JSON.parse(pedido.itens_json || '[]');
-        var historicoDevolucoes = JSON.parse(pedido.historico_devolucoes || '[]');
+        var itens = [];
+        var historicoDevolucoes = [];
+        
+        // Buscar itens do Supabase
+        if (isOnline && supabaseClient) {
+            var result = await supabaseClient
+                .from('pedido_itens')
+                .select('*')
+                .eq('pedido_id', pedidoId)
+                .order('created_at', { ascending: true });
+            
+            if (result.data) {
+                itens = result.data;
+            }
+        }
+        
+        // Fallback local
+        if (itens.length === 0 && pedido.itens_json) {
+            itens = JSON.parse(pedido.itens_json);
+        }
         
         if (idx < 0 || idx >= itens.length) {
             toast('Item inválido', 'error');
             return;
         }
         
-        // Remover item
-        var itemRemovido = itens.splice(idx, 1)[0];
+        var itemRemovido = itens[idx];
+        
+        // Remover do banco
+        if (isOnline && supabaseClient && itemId) {
+            var result = await supabaseClient.from('pedido_itens').delete().eq('id', itemId);
+            if (result.error) {
+                toast('Erro ao remover: ' + result.error.message, 'error');
+                return;
+            }
+        }
         
         // Registrar no histórico
+        if (pedido.historico_devolucoes) {
+            historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+        }
+        
         historicoDevolucoes.push({
             data: new Date().toISOString(),
             itens: [itemRemovido],
@@ -271,21 +327,21 @@ async function removerItemIndividual(pedidoId, idx) {
         });
         
         // Atualizar pedido
+        var novosItensCount = Math.max(0, pedido.itens - itemRemovido.qtd);
+        var novoTotal = Math.max(0, parseFloat(pedido.total) - itemRemovido.total);
+        
         var updateData = {
-            itens_json: JSON.stringify(itens),
-            itens: itens.length,
-            total: itens.reduce(function(sum, item) { return sum + item.total; }, 0),
+            itens: novosItensCount,
+            total: novoTotal,
             historico_devolucoes: JSON.stringify(historicoDevolucoes)
         };
         
-        // Se não houver mais itens, marcar como devolvido
-        if (itens.length === 0) {
+        if (novosItensCount === 0) {
             updateData.status = 'devolvido';
         }
         
         if (isOnline && supabaseClient) {
-            var result = await supabaseClient.from('pedidos').update(updateData).eq('id', pedidoId);
-            if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+            await supabaseClient.from('pedidos').update(updateData).eq('id', pedidoId);
             await carregarDados();
         } else {
             Object.assign(pedido, updateData);
@@ -293,10 +349,11 @@ async function removerItemIndividual(pedidoId, idx) {
         }
         
         toast('✅ Item removido: ' + itemRemovido.nome, 'success');
-        devolverPedido(pedidoId); // Recarregar modal
+        devolverPedido(pedidoId);
         
     } catch(e) {
         toast('Erro ao processar: ' + e.message, 'error');
+        console.error(e);
     }
 }
 
@@ -343,7 +400,7 @@ function verPedido(pedidoId) {
     if (!pedido) return;
     
     var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📋 Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
+    html += '<div class="modal-title"> Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     html += '<div class="modal-sub">' + pedido.cliente_nome + ' - ' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div>';
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Status:</span><strong style="color:' + (pedido.status === 'aberto' ? 'var(--warning)' : (pedido.status === 'finalizado' ? 'var(--success)' : 'var(--error)')) + '">' + pedido.status.toUpperCase() + '</strong></div>';
@@ -351,18 +408,45 @@ function verPedido(pedidoId) {
     html += '<div style="display:flex;justify-content:space-between"><span>Total:</span><strong style="color:var(--accent);font-size:18px">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
     html += '</div>';
     
-    try {
-        var itens = JSON.parse(pedido.itens_json || '[]');
-        if (itens.length > 0) {
-            html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-            html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
-            html += '<div class="item-list">';
-            itens.forEach(function(item) {
-                html += '<div class="item-card"><div class="item-info"><div class="item-name">' + item.nome + '</div><div class="item-detail">' + item.qtd + 'x R$ ' + item.preco.toFixed(2).replace('.',',') + '</div></div><div style="font-weight:700;color:var(--accent)">R$ ' + item.total.toFixed(2).replace('.',',') + '</div></div>';
-            });
-            html += '</div></div>';
+    // Carregar itens da tabela pedido_itens
+    (async function() {
+        var itens = [];
+        try {
+            if (isOnline && supabaseClient) {
+                var result = await supabaseClient
+                    .from('pedido_itens')
+                    .select('*')
+                    .eq('pedido_id', pedidoId)
+                    .order('created_at', { ascending: true });
+                
+                if (result.data) {
+                    itens = result.data;
+                }
+            }
+            
+            // Fallback
+            if (itens.length === 0 && pedido.itens_json) {
+                itens = JSON.parse(pedido.itens_json);
+            }
+            
+            if (itens.length > 0) {
+                var itensHtml = '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+                itensHtml += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
+                itensHtml += '<div class="item-list">';
+                itens.forEach(function(item) {
+                    itensHtml += '<div class="item-card"><div class="item-info"><div class="item-name">' + item.nome + '</div><div class="item-detail">' + item.qtd + 'x R$ ' + parseFloat(item.preco).toFixed(2).replace('.',',') + '</div></div><div style="font-weight:700;color:var(--accent)">R$ ' + parseFloat(item.total).toFixed(2).replace('.',',') + '</div></div>';
+                });
+                itensHtml += '</div></div>';
+                
+                // Inserir antes dos botões
+                var modalBody = document.getElementById('modal-body');
+                var buttonsHtml = modalBody.innerHTML;
+                modalBody.innerHTML = buttonsHtml.replace('</div></div><button', itensHtml + '</div></div><button');
+            }
+        } catch(e) {
+            console.error('Erro ao carregar itens:', e);
         }
-    } catch(e) {}
+    })();
     
     // Histórico de devoluções
     try {
@@ -376,7 +460,7 @@ function verPedido(pedidoId) {
                 html += '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">' + data + ' • ' + dev.motivo + '</div>';
                 html += '<div style="font-size:13px">';
                 dev.itens.forEach(function(item) {
-                    html += '<div>• ' + item.nome + ' (Qtd: ' + item.qtd + ' - R$ ' + item.total.toFixed(2).replace('.',',') + ')</div>';
+                    html += '<div>• ' + item.nome + ' (Qtd: ' + item.qtd + ' - R$ ' + parseFloat(item.total).toFixed(2).replace('.',',') + ')</div>';
                 });
                 html += '</div></div>';
             });
@@ -388,11 +472,6 @@ function verPedido(pedidoId) {
     html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
-}
-
-function gerarPDFPedidoPorId(pedidoId) {
-    var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
-    if (pedido) gerarPDFPedido(pedido);
 }
 
 // ============ HISTÓRICO ============
