@@ -222,35 +222,49 @@ async function finalizarPedido() {
             status: 'aberto',
             itens: totalItens,
             total: total,
-            itens_json: JSON.stringify(itensDetalhes),
-            itens_detalhes: JSON.stringify(itensDetalhes), // Fallback
             user_id: currentUser ? currentUser.id : 'local',
             created_at: new Date().toISOString()
         };
         
+        var pedidoCriado = null;
+        
         if (isOnline && supabaseClient) {
-            // Tentar salvar com itens_json
+            // 1. Criar o pedido
             var result = await supabaseClient.from('pedidos').insert(pedidoData).select();
+            if (result.error) throw result.error;
             
-            // Se falhar, tentar sem itens_json mas com itens_detalhes
-            if (result.error) {
-                console.warn('⚠️ Erro ao salvar com itens_json, tentando com itens_detalhes:', result.error);
-                delete pedidoData.itens_json;
-                result = await supabaseClient.from('pedidos').insert(pedidoData).select();
-            }
+            pedidoCriado = result.data[0];
+            console.log('✅ Pedido criado:', pedidoCriado.id);
             
-            // Se ainda falhar, tentar sem ambos
-            if (result.error) {
-                console.warn('⚠️ Erro ao salvar com itens_detalhes, tentando sem detalhes:', result.error);
-                delete pedidoData.itens_detalhes;
-                result = await supabaseClient.from('pedidos').insert(pedidoData).select();
-                if (result.error) throw result.error;
+            // 2. Salvar itens na tabela pedido_itens
+            var itensParaSalvar = itensDetalhes.map(function(item) {
+                return {
+                    pedido_id: pedidoCriado.id,
+                    produto_id: item.produto_id,
+                    nome: item.nome,
+                    codigo: item.codigo,
+                    preco: item.preco,
+                    qtd: item.qtd,
+                    total: item.total
+                };
+            });
+            
+            var resultItens = await supabaseClient.from('pedido_itens').insert(itensParaSalvar);
+            if (resultItens.error) {
+                console.warn('⚠️ Erro ao salvar itens:', resultItens.error);
+                // Não falha o pedido se der erro nos itens
+            } else {
+                console.log('✅ ' + itensParaSalvar.length + ' itens salvos em pedido_itens');
             }
             
             await carregarDados();
         } else {
+            // Offline: salva localmente
+            pedidoData.id = 'local_' + Date.now();
+            pedidoData.itens_json = JSON.stringify(itensDetalhes);
             pedidos.unshift(pedidoData);
             salvarDadosLocais();
+            pedidoCriado = pedidoData;
         }
         
         setTimeout(function() {
