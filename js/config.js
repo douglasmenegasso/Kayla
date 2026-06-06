@@ -9,7 +9,7 @@ var supabaseClient = null;
 var SUPABASE_EDGE_URL = SUPABASE_URL + '/functions/v1';
 
 // Versão do App
-var appVersion = '5.0.0';
+var appVersion = '5.0.1';
 
 // Variáveis Globais de Estado
 var currentUser = null;
@@ -40,7 +40,9 @@ var currentProKey = localStorage.getItem('kayla_pro_key') || null;
 
 // Inicializar Supabase Client
 try {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (typeof supabase !== 'undefined') {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
 } catch(e) {
     console.error('Erro ao inicializar Supabase:', e);
 }
