@@ -46,7 +46,10 @@ async function finalizarPedidoStatus(pedidoId) {
 
 async function devolverPedido(pedidoId) {
     var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
-    if (!pedido) return;
+    if (!pedido) {
+        toast('Pedido não encontrado', 'error');
+        return;
+    }
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">↩️ Devolução</div>';
@@ -64,64 +67,86 @@ async function devolverPedido(pedidoId) {
     
     // Lista de itens
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
+    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + pedido.itens + ')</strong></div>';
     
+    var itens = [];
+    var historicoDevolucoes = [];
+    var errorMsg = null;
+    
+    // Tentar carregar itens de diferentes formas
     try {
-        var itens = JSON.parse(pedido.itens_json || '[]');
-        var historicoDevolucoes = JSON.parse(pedido.historico_devolucoes || '[]');
+        if (pedido.itens_json) {
+            itens = JSON.parse(pedido.itens_json);
+        } else if (pedido.itens_detalhes) {
+            itens = JSON.parse(pedido.itens_detalhes);
+        } else if (window.pedidoItens && Array.isArray(window.pedidoItens)) {
+            // Fallback: usar variável global se existir
+            itens = window.pedidoItens;
+        }
         
-        if (itens.length === 0) {
-            html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item no pedido</p>';
-        } else {
-            html += '<div class="item-list">';
-            itens.forEach(function(item, idx) {
-                // Verificar se item já foi devolvido
-                var jaDevolvido = historicoDevolucoes.some(function(dev) {
-                    return dev.itens.some(function(devItem) {
+        if (pedido.historico_devolucoes) {
+            historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+        }
+    } catch(e) {
+        errorMsg = 'Erro ao carregar itens: ' + e.message;
+        console.error('Erro ao parsear itens:', e, 'Pedido:', pedido);
+    }
+    
+    if (errorMsg) {
+        html += '<p style="color:var(--error);padding:12px;background:var(--bg2);border-radius:8px">' + errorMsg + '</p>';
+        html += '<p style="color:var(--text2);font-size:12px;margin-top:8px">Total de itens registrados: ' + pedido.itens + '</p>';
+    } else if (!itens || itens.length === 0) {
+        html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item no pedido</p>';
+        html += '<p style="color:var(--text2);font-size:12px;text-align:center">Total registrado: ' + pedido.itens + ' itens</p>';
+    } else {
+        html += '<div class="item-list">';
+        itens.forEach(function(item, idx) {
+            // Verificar se item já foi devolvido
+            var jaDevolvido = false;
+            if (historicoDevolucoes && historicoDevolucoes.length > 0) {
+                jaDevolvido = historicoDevolucoes.some(function(dev) {
+                    return dev.itens && dev.itens.some(function(devItem) {
                         return devItem.codigo === item.codigo;
                     });
                 });
-                
-                var statusStyle = jaDevolvido ? 'opacity:0.5;text-decoration:line-through' : '';
-                var statusBadge = jaDevolvido ? '<span style="color:var(--error);font-size:11px;margin-left:8px">DEVOLVIDO</span>' : '';
-                
-                html += '<div class="item-card" style="margin-bottom:8px;' + statusStyle + '">';
-                html += '<div class="item-info">';
-                html += '<div class="item-name">' + item.nome + statusBadge + '</div>';
-                html += '<div class="item-detail">Código: ' + item.codigo + '<br>Qtd: ' + item.qtd + ' • R$ ' + item.total.toFixed(2).replace('.',',') + '</div>';
-                html += '</div>';
-                
-                if (!jaDevolvido) {
-                    html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ')" style="margin:0">🗑️</button>';
-                }
-                html += '</div>';
-            });
+            }
+            
+            var statusStyle = jaDevolvido ? 'opacity:0.5;text-decoration:line-through' : '';
+            var statusBadge = jaDevolvido ? '<span style="color:var(--error);font-size:11px;margin-left:8px">DEVOLVIDO</span>' : '';
+            
+            html += '<div class="item-card" style="margin-bottom:8px;' + statusStyle + '">';
+            html += '<div class="item-info">';
+            html += '<div class="item-name">' + (item.nome || 'Sem nome') + statusBadge + '</div>';
+            html += '<div class="item-detail">Código: ' + (item.codigo || 'N/A') + '<br>Qtd: ' + (item.qtd || item.quantidade || 0) + ' • R$ ' + (item.total || item.preco || 0).toFixed(2).replace('.',',') + '</div>';
             html += '</div>';
-        }
-    } catch(e) {
-        html += '<p style="color:var(--error)">Erro ao carregar itens</p>';
+            
+            if (!jaDevolvido) {
+                html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ')" style="margin:0">🗑️</button>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
     }
     html += '</div>';
     
     // Histórico de devoluções
-    try {
-        var historicoDevolucoes = JSON.parse(pedido.historico_devolucoes || '[]');
-        if (historicoDevolucoes.length > 0) {
-            html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-            html += '<div style="margin-bottom:12px"><strong>📋 Histórico de Devoluções</strong></div>';
-            historicoDevolucoes.forEach(function(dev, idx) {
-                var data = new Date(dev.data).toLocaleString('pt-BR');
-                html += '<div style="padding:12px;background:var(--bg2);border-radius:8px;margin-bottom:8px">';
-                html += '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">' + data + '</div>';
-                html += '<div style="font-size:13px">';
+    if (historicoDevolucoes && historicoDevolucoes.length > 0) {
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+        html += '<div style="margin-bottom:12px"><strong>📋 Histórico de Devoluções</strong></div>';
+        historicoDevolucoes.forEach(function(dev, idx) {
+            var data = new Date(dev.data).toLocaleString('pt-BR');
+            html += '<div style="padding:12px;background:var(--bg2);border-radius:8px;margin-bottom:8px">';
+            html += '<div style="font-size:12px;color:var(--text2);margin-bottom:4px">' + data + '</div>';
+            html += '<div style="font-size:13px">';
+            if (dev.itens) {
                 dev.itens.forEach(function(item) {
                     html += '<div>• ' + item.nome + ' (Qtd: ' + item.qtd + ')</div>';
                 });
-                html += '</div></div>';
-            });
-            html += '</div>';
-        }
-    } catch(e) {}
+            }
+            html += '</div></div>';
+        });
+        html += '</div>';
+    }
     
     html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
     document.getElementById('modal-body').innerHTML = html;
