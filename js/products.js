@@ -12,7 +12,11 @@ function renderizarProdutos() {
     } else {
         html += '<div class="item-list">';
         produtos.forEach(function(p) {
-            html += '<div class="item-card"><div class="item-info"><div class="item-name">' + p.nome + '</div><div class="item-detail">' + p.codigo + ' - R$ ' + p.preco.toFixed(2).replace('.',',') + '</div></div><button class="btn btn-sm btn-outline" onclick="editarProduto(\'' + p.id + '\')">Editar</button></div>';
+            html += '<div class="item-card"><div class="item-info"><div class="item-name">' + p.nome + '</div><div class="item-detail">' + p.codigo + ' - R$ ' + p.preco.toFixed(2).replace('.',',') + '</div></div>';
+            html += '<div style="display:flex;gap:8px">';
+            html += '<button class="btn btn-sm btn-outline" onclick="editarProduto(\'' + p.id + '\')">✏️</button>';
+            html += '<button class="btn btn-sm btn-red" onclick="excluirProduto(\'' + p.id + '\')">🗑️</button>';
+            html += '</div></div>';
         });
         html += '</div>';
     }
