@@ -17,6 +17,48 @@ function fecharModal(e) {
     }
 }
 
+// Modal de confirmação personalizado
+function confirmar(titulo, mensagem, callback) {
+    var modal = document.getElementById('confirm-modal');
+    if (!modal) {
+        console.error('Modal de confirmação não encontrado');
+        if (callback) callback(false);
+        return;
+    }
+    
+    document.getElementById('confirm-title').textContent = titulo;
+    document.getElementById('confirm-message').textContent = mensagem;
+    
+    modal.classList.add('show');
+    
+    var btnOk = document.getElementById('confirm-btn-ok');
+    var btnCancel = document.getElementById('confirm-btn-cancel');
+    
+    // Remover listeners anteriores
+    var newBtnOk = btnOk.cloneNode(true);
+    var newBtnCancel = btnCancel.cloneNode(true);
+    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
+    btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+    
+    newBtnOk.addEventListener('click', function() {
+        modal.classList.remove('show');
+        if (callback) callback(true);
+    });
+    
+    newBtnCancel.addEventListener('click', function() {
+        modal.classList.remove('show');
+        if (callback) callback(false);
+    });
+    
+    // Fechar ao clicar fora
+    modal.onclick = function(e) {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+            if (callback) callback(false);
+        }
+    };
+}
+
 function verificarLimite(tipo) {
     if (LIMITES.proAtivo) return true;
     if (tipo === 'clientes' && clientes.length >= LIMITES.freeClientes) {
