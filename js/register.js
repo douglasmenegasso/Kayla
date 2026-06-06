@@ -41,7 +41,7 @@ async function fazerCadastro() {
         return; 
     }
     
-    var btn = event.target;
+    var btn = window.event ? window.event.target : null;
     var texto = btn.innerText;
     btn.innerText = 'Cadastrando...';
     btn.disabled = true;
