@@ -87,7 +87,6 @@ async function carregarItensParaDevolucao(pedidoId) {
     
     var itens = [];
     
-    // Buscar da tabela pedido_itens
     if (isOnline && supabaseClient) {
         try {
             var result = await supabaseClient
@@ -104,19 +103,15 @@ async function carregarItensParaDevolucao(pedidoId) {
         }
     }
     
-    // Se não encontrou, tentar do itens_json
     if (itens.length === 0) {
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
         if (pedido && pedido.itens_json) {
             try {
                 itens = JSON.parse(pedido.itens_json);
-            } catch(e) {
-                console.error('Erro ao parsear itens_json:', e);
-            }
+            } catch(e) {}
         }
     }
     
-    // Mostrar itens
     var html = '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + itens.length + ')</strong></div>';
     
@@ -125,20 +120,25 @@ async function carregarItensParaDevolucao(pedidoId) {
     } else {
         html += '<div class="item-list">';
         itens.forEach(function(item, idx) {
-            html += '<div data-item-id="' + (item.id || '') + '" style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">';
-html += '<div style="flex:1">';
-html += '<div style="font-weight:600;font-size:14px">' + (item.nome || 'Sem nome') + '</div>';
-html += '<div style="font-size:12px;color:#a0a0b0">Código: ' + (item.codigo || 'N/A') + ' • Qtd: <span class="item-qtd-display">' + (item.qtd || 0) + '</span> • R$ ' + parseFloat(item.total || 0).toFixed(2).replace('.',',') + '</div>';
-html += '</div>';
-
-html += '<div style="display:flex;align-items:center;gap:8px;margin-left:12px">';
-html += '<button onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', -1)" style="width:36px;height:36px;background:#7c5cfc;color:#fff;border:none;border-radius:6px;font-size:20px;cursor:pointer;font-weight:700">−</button>';
-html += '<div style="min-width:30px;text-align:center;font-weight:700;font-size:16px;color:#fff item-qtd-display">' + (item.qtd || 0) + '</div>';
-html += '<button onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', 1)" style="width:36px;height:36px;background:#7c5cfc;color:#fff;border:none;border-radius:6px;font-size:20px;cursor:pointer;font-weight:700">+</button>';
-html += '<button onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ', \'' + (item.id || '') + '\')" style="width:36px;height:36px;background:#ff1744;color:#fff;border:none;border-radius:6px;font-size:18px;cursor:pointer;margin-left:8px">🗑️</button>';
-html += '</div>';
-
-html += '</div>';
+            var itemTotal = parseFloat(item.total || (item.preco * item.qtd) || 0).toFixed(2).replace('.',',');
+            
+            html += '<div data-item-id="' + (item.id || '') + '" style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+            html += '<div style="flex:1">';
+            html += '<div style="font-weight:600;font-size:14px">' + (item.nome || 'Sem nome') + '</div>';
+            html += '<div style="font-size:12px;color:#a0a0b0">Código: ' + (item.codigo || 'N/A') + '</div>';
+            html += '</div>';
+            html += '<div style="font-weight:700;color:#9b82fc;font-size:14px" data-item-total>R$ ' + itemTotal + '</div>';
+            html += '</div>';
+            
+            html += '<div style="display:flex;align-items:center;justify-content:space-between">';
+            html += '<div style="font-size:12px;color:#a0a0b0">R$ ' + parseFloat(item.preco || 0).toFixed(2).replace('.',',') + ' un</div>';
+            html += '<div style="display:flex;align-items:center;gap:8px">';
+            html += '<button onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', -1)" style="width:36px;height:36px;background:#7c5cfc;color:#fff;border:none;border-radius:6px;font-size:20px;cursor:pointer;font-weight:700">−</button>';
+            html += '<div data-item-qtd style="min-width:40px;text-align:center;font-weight:700;font-size:16px;color:#fff;background:#252530;padding:6px;border-radius:6px">' + (item.qtd || 0) + '</div>';
+            html += '<button onclick="alterarQuantidadeItem(\'' + pedidoId + '\', \'' + (item.id || '') + '\', 1)" style="width:36px;height:36px;background:#7c5cfc;color:#fff;border:none;border-radius:6px;font-size:20px;cursor:pointer;font-weight:700">+</button>';
+            html += '<button onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ', \'' + (item.id || '') + '\')" style="width:36px;height:36px;background:#ff1744;color:#fff;border:none;border-radius:6px;font-size:18px;cursor:pointer;margin-left:8px">🗑️</button>';
+            html += '</div></div>';
             
             html += '</div>';
         });
@@ -310,7 +310,7 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
         var precoUnitario = parseFloat(item.preco) || 0;
         var novoTotal = novaQtd * precoUnitario;
         
-        // Atualizar item
+        // Atualizar item no banco
         var updateResult = await supabaseClient
             .from('pedido_itens')
             .update({ 
@@ -341,13 +341,23 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             await carregarDados();
         }
         
-        // ATUALIZAR APENAS O ITEM VISUALMENTE (sem recarregar tudo)
-        var qtdDisplay = document.querySelector('[data-item-id="' + itemId + '"] .item-qtd-display');
-        if (qtdDisplay) {
-            qtdDisplay.textContent = novaQtd;
+        // ATUALIZAR VISUALMENTE (sem recarregar tudo)
+        var itemContainer = document.querySelector('[data-item-id="' + itemId + '"]');
+        if (itemContainer) {
+            // Atualizar quantidade
+            var qtdDisplay = itemContainer.querySelector('[data-item-qtd]');
+            if (qtdDisplay) {
+                qtdDisplay.textContent = novaQtd;
+            }
+            
+            // Atualizar valor total
+            var totalDisplay = itemContainer.querySelector('[data-item-total]');
+            if (totalDisplay) {
+                totalDisplay.textContent = 'R$ ' + novoTotal.toFixed(2).replace('.',',');
+            }
         }
         
-        toast('✅ Quantidade: ' + novaQtd, 'success');
+        toast('✅ Qtd: ' + novaQtd + ' • R$ ' + novoTotal.toFixed(2).replace('.',','), 'success');
         
     } catch(e) {
         toast('Erro: ' + e.message, 'error');
