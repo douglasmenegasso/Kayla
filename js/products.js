@@ -101,4 +101,20 @@ async function salvarProdutoEdit(id) {
     mudarAba('products');
 }
 
+async function excluirProduto(produtoId) {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    
+    if (isOnline && supabaseClient) {
+        var result = await supabaseClient.from('produtos').delete().eq('id', produtoId);
+        if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+        await carregarDados();
+    } else {
+        produtos = produtos.filter(function(p) { return p.id !== produtoId; });
+        salvarDadosLocais();
+    }
+    
+    toast('✅ Produto excluído!', 'success');
+    mudarAba('products');
+}
+
 console.log('✅ Products.js carregado');
