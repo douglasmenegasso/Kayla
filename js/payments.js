@@ -30,7 +30,7 @@ async function ativarPro() {
         return; 
     }
     
-    var btn = event.target;
+    var btn = window.event ? window.event.target : null;
     var texto = btn.innerText;
     btn.innerText = 'Validando...';
     btn.disabled = true;
