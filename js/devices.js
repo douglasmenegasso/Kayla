@@ -22,7 +22,8 @@ async function removerDispositivo(keyCode, deviceId) {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + SUPABASE_KEY
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'apikey': SUPABASE_KEY
             },
             body: JSON.stringify({
                 key_code: keyCode,
