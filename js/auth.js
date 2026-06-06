@@ -39,7 +39,8 @@ async function fazerLogin() {
     
     if (!email || !senha) { toast('Preencha tudo', 'error'); return; }
     
-    var btn = event.target;
+    var btn = window.event ? window.event.target : null;
+    if (!btn) return;
     var texto = btn.innerText;
     btn.innerText = 'Entrando...';
     btn.disabled = true;
@@ -100,29 +101,22 @@ async function recuperarSenha() {
         return;
     }
     
-    var btn = event.target;
+    var btn = window.event ? window.event.target : null;
+    if (!btn) return;
     var texto = btn.innerText;
     btn.innerText = 'Enviando...';
     btn.disabled = true;
     
     try {
-        // Chamar Edge Function personalizada
-        var response = await fetch(SUPABASE_EDGE_URL + '/send-reset-email', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + SUPABASE_KEY,
-                'apikey': SUPABASE_KEY
-            },
-            body: JSON.stringify({ email: email })
+        // Usar método nativo do Supabase para reset de senha
+        var result = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + '/reset-password.html'
         });
         
-        var result = await response.json();
-        
-        if (result.success) {
-            toast('📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
+        if (result.error) {
+            toast('Erro: ' + result.error.message, 'error');
         } else {
-            toast('Erro: ' + (result.error || 'Falha ao enviar e-mail'), 'error');
+            toast('📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
         }
         
     } catch (error) {
