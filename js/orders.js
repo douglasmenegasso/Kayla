@@ -67,38 +67,51 @@ async function devolverPedido(pedidoId) {
     html += '<small style="color:var(--text2);display:block;margin-top:8px">💡 Use o scanner ou digite o código manualmente</small>';
     html += '</div>';
     
-    // Lista de itens
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
-    
+    // Carregar itens da tabela pedido_itens
     var itens = [];
     var historicoDevolucoes = [];
     
-    // Tentar carregar itens de diferentes campos
     try {
-        if (pedido.itens_json) {
-            itens = JSON.parse(pedido.itens_json);
-            console.log('✅ Carregou de itens_json:', itens.length);
-        } else if (pedido.itens_detalhes) {
-            itens = JSON.parse(pedido.itens_detalhes);
-            console.log('✅ Carregou de itens_detalhes:', itens.length);
-        } else {
-            console.warn('⚠️ Pedido não tem itens detalhados salvos');
+        if (isOnline && supabaseClient) {
+            console.log('📡 Buscando itens no Supabase...');
+            var result = await supabaseClient
+                .from('pedido_itens')
+                .select('*')
+                .eq('pedido_id', pedidoId)
+                .order('created_at', { ascending: true });
+            
+            if (result.data && result.data.length > 0) {
+                itens = result.data;
+                console.log('✅ Carregou ' + itens.length + ' itens de pedido_itens');
+            }
+        }
+        
+        // Fallback: tentar do array local
+        if (itens.length === 0) {
+            if (pedido.itens_json) {
+                itens = JSON.parse(pedido.itens_json);
+                console.log('✅ Carregou de itens_json (fallback)');
+            } else if (pedido.itens_detalhes) {
+                itens = JSON.parse(pedido.itens_detalhes);
+            }
         }
         
         if (pedido.historico_devolucoes) {
             historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
         }
     } catch(e) {
-        console.error('❌ Erro ao parsear:', e);
+        console.error('❌ Erro ao carregar itens:', e);
     }
     
-    if (!itens || itens.length === 0) {
+    // Lista de itens
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + itens.length + ')</strong></div>';
+    
+    if (itens.length === 0) {
         html += '<p style="color:var(--warning);text-align:center;padding:20px">⚠️ Itens detalhados não disponíveis</p>';
-        html += '<p style="color:var(--text2);font-size:12px;text-align:center">Este pedido foi criado antes da atualização do sistema.<br>Total registrado: <strong>' + pedido.itens + ' itens</strong></p>';
-        html += '<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:8px">💡 Use o campo de código acima para remover itens manualmente</p>';
+        html += '<p style="color:var(--text2);font-size:12px;text-align:center">Total registrado: <strong>' + pedido.itens + ' itens</strong></p>';
+        html += '<p style="color:var(--text2);font-size:11px;text-align:center;margin-top:8px"> Use o campo de código acima para remover manualmente</p>';
     } else {
-        html += '<p style="color:var(--success);font-size:13px;margin-bottom:12px">✅ ' + itens.length + ' itens carregados</p>';
         html += '<div class="item-list">';
         itens.forEach(function(item, idx) {
             var jaDevolvido = false;
@@ -120,7 +133,7 @@ async function devolverPedido(pedidoId) {
             html += '</div>';
             
             if (!jaDevolvido) {
-                html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ')" style="margin:0">🗑️</button>';
+                html += '<button class="btn btn-sm btn-red" onclick="removerItemIndividual(\'' + pedidoId + '\', ' + idx + ', \'' + (item.id || '') + '\')" style="margin:0">️</button>';
             }
             html += '</div>';
         });
@@ -156,7 +169,6 @@ async function devolverPedido(pedidoId) {
         if (scanner) scanner.focus(); 
     }, 100);
 }
-
 async function removerItemPorCodigo(pedidoId) {
     var codigo = document.getElementById('scanner-codigo-devolucao').value.trim();
     if (!codigo) {
