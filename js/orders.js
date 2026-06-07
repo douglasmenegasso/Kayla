@@ -217,7 +217,7 @@ async function removerItemPorCodigo(pedidoId) {
 }
 
 async function removerItemIndividual(pedidoId, idx, itemId) {
-    if (!confirm('Deseja remover este item?')) return;
+    if (!confirm('Deseja devolver este item?')) return;
     
     if (!isOnline || !supabaseClient || !itemId) {
         toast('Apenas online', 'error');
@@ -239,7 +239,7 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
         
         var item = itemResult.data;
         
-        // Remover item
+        // Remover item do banco
         var deleteResult = await supabaseClient
             .from('pedido_itens')
             .delete()
@@ -250,30 +250,67 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
             return;
         }
         
-        // Atualizar pedido
+        // Buscar pedido atual
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
-        if (pedido) {
-            var novosItens = Math.max(0, pedido.itens - item.qtd);
-            var novoTotal = Math.max(0, parseFloat(pedido.total) - parseFloat(item.total));
-            
-            await supabaseClient
-                .from('pedidos')
-                .update({ 
-                    itens: novosItens,
-                    total: novoTotal,
-                    status: novosItens === 0 ? 'devolvido' : 'aberto'
-                })
-                .eq('id', pedidoId);
-            
-            await carregarDados();
+        if (!pedido) {
+            toast('Pedido não encontrado', 'error');
+            return;
         }
         
-        toast('✅ Item removido: ' + item.nome, 'success');
+        // Carregar histórico existente
+        var historicoDevolucoes = [];
+        if (pedido.historico_devolucoes) {
+            try {
+                historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+            } catch(e) {
+                console.error('Erro ao parsear histórico:', e);
+            }
+        }
+        
+        // ADICIONAR ITEM AO HISTÓRICO DE DEVOLUÇÕES
+        historicoDevolucoes.push({
+            data: new Date().toISOString(),
+            itens: [{
+                produto_id: item.produto_id,
+                nome: item.nome,
+                codigo: item.codigo,
+                preco: parseFloat(item.preco) || 0,
+                qtd: parseInt(item.qtd) || 1,
+                total: parseFloat(item.total) || 0
+            }],
+            motivo: 'Devolução manual',
+            tipo: 'devolucao'
+        });
+        
+        console.log('📋 Histórico atualizado:', historicoDevolucoes);
+        
+        // Calcular novos totais
+        var novosItensCount = Math.max(0, (parseInt(pedido.itens) || 0) - (parseInt(item.qtd) || 1));
+        var novoTotal = Math.max(0, parseFloat(pedido.total) - parseFloat(item.total));
+        
+        // Atualizar pedido COM histórico
+        var updateData = {
+            itens: novosItensCount,
+            total: novoTotal,
+            historico_devolucoes: JSON.stringify(historicoDevolucoes),
+            status: novosItensCount === 0 ? 'devolvido' : 'aberto'
+        };
+        
+        console.log('📝 Atualizando pedido:', updateData);
+        
+        await supabaseClient
+            .from('pedidos')
+            .update(updateData)
+            .eq('id', pedidoId);
+        
+        await carregarDados();
+        
+        toast('✅ Item devolvido e registrado!', 'success');
         carregarItensParaDevolucao(pedidoId);
         
     } catch(e) {
         toast('Erro: ' + e.message, 'error');
-        console.error(e);
+        console.error('❌ Erro ao remover item:', e);
     }
 }
 
