@@ -10,7 +10,7 @@ function renderizarPedidos() {
             var data = new Date(p.created_at).toLocaleDateString('pt-BR');
             var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
             var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');            
-            html += '<div class="item-card"><div class="item-info"><div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + p.cliente_nome + '</div><div class="item-detail">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div><span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span></div>';
+            html += '<div class="item-card"><div class="item-info"><div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + p.cliente_nome + '</div><div class="item-detail">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>
             html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
             html += '<button class="btn btn-sm btn-primary" onclick="verPedido(\'' + p.id + '\')">Ver</button>';
             if (p.status === 'aberto') {
