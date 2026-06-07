@@ -517,41 +517,46 @@ function gerarPDFPedidoPorId(pedidoId) {
 // ============ HISTÓRICO ============
 
 function renderizarHistorico() {
-    var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
-    var devolvidos = pedidos.filter(function(p) { return p.status === 'devolvido'; });
-    
-    var html = '<div class="card"><div class="card-title">📊 Resumo</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
-    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">' + finalizados.length + '</div><div style="font-size:12px;color:var(--text2)">Vendas</div></div>';
-    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--warning)">' + devolvidos.length + '</div><div style="font-size:12px;color:var(--text2)">Devoluções</div></div>';
-    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">' + pedidos.length + '</div><div style="font-size:12px;color:var(--text2)">Total</div></div>';
-    html += '</div></div>';
-    
-    var totalGeral = 0;
-    finalizados.forEach(function(p) { totalGeral += parseFloat(p.total); });
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
-    
-    html += '<div class="card"><div class="card-title">📋 Todos os Pedidos</div>';
-    if (pedidos.length === 0) {
-        html += '<div class="empty-state">Nenhum pedido</div>';
-    } else {
-        html += '<div class="item-list">';
-        pedidos.forEach(function(p) {
-            var data = new Date(p.created_at).toLocaleDateString('pt-BR');
-            var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
-            html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer">';
-            html += '<div class="item-info"><div class="item-name">#' + p.id.toString().substr(0,8) + '</div><div class="item-detail">' + p.cliente_nome + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>';
-            var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
-            html += '<span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span>';
-            html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">👆 Clique para ver detalhes</div>';
+    try {
+        var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
+        var devolvidos = pedidos.filter(function(p) { return p.status === 'devolvido'; });
+        
+        var html = '<div class="card"><div class="card-title">📊 Resumo</div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">' + finalizados.length + '</div><div style="font-size:12px;color:var(--text2)">Vendas</div></div>';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--warning)">' + devolvidos.length + '</div><div style="font-size:12px;color:var(--text2)">Devoluções</div></div>';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">' + pedidos.length + '</div><div style="font-size:12px;color:var(--text2)">Total</div></div>';
+        html += '</div></div>';
+        
+        var totalGeral = 0;
+        finalizados.forEach(function(p) { totalGeral += parseFloat(p.total); });
+        
+        html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
+        
+        html += '<div class="card"><div class="card-title">📋 Todos os Pedidos</div>';
+        if (pedidos.length === 0) {
+            html += '<div class="empty-state">Nenhum pedido</div>';
+        } else {
+            html += '<div class="item-list">';
+            pedidos.forEach(function(p) {
+                var data = new Date(p.created_at).toLocaleDateString('pt-BR');
+                var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
+                html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer">';
+                html += '<div class="item-info"><div class="item-name">#' + p.id.toString().substr(0,8) + '</div><div class="item-detail">' + p.cliente_nome + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>';
+                var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
+                html += '<span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span>';
+                html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">👆 Clique para ver detalhes</div>';
+                html += '</div>';
+            });
             html += '</div>';
-        });
+        }
         html += '</div>';
+        
+        return html;
+    } catch(e) {
+        console.error('❌ Erro em renderizarHistorico:', e);
+        return '<div class="card"><div class="card-title">⚠️ Erro</div><p>Erro ao carregar histórico: ' + e.message + '</p></div>';
     }
-    html += '</div>';
-    
-    return html;
 }
 
 async function verDetalhesPedidoHistorico(pedidoId) {
