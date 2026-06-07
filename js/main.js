@@ -2,6 +2,8 @@
 
 // Navegação entre abas
 function mudarAba(aba) {
+    console.log('🔄 Mudando para aba:', aba);
+    
     // Atualizar botões da nav
     document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
     var idx = ['scan','clients','products','orders','history','settings'].indexOf(aba) + 1;
@@ -12,34 +14,59 @@ function mudarAba(aba) {
     var content = document.getElementById('content');
     var sub = document.getElementById('header-sub');
     
-    if (!content || !sub) return;
+    if (!content || !sub) {
+        console.error('❌ Elementos não encontrados!');
+        return;
+    }
     
-    switch(aba) {
-        case 'scan':
-            sub.textContent = 'Nova Venda';
-            content.innerHTML = renderizarVenda();
-            setTimeout(iniciarScanner, 500);
-            break;
-        case 'clients':
-            sub.textContent = 'Clientes';
-            content.innerHTML = renderizarClientes();
-            break;
-        case 'products':
-            sub.textContent = 'Produtos';
-            content.innerHTML = renderizarProdutos();
-            break;
-        case 'orders':
-            sub.textContent = 'Pedidos';
-            content.innerHTML = renderizarPedidos();
-            break;
-        case 'history':
-            sub.textContent = 'Histórico';
-            content.innerHTML = renderizarHistorico();
-            break;
-        case 'settings':
-            sub.textContent = 'Configurações';
-            content.innerHTML = renderizarConfig();
-            break;
+    console.log('📝 Atualizando conteúdo...');
+    
+    try {
+        switch(aba) {
+            case 'scan':
+                sub.textContent = 'Nova Venda';
+                content.innerHTML = renderizarVenda();
+                console.log('✅ Venda renderizada');
+                setTimeout(iniciarScanner, 500);
+                break;
+            case 'clients':
+                sub.textContent = 'Clientes';
+                content.innerHTML = renderizarClientes();
+                console.log('✅ Clientes renderizados');
+                break;
+            case 'products':
+                sub.textContent = 'Produtos';
+                console.log('📦 Chamando renderizarProdutos...');
+                var html = renderizarProdutos();
+                console.log('📦 HTML retornado:', html ? 'OK' : 'VAZIO');
+                content.innerHTML = html;
+                console.log('✅ Produtos renderizados');
+                break;
+            case 'orders':
+                sub.textContent = 'Pedidos';
+                console.log('📋 Chamando renderizarPedidos...');
+                var html = renderizarPedidos();
+                console.log('📋 HTML retornado:', html ? 'OK' : 'VAZIO');
+                content.innerHTML = html;
+                console.log('✅ Pedidos renderizados');
+                break;
+            case 'history':
+                sub.textContent = 'Histórico';
+                console.log('📊 Chamando renderizarHistorico...');
+                var html = renderizarHistorico();
+                console.log('📊 HTML retornado:', html ? 'OK' : 'VAZIO');
+                content.innerHTML = html;
+                console.log('✅ Histórico renderizado');
+                break;
+            case 'settings':
+                sub.textContent = 'Configurações';
+                content.innerHTML = renderizarConfig();
+                console.log('✅ Configurações renderizadas');
+                break;
+        }
+    } catch(e) {
+        console.error('❌ Erro ao renderizar aba ' + aba + ':', e);
+        content.innerHTML = '<div class="card"><div class="card-title">⚠️ Erro</div><p>' + e.message + '</p></div>';
     }
 }
 
