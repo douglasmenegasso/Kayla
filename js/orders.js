@@ -189,6 +189,36 @@ async function removerItemPorCodigo(pedidoId) {
             return;
         }
         
+        // Buscar pedido atual
+        var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+        if (!pedido) {
+            toast('Pedido não encontrado', 'error');
+            return;
+        }
+        
+        // Carregar histórico existente
+        var historicoDevolucoes = [];
+        if (pedido.historico_devolucoes) {
+            try {
+                historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+            } catch(e) {}
+        }
+        
+        // ADICIONAR ITEM AO HISTÓRICO DE DEVOLUÇÕES
+        historicoDevolucoes.push({
+            data: new Date().toISOString(),
+            itens: [{
+                produto_id: item.produto_id,
+                nome: item.nome,
+                codigo: item.codigo,
+                preco: parseFloat(item.preco) || 0,
+                qtd: parseInt(item.qtd) || 1,
+                total: parseFloat(item.total) || 0
+            }],
+            motivo: 'Devolução via scanner',
+            tipo: 'devolucao'
+        });
+        
         // Atualizar pedido
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
         if (pedido) {
@@ -200,6 +230,7 @@ async function removerItemPorCodigo(pedidoId) {
                 .update({ 
                     itens: novosItens,
                     total: novoTotal,
+                    historico_devolucoes: JSON.stringify(historicoDevolucoes),
                     status: novosItens === 0 ? 'devolvido' : 'aberto'
                 })
                 .eq('id', pedidoId);
@@ -207,7 +238,7 @@ async function removerItemPorCodigo(pedidoId) {
             await carregarDados();
         }
         
-        toast('✅ Item removido: ' + item.nome, 'success');
+        toast('✅ Item devolvido: ' + item.nome, 'success');
         carregarItensParaDevolucao(pedidoId);
         
     } catch(e) {
