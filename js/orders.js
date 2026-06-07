@@ -14,7 +14,7 @@ function renderizarPedidos() {
             html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
             html += '<button class="btn btn-sm btn-primary" onclick="verPedido(\'' + p.id + '\')">Ver</button>';
             if (p.status === 'aberto') {
-                html += '<button class="btn btn-sm btn-green" onclick="finalizarPedidoStatus(\'' + p.id + '\')">✅ Finalizar</button>';
+                html += '<button class="btn btn-sm btn-green" onclick="finalizarPedidoStatus(\'' + p.id + '\')">✅ Encerrar</button>';
                 html += '<button class="btn btn-sm btn-warning" onclick="devolverPedido(\'' + p.id + '\')">↩️ Devolução</button>';
             }
             html += '<button class="btn btn-sm btn-outline" onclick="gerarPDFPedidoPorId(\'' + p.id + '\')">📄 PDF</button>';
@@ -26,7 +26,7 @@ function renderizarPedidos() {
 }
 
 async function finalizarPedidoStatus(pedidoId) {
-    if (!confirm('Finalizar este pedido?')) return;
+    if (!confirm('Encerrar consignação deste pedido?\n\nIsso registrará os itens que o cliente ficou.')) return;
     
     if (isOnline && supabaseClient) {
         var result = await supabaseClient.from('pedidos').update({ status: 'finalizado' }).eq('id', pedidoId);
@@ -40,7 +40,7 @@ async function finalizarPedidoStatus(pedidoId) {
         }
     }
     
-    toast('✅ Pedido finalizado!', 'success');
+    toast('✅ Consignação encerrada!', 'success');
     mudarAba('orders');
 }
 
