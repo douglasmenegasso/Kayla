@@ -92,7 +92,7 @@ function onScanSuccess(decodedText) {
     processarCodigo(decodedText);
 }
 
-function processarCodigo(codigo) {
+async function processarCodigo(codigo) {
     var produto = produtos.find(function(p) { return p.codigo === codigo; });
     if (!produto) {
         toast('Produto não cadastrado!', 'warning');
@@ -100,6 +100,49 @@ function processarCodigo(codigo) {
         return;
     }
     
+    // Verificar se item já foi devolvido anteriormente para este cliente
+    if (clienteAtual && isOnline && supabaseClient) {
+        try {
+            // Buscar pedidos anteriores deste cliente
+            var pedidosCliente = await supabaseClient
+                .from('pedidos')
+                .select('*')
+                .eq('cliente_id', clienteAtual.id);
+            
+            if (pedidosCliente.data && pedidosCliente.data.length > 0) {
+                for (var p of pedidosCliente.data) {
+                    if (p.historico_devolucoes) {
+                        var historico = JSON.parse(p.historico_devolucoes);
+                        var itemDevolvido = null;
+                        var dataDevolucao = null;
+                        var qtdDevolvida = 0;
+                        
+                        for (var dev of historico) {
+                            if (dev.itens) {
+                                for (var item of dev.itens) {
+                                    if (item.codigo === codigo) {
+                                        itemDevolvido = item;
+                                        dataDevolucao = dev.data;
+                                        qtdDevolvida += (item.qtd || 0);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (itemDevolvido) {
+                            // Mostrar modal de confirmação
+                            abrirModalItemDevolvido(produto, itemDevolvido, dataDevolucao, qtdDevolvida);
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch(e) {
+            console.error('Erro ao verificar histórico:', e);
+        }
+    }
+    
+    // Se não foi devolvido, adicionar normalmente
     var itemExistente = pedidoItens.find(function(i) { return i.produto_id === produto.id; });
     if (itemExistente) {
         abrirModalDuplicado(produto, itemExistente);
@@ -110,6 +153,43 @@ function processarCodigo(codigo) {
     
     var campo = document.getElementById('codigo-manual');
     if (campo) { campo.value = ''; campo.focus(); }
+}
+
+function abrirModalItemDevolvido(produto, itemDevolvido, dataDevolucao, qtdDevolvida) {
+    var dataFormatada = new Date(dataDevolucao).toLocaleDateString('pt-BR');
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⚠️ Item Já Devolvido</div>';
+    html += '<div class="modal-sub">' + produto.nome + '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;border-left:4px solid var(--warning)">';
+    html += '<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Este item já foi devolvido anteriormente:</div>';
+    html += '<div style="background:#1a1a24;padding:12px;border-radius:8px;margin-bottom:8px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Data:</span><strong>' + dataFormatada + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Qtd devolvida:</span><strong style="color:var(--warning)">' + qtdDevolvida + ' un</strong></div>';
+    html += '</div>';
+    html += '<p style="font-size:12px;color:var(--text2);margin-top:12px">Deseja enviar novamente para este cliente?</p>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="confirmarReenvioItem(\'' + produto.id + '\')">✅ Sim, Enviar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+function confirmarReenvioItem(produtoId) {
+    var produto = produtos.find(function(p) { return p.id === produtoId; });
+    if (produto) {
+        fecharModal();
+        var itemExistente = pedidoItens.find(function(i) { return i.produto_id === produto.id; });
+        if (itemExistente) {
+            abrirModalDuplicado(produto, itemExistente);
+        } else {
+            adicionarItem(produto, 1);
+            toast('✅ ' + produto.nome + ' (reenvio)', 'success');
+        }
+    }
 }
 
 function abrirModalDuplicado(produto, item) {
