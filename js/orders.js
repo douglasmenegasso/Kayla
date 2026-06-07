@@ -560,7 +560,8 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📋 Detalhes do Pedido</div>';
-    html += '<div class="modal-sub">' + pedido.cliente_nome + ' • Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
+    html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
+    html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     
     // Informações básicas
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
@@ -638,7 +639,7 @@ async function verDetalhesPedidoHistorico(pedidoId) {
             
             html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
             html += '<div style="font-size:11px;color:var(--text2)">Devolvido</div>';
-            html += '<div style="font-weight:700;color:var(--warning);font-size:16px">' + qtdDevolvida + 'x</div>';
+            html += '<div style="font-weight:700;color:' + (qtdDevolvida > 0 ? 'var(--warning)' : 'var(--text2)') + ';font-size:16px">' + qtdDevolvida + 'x</div>';
             html += '</div>';
             
             html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
@@ -661,14 +662,14 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     // Mostrar histórico de devoluções
     if (historicoDevolucoes.length > 0) {
         html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="margin-bottom:12px"><strong>↩️ Histórico de Devoluções</strong></div>';
+        html += '<div style="margin-bottom:12px"><strong>↩️ Histórico de Devoluções (' + historicoDevolucoes.length + ' itens)</strong></div>';
         historicoDevolucoes.forEach(function(dev, idx) {
             var data = new Date(dev.data).toLocaleString('pt-BR');
             html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
             html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">' + data + (dev.motivo ? ' • ' + dev.motivo : '') + '</div>';
             if (dev.itens) {
                 dev.itens.forEach(function(item) {
-                    html += '<div style="font-size:13px;margin:4px 0">• ' + item.nome + ' (Qtd: ' + item.qtd + ' • R$ ' + parseFloat(item.total || 0).toFixed(2).replace('.',',') + ')</div>';
+                    html += '<div style="font-size:13px;margin:4px 0;color:var(--warning)">• ' + item.nome + ' (Qtd: ' + item.qtd + ' • R$ ' + parseFloat(item.total || 0).toFixed(2).replace('.',',') + ')</div>';
                 });
             }
             html += '</div>';
