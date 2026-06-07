@@ -10,8 +10,7 @@ function renderizarPedidos() {
             var data = new Date(p.created_at).toLocaleDateString('pt-BR');
             var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
             var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');            
-            html += '<div class="item-card"><div class="item-info"><div class="item-name">Pedido #' + p.id.toString().substr(0,8) + '</div><div class="item-detail">' + p.cliente_nome + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div><span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + p.status.toUpperCase() + '</span></div>';
-            
+            html += '<div class="item-card"><div class="item-info"><div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + p.cliente_nome + '</div><div class="item-detail">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>
             html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
             html += '<button class="btn btn-sm btn-primary" onclick="verPedido(\'' + p.id + '\')">Ver</button>';
             if (p.status === 'aberto') {
@@ -54,7 +53,8 @@ async function devolverPedido(pedidoId) {
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">↩️ Devolução</div>';
-    html += '<div class="modal-sub">' + pedido.cliente_nome + ' • Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
+    html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
+    html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     
     // Scanner
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
@@ -444,7 +444,8 @@ function verPedido(pedidoId) {
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📋 Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
-    html += '<div class="modal-sub">' + pedido.cliente_nome + ' - ' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div>';
+    html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
+    html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + ' - ' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div>';
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Status:</span><strong style="color:' + (pedido.status === 'aberto' ? 'var(--warning)' : 'var(--success)') + '">' + pedido.status.toUpperCase() + '</strong></div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Itens:</span><strong>' + pedido.itens + '</strong></div>';
