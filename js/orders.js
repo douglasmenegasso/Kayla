@@ -25,25 +25,6 @@ function renderizarPedidos() {
     return html;
 }
 
-async function finalizarPedidoStatus(pedidoId) {
-    if (!confirm('Encerrar consignação deste pedido?\n\nIsso registrará os itens que o cliente ficou.')) return;
-    
-    if (isOnline && supabaseClient) {
-        var result = await supabaseClient.from('pedidos').update({ status: 'finalizado' }).eq('id', pedidoId);
-        if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
-        await carregarDados();
-    } else {
-        var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
-        if (pedido) {
-            pedido.status = 'finalizado';
-            salvarDadosLocais();
-        }
-    }
-    
-    toast('✅ Consignação encerrada!', 'success');
-    mudarAba('orders');
-}
-
 // ============ HISTÓRICO ============
 
 function renderizarHistorico() {
@@ -82,6 +63,25 @@ function renderizarHistorico() {
     html += '</div>';
     
     return html;
+}
+
+async function finalizarPedidoStatus(pedidoId) {
+    if (!confirm('Encerrar consignação deste pedido?\n\nIsso registrará os itens que o cliente ficou.')) return;
+    
+    if (isOnline && supabaseClient) {
+        var result = await supabaseClient.from('pedidos').update({ status: 'finalizado' }).eq('id', pedidoId);
+        if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+        await carregarDados();
+    } else {
+        var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+        if (pedido) {
+            pedido.status = 'finalizado';
+            salvarDadosLocais();
+        }
+    }
+    
+    toast('✅ Consignação encerrada!', 'success');
+    mudarAba('orders');
 }
 
 async function devolverPedido(pedidoId) {
