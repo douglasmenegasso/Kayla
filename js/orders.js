@@ -601,22 +601,32 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         }
     }
     
-    // Calcular totais de devolução
+    // Calcular totais de devolução - USANDO CÓDIGO E NOME
     var totalDevolvido = 0;
     var itensDevolvidosMap = {};
     
     historicoDevolucoes.forEach(function(dev) {
         if (dev.itens) {
             dev.itens.forEach(function(itemDev) {
-                var key = itemDev.codigo || itemDev.nome;
-                if (!itensDevolvidosMap[key]) {
-                    itensDevolvidosMap[key] = 0;
-                }
-                itensDevolvidosMap[key] += (itemDev.qtd || 0);
+                // Criar chave com código E nome para garantir correspondência
+                var codigoKey = 'cod_' + (itemDev.codigo || '');
+                var nomeKey = 'nome_' + (itemDev.nome || '').toLowerCase().trim();
+                var produtoIdKey = 'id_' + (itemDev.produto_id || '');
+                
+                if (!itensDevolvidosMap[codigoKey]) itensDevolvidosMap[codigoKey] = 0;
+                if (!itensDevolvidosMap[nomeKey]) itensDevolvidosMap[nomeKey] = 0;
+                if (!itensDevolvidosMap[produtoIdKey]) itensDevolvidosMap[produtoIdKey] = 0;
+                
+                itensDevolvidosMap[codigoKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[nomeKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[produtoIdKey] += (itemDev.qtd || 0);
+                
                 totalDevolvido += parseFloat(itemDev.total || 0);
             });
         }
     });
+    
+    console.log('🔍 Itens devolvidos map:', itensDevolvidosMap);
     
     // Mostrar itens vendidos
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
@@ -628,9 +638,20 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         html += '<div class="item-list">';
         itensVendidos.forEach(function(item) {
             var qtdVendida = parseInt(item.qtd) || 0;
-            var qtdDevolvida = itensDevolvidosMap[item.codigo] || itensDevolvidosMap[item.nome] || 0;
+            
+            // Buscar quantidade devolvida usando múltiplas chaves
+            var qtdDevolvida = 0;
+            qtdDevolvida += (itensDevolvidosMap['cod_' + (item.codigo || '')] || 0);
+            qtdDevolvida += (itensDevolvidosMap['nome_' + (item.nome || '').toLowerCase().trim()] || 0);
+            qtdDevolvida += (itensDevolvidosMap['id_' + (item.produto_id || '')] || 0);
+            
+            // Evitar contar duplicado se as chaves forem iguais
+            if (qtdDevolvida > qtdVendida) qtdDevolvida = qtdVendida;
+            
             var qtdRestante = qtdVendida - qtdDevolvida;
             var itemTotal = parseFloat(item.total) || (parseFloat(item.preco) * qtdVendida) || 0;
+            
+            console.log('📊 Item:', item.nome, '| Vendido:', qtdVendida, '| Devolvido:', qtdDevolvida, '| Restante:', qtdRestante);
             
             html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
             html += '<div style="font-weight:600;font-size:14px;margin-bottom:4px">' + (item.nome || 'Sem nome') + '</div>';
