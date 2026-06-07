@@ -517,46 +517,136 @@ function gerarPDFPedidoPorId(pedidoId) {
 // ============ HISTÓRICO ============
 
 function renderizarHistorico() {
-    try {
-        var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
-        var devolvidos = pedidos.filter(function(p) { return p.status === 'devolvido'; });
+    var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
+    var devolvidos = pedidos.filter(function(p) { return p.status === 'devolvido'; });
+    
+    // Contar pedidos COM histórico de devoluções
+    var pedidosComDevolucao = 0;
+    var totalItensDevolvidos = 0;
+    
+    pedidos.forEach(function(p) {
+        if (p.historico_devolucoes) {
+            try {
+                var historico = JSON.parse(p.historico_devolucoes);
+                if (historico && historico.length > 0) {
+                    pedidosComDevolucao++;
+                    historico.forEach(function(dev) {
+                        if (dev.itens) {
+                            dev.itens.forEach(function(item) {
+                                totalItensDevolvidos += (item.qtd || 0);
+                            });
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+    });
+    
+    var html = '<div class="card"><div class="card-title">📊 Resumo</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">' + finalizados.length + '</div><div style="font-size:12px;color:var(--text2)">Vendas</div></div>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--warning)">' + totalItensDevolvidos + '</div><div style="font-size:12px;color:var(--text2)">Itens Devolvidos</div></div>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">' + pedidos.length + '</div><div style="font-size:12px;color:var(--text2)">Total Pedidos</div></div>';
+    html += '</div></div>';
+    
+    var totalGeral = 0;
+    finalizados.forEach(function(p) { totalGeral += parseFloat(p.total); });
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
+    
+    // Agrupar pedidos por cliente
+    var pedidosPorCliente = {};
+    pedidos.forEach(function(p) {
+        if (!pedidosPorCliente[p.cliente_nome]) {
+            pedidosPorCliente[p.cliente_nome] = [];
+        }
+        pedidosPorCliente[p.cliente_nome].push(p);
+    });
+    
+    html += '<div class="card"><div class="card-title">📋 Todos os Pedidos por Cliente</div>';
+    if (Object.keys(pedidosPorCliente).length === 0) {
+        html += '<div class="empty-state">Nenhum pedido</div>';
+    } else {
+        html += '<div class="item-list">';
         
-        var html = '<div class="card"><div class="card-title">📊 Resumo</div>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
-        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">' + finalizados.length + '</div><div style="font-size:12px;color:var(--text2)">Vendas</div></div>';
-        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--warning)">' + devolvidos.length + '</div><div style="font-size:12px;color:var(--text2)">Devoluções</div></div>';
-        html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">' + pedidos.length + '</div><div style="font-size:12px;color:var(--text2)">Total</div></div>';
-        html += '</div></div>';
+        // Ordenar clientes alfabeticamente
+        var clientesOrdenados = Object.keys(pedidosPorCliente).sort();
         
-        var totalGeral = 0;
-        finalizados.forEach(function(p) { totalGeral += parseFloat(p.total); });
-        
-        html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
-        
-        html += '<div class="card"><div class="card-title">📋 Todos os Pedidos</div>';
-        if (pedidos.length === 0) {
-            html += '<div class="empty-state">Nenhum pedido</div>';
-        } else {
-            html += '<div class="item-list">';
-            pedidos.forEach(function(p) {
+        clientesOrdenados.forEach(function(nomeCliente) {
+            var pedidosDoCliente = pedidosPorCliente[nomeCliente];
+            var totalItensCliente = 0;
+            var totalValorCliente = 0;
+            var totalDevolvidoCliente = 0;
+            
+            // Calcular totais do cliente
+            pedidosDoCliente.forEach(function(p) {
+                totalItensCliente += parseInt(p.itens) || 0;
+                totalValorCliente += parseFloat(p.total) || 0;
+                
+                // Somar itens devolvidos deste cliente
+                if (p.historico_devolucoes) {
+                    try {
+                        var historico = JSON.parse(p.historico_devolucoes);
+                        if (historico) {
+                            historico.forEach(function(dev) {
+                                if (dev.itens) {
+                                    dev.itens.forEach(function(item) {
+                                        totalDevolvidoCliente += (item.qtd || 0);
+                                    });
+                                }
+                            });
+                        }
+                    } catch(e) {}
+                }
+            });
+            
+            // Card do cliente com resumo
+            html += '<div style="background:var(--bg3);padding:16px;margin-bottom:16px;border-radius:12px">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+            html += '<div style="font-size:18px;font-weight:700;color:var(--accent)">' + nomeCliente + '</div>';
+            html += '<div style="font-size:12px;color:var(--text2)">' + pedidosDoCliente.length + ' pedido(s)</div>';
+            html += '</div>';
+            
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+            html += '<div style="background:var(--bg);padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Total Itens</div>';
+            html += '<div style="font-weight:700;color:var(--success)">' + totalItensCliente + 'x</div>';
+            html += '</div>';
+            html += '<div style="background:var(--bg);padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Devolvidos</div>';
+            html += '<div style="font-weight:700;color:var(--warning)">' + totalDevolvidoCliente + 'x</div>';
+            html += '</div>';
+            html += '<div style="background:var(--bg);padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Valor Total</div>';
+            html += '<div style="font-weight:700;color:var(--accent)">R$ ' + totalValorCliente.toFixed(2).replace('.',',') + '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Lista de pedidos do cliente
+            html += '<div style="border-top:1px solid var(--border);padding-top:12px">';
+            pedidosDoCliente.forEach(function(p) {
                 var data = new Date(p.created_at).toLocaleDateString('pt-BR');
                 var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
-                html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer">';
-                html += '<div class="item-info"><div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + p.cliente_nome + '</div><div class="item-detail">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>';
                 var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
+                
+                html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer;margin-bottom:8px">';
+                html += '<div class="item-info">';
+                html += '<div class="item-name" style="font-size:14px">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '</div>';
+                html += '<div class="item-detail">' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div>';
+                html += '</div>';
                 html += '<span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span>';
-                html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">👆 Clique para ver detalhes</div>';
                 html += '</div>';
             });
             html += '</div>';
-        }
-        html += '</div>';
+            
+            html += '</div>';
+        });
         
-        return html;
-    } catch(e) {
-        console.error('❌ Erro em renderizarHistorico:', e);
-        return '<div class="card"><div class="card-title">⚠️ Erro</div><p>Erro ao carregar histórico: ' + e.message + '</p></div>';
+        html += '</div>';
     }
+    html += '</div>';
+    
+    return html;
 }
 
 async function verDetalhesPedidoHistorico(pedidoId) {
