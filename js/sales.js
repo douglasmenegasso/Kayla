@@ -58,7 +58,7 @@ function renderizarVenda() {
             html += '</div></div>';
         });
         html += '<div class="order-total"><span>Total:</span><span>R$ ' + calcularTotal().toFixed(2).replace('.',',') + '</span></div>';
-        html += '<button class="btn btn-green" onclick="finalizarPedido()" style="margin-top:12px">✅ Finalizar</button>';
+        html += '<button class="btn btn-green" onclick="finalizarPedido()" style="margin-top:12px">📦 Enviar Pedido</button>';
         html += '<button class="btn btn-outline" onclick="cancelarPedido()">❌ Cancelar</button>';
     }
     html += '</div>';
@@ -196,7 +196,7 @@ async function finalizarPedido() {
     
     var btn = event.target;
     var texto = btn.innerText;
-    btn.innerText = 'Finalizando...';
+    btn.innerText = 'Enviando...';
     btn.disabled = true;
     
     try {
@@ -219,7 +219,7 @@ async function finalizarPedido() {
         var pedidoData = {
             cliente_id: clienteAtual.id,
             cliente_nome: clienteAtual.nome,
-            status: 'aberto',
+            status: 'aberto',  // "aberto" = enviado/consignado (aguardando devolução)
             itens: totalItens,
             total: total,
             user_id: currentUser ? currentUser.id : 'local',
@@ -234,7 +234,7 @@ async function finalizarPedido() {
             if (result.error) throw result.error;
             
             pedidoCriado = result.data[0];
-            console.log('✅ Pedido criado:', pedidoCriado.id);
+            console.log('✅ Pedido enviado:', pedidoCriado.id);
             
             // 2. Salvar itens na tabela pedido_itens
             var itensParaSalvar = itensDetalhes.map(function(item) {
@@ -267,18 +267,18 @@ async function finalizarPedido() {
         }
         
         setTimeout(function() {
-            if (confirm('✅ Pedido finalizado!\n\nGerar PDF?')) {
+            if (confirm('📦 Pedido enviado para ' + clienteAtual.nome + '!\n\nTotal: R$ ' + total.toFixed(2).replace('.',',') + '\n\nGerar PDF?')) {
                 gerarPDFPedido(pedidoData);
             }
         }, 500);
         
         pedidoItens = [];
         clienteAtual = null;
-        mudarAba('scan');
+        mudarAba('orders');  // Ir para lista de pedidos (não scan)
         
     } catch (error) {
         toast('Erro: ' + error.message, 'error');
-        console.error('❌ Erro ao finalizar pedido:', error);
+        console.error('❌ Erro ao enviar pedido:', error);
     }
     
     btn.innerText = texto;
