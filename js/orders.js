@@ -541,6 +541,7 @@ function renderizarHistorico() {
             var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
             html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer">';
             html += '<div class="item-info"><div class="item-name">#' + p.id.toString().substr(0,8) + '</div><div class="item-detail">' + p.cliente_nome + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>';
+            var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
             html += '<span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span>';
             html += '<div style="font-size:11px;color:var(--text2);margin-top:4px">👆 Clique para ver detalhes</div>';
             html += '</div>';
