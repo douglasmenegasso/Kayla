@@ -5,6 +5,7 @@ function mostrarTelaSelecao() {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
 }
+
 function abrirLogin() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🔐 Login</div>';
@@ -19,6 +20,7 @@ function abrirLogin() {
     document.getElementById('modal-overlay').classList.add('show');
     setTimeout(function() { document.getElementById('email').focus(); }, 100);
 }
+
 function abrirCadastro() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📝 Criar Conta</div>';
