@@ -6,7 +6,7 @@
 <title>Kayla - Sistema de Venda Consignada | Gestão Inteligente</title>
 <meta name="description" content="Kayla é o sistema completo para gestão de vendas consignadas. Controle clientes, produtos, pedidos e muito mais. Funciona online e offline!">
 <meta name="theme-color" content="#7c5cfc">
-<link rel="icon" type="image/png" href="assets/icons/icon-192-dark.png">
+<link rel="icon" type="image/png" href="app/assets/icons/icon-192-dark.png">
 <style>
 :root { --bg: #0f0f13; --bg2: #1a1a24; --bg3: #252530; --text: #fff; --text2: #a0a0b0; --accent: #7c5cfc; --accent2: #9b82fc; --success: #00c853; --warning: #ffab00; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,7 +16,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 /* Header */
 header { background: var(--bg2); border-bottom: 1px solid #2a2a35; padding: 20px 0; position: sticky; top: 0; z-index: 100; }
 .header-content { display: flex; justify-content: space-between; align-items: center; }
-.logo { display: flex; align-items: center; gap: 12px; }
+.logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
 .logo img { width: 50px; height: 50px; border-radius: 12px; }
 .logo-text { font-size: 24px; font-weight: 700; color: var(--accent); }
 .btn-header { background: var(--accent); color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s; }
@@ -48,6 +48,7 @@ header { background: var(--bg2); border-bottom: 1px solid #2a2a35; padding: 20px
 .screenshot-card { background: var(--bg3); border-radius: 16px; overflow: hidden; border: 2px solid #2a2a35; transition: all 0.3s; }
 .screenshot-card:hover { transform: scale(1.05); border-color: var(--accent); }
 .screenshot-card img { width: 100%; height: auto; display: block; }
+.screenshot-card .placeholder { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); padding: 100px 20px; text-align: center; color: #fff; font-weight: 600; }
 .screenshot-caption { padding: 20px; text-align: center; font-weight: 600; }
 
 /* Offline */
@@ -63,8 +64,9 @@ header { background: var(--bg2); border-bottom: 1px solid #2a2a35; padding: 20px
 
 /* QR Code */
 .qrcode-section { padding: 80px 0; background: var(--bg2); text-align: center; }
-.qrcode-container { background: #fff; padding: 40px; border-radius: 16px; display: inline-block; margin-top: 40px; }
-.qrcode-container img { width: 250px; height: 250px; }
+.qrcode-container { background: #fff; padding: 30px; border-radius: 16px; display: inline-block; margin-top: 40px; position: relative; }
+.qrcode-container img { width: 180px; height: 180px; display: block; }
+.qrcode-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; width: 50px; height: 50px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: var(--accent); border: 3px solid var(--accent); }
 .qrcode-text { color: var(--text); margin-top: 20px; font-size: 16px; }
 
 /* Download */
@@ -78,6 +80,7 @@ header { background: var(--bg2); border-bottom: 1px solid #2a2a35; padding: 20px
 
 /* Footer */
 footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0; text-align: center; color: var(--text2); }
+footer a { color: var(--accent); text-decoration: none; }
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -85,6 +88,7 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
   .hero p { font-size: 16px; }
   .section-title { font-size: 28px; }
   .features-grid { grid-template-columns: 1fr; }
+  .qrcode-container img { width: 150px; height: 150px; }
 }
 </style>
 </head>
@@ -93,11 +97,11 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
 <header>
   <div class="container">
     <div class="header-content">
-      <div class="logo">
-        <img src="assets/icons/icon-192-dark.png" alt="Kayla">
+      <a href="#" class="logo">
+        <img src="app/assets/icons/icon-192-dark.png" alt="Kayla">
         <span class="logo-text">Kayla</span>
-      </div>
-      <a href="https://app.kayla.app.br" class="btn-header">Acessar App</a>
+      </a>
+      <a href="app/index.html" class="btn-header">Acessar App</a>
     </div>
   </div>
 </header>
@@ -108,7 +112,7 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
     <p>Gerencie seus clientes, produtos e pedidos de forma simples e inteligente. Funciona online e offline!</p>
     <div class="hero-buttons">
       <a href="#download" class="btn-primary">📱 Baixar App <span class="coming-soon">EM BREVE</span></a>
-      <a href="https://app.kayla.app.br" class="btn-secondary">💻 Usar no Navegador</a>
+      <a href="app/index.html" class="btn-secondary">💻 Usar no Navegador</a>
     </div>
   </div>
 </section>
@@ -175,15 +179,15 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
     <h2 class="section-title">Interface Intuitiva</h2>
     <div class="screenshots-grid">
       <div class="screenshot-card">
-        <img src="screenshots/venda.png" alt="Tela de Vendas">
+        <div class="placeholder">📸<br>Tire um print da tela de Vendas</div>
         <div class="screenshot-caption">Vendas com Scanner</div>
       </div>
       <div class="screenshot-card">
-        <img src="screenshots/clientes.png" alt="Tela de Clientes">
+        <div class="placeholder">📸<br>Tire um print da tela de Clientes</div>
         <div class="screenshot-caption">Gestão de Clientes</div>
       </div>
       <div class="screenshot-card">
-        <img src="screenshots/historico.png" alt="Tela de Histórico">
+        <div class="placeholder">📸<br>Tire um print da tela de Histórico</div>
         <div class="screenshot-caption">Histórico Completo</div>
       </div>
     </div>
@@ -241,7 +245,8 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
     <h2 class="section-title">Acesse pelo Celular</h2>
     <p style="font-size: 18px; color: var(--text2);">Escaneie o QR Code abaixo para abrir o app no seu celular</p>
     <div class="qrcode-container">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://app.kayla.app.br&color=7c5cfc&bgcolor=ffffff" alt="QR Code Kayla">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://app.kayla.app.br&color=7c5cfc&bgcolor=ffffff&margin=10" alt="QR Code Kayla">
+      <div class="qrcode-overlay">K</div>
       <div class="qrcode-text">📱 Escaneie com a câmera do celular</div>
     </div>
   </div>
@@ -267,8 +272,8 @@ footer { background: var(--bg2); border-top: 1px solid #2a2a35; padding: 40px 0;
   <div class="container">
     <p>&copy; 2026 Kayla - Sistema de Venda Consignada. Todos os direitos reservados.</p>
     <p style="margin-top: 10px; font-size: 14px;">
-      <a href="https://app.kayla.app.br" style="color: var(--accent); text-decoration: none;">Acessar App</a> | 
-      <a href="mailto:contato@kayla.app.br" style="color: var(--accent); text-decoration: none;">Contato</a>
+      <a href="app/index.html">Acessar App</a> | 
+      <a href="mailto:contato@kayla.app.br">Contato</a>
     </p>
   </div>
 </footer>
