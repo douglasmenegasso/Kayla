@@ -27,13 +27,11 @@ function abrirLogin() {
     html += '<div class="checkbox-group"><input type="checkbox" id="lembrar-me"><label for="lembrar-me" style="color:var(--text2);font-size:13px">Lembrar de mim</label></div>';
     html += '<div style="text-align:right;margin-bottom:12px"><button class="btn btn-sm btn-outline" onclick="recuperarSenha()" style="width:auto;padding:6px 12px;font-size:11px">🔑 Esqueci a senha</button></div>';
     html += '<button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
-    html += '<button class="btn btn-outline" onclick="abrirCadastro()">Criar Conta</button>';
-    html += '<button class="btn btn-outline" onclick="mostrarTelaSelecao()">Voltar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
     setTimeout(function() { document.getElementById('email').focus(); }, 100);
 }
-
 function abrirCadastro() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📝 Criar Conta</div>';
@@ -61,6 +59,7 @@ async function verificarSessao() {
             return;
         }
     }
+    // Não abre login automaticamente - fica na tela inicial
     mostrarTelaSelecao();
 }
 
