@@ -37,9 +37,9 @@ async function gerarPDFPedido(pedido) {
             yEmpresa += 5;
         }
         
-        // Linha separadora
+        // Linha separadora fina
         doc.setDrawColor(200);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.1);
         doc.line(10, 38, 200, 38);
         
         // Título
@@ -49,9 +49,9 @@ async function gerarPDFPedido(pedido) {
         doc.text('PEDIDO DE VENDA', 105, 48, { align: 'center' });
         doc.setFont(undefined, 'normal');
         
-        // Linha separadora
+        // Linha separadora fina
         doc.setDrawColor(220);
-        doc.setLineWidth(0.3);
+        doc.setLineWidth(0.1);
         doc.line(10, 53, 200, 53);
         
         // Informações do pedido
@@ -69,9 +69,9 @@ async function gerarPDFPedido(pedido) {
         doc.text('Cliente: ' + pedido.cliente_nome, 20, 93);
         doc.setFont(undefined, 'normal');
         
-        // Linha separadora
+        // Linha separadora fina
         doc.setDrawColor(200);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.1);
         doc.line(10, 105, 200, 105);
         
         // Título dos itens
@@ -79,18 +79,18 @@ async function gerarPDFPedido(pedido) {
         doc.setFont(undefined, 'bold');
         doc.text('Itens do Pedido:', 15, 115);
         
-        // Cabeçalho da tabela de itens
+        // Cabeçalho da tabela de itens - POSIÇÕES CORRIGIDAS
         doc.setFontSize(9);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(100);
         doc.text('PRODUTO', 20, 123);
-        doc.text('QTD', 120, 123);
-        doc.text('PREÇO', 150, 123);
-        doc.text('TOTAL', 180, 123);
+        doc.text('QTD', 110, 123);
+        doc.text('PREÇO UNIT.', 140, 123);
+        doc.text('TOTAL', 185, 123);
         
-        // Linha separadora
+        // Linha separadora fina
         doc.setDrawColor(200);
-        doc.setLineWidth(0.3);
+        doc.setLineWidth(0.1);
         doc.line(15, 125, 195, 125);
         
         var y = 135;
@@ -153,22 +153,22 @@ async function gerarPDFPedido(pedido) {
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0);
-                doc.text(qtd + 'x', 120, y);
+                doc.text(qtd + 'x', 110, y);
                 
                 // Preço unitário
-                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 150, y);
+                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 140, y);
                 
-                // Total do item
+                // Total do item - POSIÇÃO CORRIGIDA
                 doc.setFont(undefined, 'bold');
-                doc.text('R$ ' + total.toFixed(2).replace('.',','), 180, y);
+                doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y);
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora entre itens
+                // Linha separadora entre itens - MAIS FINA
                 doc.setDrawColor(220);
-                doc.setLineWidth(0.2);
+                doc.setLineWidth(0.1);
                 doc.line(15, y + 2, 195, y + 2);
                 
-                y += 14; // Mais espaço entre itens
+                y += 14;
             });
         } else {
             doc.setFontSize(10);
@@ -177,10 +177,10 @@ async function gerarPDFPedido(pedido) {
             y += 10;
         }
         
-        // Linha separadora antes do total
+        // Linha separadora antes do total - MAIS FINA
         y += 5;
         doc.setDrawColor(200);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.1);
         doc.line(15, y, 195, y);
         y += 12;
         
@@ -191,11 +191,11 @@ async function gerarPDFPedido(pedido) {
         doc.text('TOTAL:', 140, y);
         doc.setFontSize(16);
         doc.setTextColor(124, 92, 252);
-        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 180, y);
+        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y);
         
-        // Linha separadora
+        // Linha separadora - MAIS FINA
         doc.setDrawColor(200);
-        doc.setLineWidth(0.5);
+        doc.setLineWidth(0.1);
         doc.line(15, y + 4, 195, y + 4);
         
         // Rodapé
@@ -208,15 +208,13 @@ async function gerarPDFPedido(pedido) {
         
         // Gerar PDF como blob
         var pdfBlob = doc.output('blob');
-        var pdfUrl = URL.createObjectURL(pdfBlob);
         
         // Nome do arquivo
         var filename = 'Pedido-' + pedido.id.toString().substr(0,8) + '.pdf';
         
-        // Mostrar opções de download/compartilhamento
+        // Compartilhar ou baixar
         setTimeout(function() {
             if (confirm('✅ PDF gerado com sucesso!\n\nDeseja compartilhar com o cliente?')) {
-                // Tentar usar Web Share API (mobile)
                 if (navigator.share && navigator.canShare) {
                     var file = new File([pdfBlob], filename, { type: 'application/pdf' });
                     if (navigator.canShare({ files: [file] })) {
@@ -225,7 +223,6 @@ async function gerarPDFPedido(pedido) {
                             text: 'Segue o pedido de ' + pedido.cliente_nome,
                             files: [file]
                         }).catch(function(error) {
-                            console.log('Erro ao compartilhar:', error);
                             doc.save(filename);
                         });
                     } else {
@@ -246,5 +243,4 @@ async function gerarPDFPedido(pedido) {
         console.error('Erro ao gerar PDF:', error);
     }
 }
-
 console.log('✅ PDF.js carregado');
