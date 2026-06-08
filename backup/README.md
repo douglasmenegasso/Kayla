@@ -1,2 +1,0 @@
-# Kayla
-Kayla Venda Consignada
