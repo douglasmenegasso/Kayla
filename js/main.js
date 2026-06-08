@@ -165,4 +165,10 @@ window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ App pronto!');
 });
 
+function mostrarApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    mudarAba('scan');
+}
+
 console.log('✅ Main.js carregado');
