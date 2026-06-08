@@ -1,23 +1,10 @@
 // ============ AUTENTICAÇÃO ============
 
 function mostrarTelaSelecao() {
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">👋 Bem-vindo ao Kayla</div>';
-    html += '<div class="modal-sub">Sistema de Venda Consignada</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:24px;margin:20px 0;text-align:center">';
-    html += '<div style="font-size:48px;margin-bottom:12px">📦</div>';
-    html += '<div style="font-size:16px;font-weight:600;margin-bottom:8px">Gerencie seus pedidos</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Controle de clientes, produtos e consignações</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="abrirLogin()" style="margin-bottom:12px">🔐 Entrar</button>';
-    html += '<button class="btn btn-outline" onclick="abrirCadastro()">📝 Criar Conta</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
+    // Tela já está visível no HTML - não precisa fazer nada
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
 }
-
 function abrirLogin() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🔐 Login</div>';
