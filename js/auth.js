@@ -190,15 +190,17 @@ async function fazerLogout() {
     localStorage.removeItem('perfilAcesso');
     localStorage.removeItem('kayla_lembrar_me');
     localStorage.removeItem('kayla_email');
+    localStorage.removeItem('kayla_user'); // Remover sessão local
     currentUser = null;
     clienteAtual = null;
     pedidoItens = [];
     toast('Logout realizado', 'success');
     
-    // Mostrar tela de login e esconder app
+    // Mostrar tela de login
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
 }
+
 async function carregarDados() {
     if (!isOnline) return;
     try {
