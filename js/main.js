@@ -78,9 +78,12 @@ function renderizarConfig() {
     
     html += '<div class="form-group"><label class="form-label">Perfil</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">' + (perfilAtual === 'admin' ? '👑 Admin' : '👤 Usuário') + '</div></div>';
     
-    html += '<div class="form-group"><label class="form-label">Plano</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px"><span class="' + (LIMITES.proAtivo ? 'badge-pro' : 'badge-free') + '">' + (LIMITES.proAtivo ? 'PRO' : 'GRÁTIS') + '</span></div></div>';
+    var planoUsuario = localStorage.getItem('kayla_plano') || 'free';
+    var isPro = planoUsuario === 'pro' || LIMITES.proAtivo;
     
-    if (LIMITES.proAtivo) {
+    html += '<div class="form-group"><label class="form-label">Plano</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px"><span class="' + (isPro ? 'badge-pro' : 'badge-free') + '">' + (isPro ? 'PRO' : 'GRÁTIS') + '</span></div></div>';
+    
+    if (isPro) {
         var devices = localStorage.getItem('kayla_pro_devices') || '0/0';
         var expires = localStorage.getItem('kayla_pro_expires');
         var expDate = expires ? new Date(expires).toLocaleDateString('pt-BR') : 'N/A';
@@ -94,23 +97,25 @@ function renderizarConfig() {
         html += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
         html += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px">⚡ Ativar Key</button></div>';
     }
-        // Configurações da Empresa
-            html += '<div class="form-group" style="margin-top:16px">';
-            html += '<label class="form-label">🏢 Dados da Empresa</label>';
-            html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">';
-            if (configEmpresa.nome) {
-            html += '<div style="font-weight:600">' + configEmpresa.nome + '</div>';
-            if (configEmpresa.cnpj) html += '<div style="font-size:12px;color:var(--text2)">CNPJ: ' + configEmpresa.cnpj + '</div>';
-            if (configEmpresa.telefone) html += '<div style="font-size:12px;color:var(--text2)">Tel: ' + configEmpresa.telefone + '</div>';
+    
+    // Configurações da Empresa
+    html += '<div class="form-group" style="margin-top:16px">';
+    html += '<label class="form-label">🏢 Dados da Empresa</label>';
+    html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">';
+    if (configEmpresa.nome) {
+        html += '<div style="font-weight:600">' + configEmpresa.nome + '</div>';
+        if (configEmpresa.cnpj) html += '<div style="font-size:12px;color:var(--text2)">CNPJ: ' + configEmpresa.cnpj + '</div>';
+        if (configEmpresa.telefone) html += '<div style="font-size:12px;color:var(--text2)">Tel: ' + configEmpresa.telefone + '</div>';
     } else {
         html += '<div style="color:var(--text2);font-size:13px">Nenhuma configuração</div>';
     }
     html += '</div>';
-    html += '<button class="btn ' + (LIMITES.proAtivo ? 'btn-primary' : 'btn-outline') + '" onclick="configurarEmpresa()">⚙️ Configurar</button>';
-    if (!LIMITES.proAtivo) {
+    html += '<button class="btn ' + (isPro ? 'btn-primary' : 'btn-outline') + '" onclick="configurarEmpresa()">⚙️ Configurar</button>';
+    if (!isPro) {
         html += '<div style="font-size:11px;color:var(--warning);margin-top:8px">🔒 Disponível apenas no plano PRO</div>';
     }
     html += '</div>';
+    
     html += '<div class="form-group" style="margin-top:16px"><label class="form-label">Versão</label><div style="background:var(--bg3);padding:12px;border-radius:8px">v' + appVersion + '</div></div>';
     
     html += '<button class="btn btn-red" onclick="fazerLogout()" style="margin-top:12px">🚪 Sair</button></div>';
@@ -169,6 +174,17 @@ function mostrarApp() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     mudarAba('scan');
+}
+
+function atualizarBadgePlano() {
+    var planoUsuario = localStorage.getItem('kayla_plano') || 'free';
+    var isPro = planoUsuario === 'pro' || LIMITES.proAtivo;
+    
+    var badge = document.getElementById('plan-badge');
+    if (badge) {
+        badge.innerText = isPro ? 'PRO' : 'GRÁTIS';
+        badge.className = isPro ? 'badge-pro' : 'badge-free';
+    }
 }
 
 console.log('✅ Main.js carregado');
