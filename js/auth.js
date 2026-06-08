@@ -110,8 +110,12 @@ async function loginSucesso(user) {
     await carregarDados();
     fecharModal();
     toast('Bem-vindo!', 'success');
+    
+    // Esconder tela de login e mostrar app
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    
     mostrarApp();
-}
 
 async function recuperarSenha() {
     var email = document.getElementById('email').value.trim();
@@ -162,9 +166,11 @@ async function fazerLogout() {
     clienteAtual = null;
     pedidoItens = [];
     toast('Logout realizado', 'success');
-    mostrarTelaSelecao();
+    
+    // Mostrar tela de login e esconder app
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
 }
-
 async function carregarDados() {
     if (!isOnline) return;
     try {
