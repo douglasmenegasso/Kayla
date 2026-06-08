@@ -43,16 +43,19 @@ async function salvarProduto() {
     var preco = parseFloat(document.getElementById('produto-preco-manual').value);
     if (!nome || !codigo || !preco) { toast('Preencha tudo', 'error'); return; }
     
-    // Verificar duplicata NO BANCO (sempre)
+    var userId = currentUser ? currentUser.id : 'local';
+    
+    // Verificar duplicata APENAS do usuário atual
     if (isOnline && supabaseClient) {
         try {
             var check = await supabaseClient
                 .from('produtos')
-                .select('codigo')
-                .eq('codigo', codigo);
+                .select('id')
+                .eq('codigo', codigo)
+                .eq('user_id', userId);
             
             if (check.data && check.data.length > 0) {
-                toast('⚠️ Este código já existe no banco!', 'error');
+                toast('⚠️ Você já tem um produto com este código!', 'error');
                 return;
             }
         } catch(e) {
@@ -70,7 +73,7 @@ async function salvarProduto() {
         nome: nome, 
         codigo: codigo, 
         preco: preco, 
-        user_id: currentUser ? currentUser.id : 'local', 
+        user_id: userId,
         created_at: new Date().toISOString() 
     };
     
