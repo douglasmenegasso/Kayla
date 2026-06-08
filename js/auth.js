@@ -1,20 +1,52 @@
 // ============ AUTENTICAÇÃO ============
 
-function abrirLogin(tipo) {
-    perfilAtual = tipo;
+function mostrarTelaSelecao() {
     var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">' + (tipo === 'admin' ? '👑 Login Admin' : '👤 Login Usuário') + '</div>';
+    html += '<div class="modal-title">👋 Bem-vindo ao Kayla</div>';
+    html += '<div class="modal-sub">Sistema de Venda Consignada</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:24px;margin:20px 0;text-align:center">';
+    html += '<div style="font-size:48px;margin-bottom:12px">📦</div>';
+    html += '<div style="font-size:16px;font-weight:600;margin-bottom:8px">Gerencie seus pedidos</div>';
+    html += '<div style="font-size:13px;color:var(--text2)">Controle de clientes, produtos e consignações</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="abrirLogin()" style="margin-bottom:12px">🔐 Entrar</button>';
+    html += '<button class="btn btn-outline" onclick="abrirCadastro()">📝 Criar Conta</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+function abrirLogin() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🔐 Login</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
     html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
     html += '<div class="checkbox-group"><input type="checkbox" id="lembrar-me"><label for="lembrar-me" style="color:var(--text2);font-size:13px">Lembrar de mim</label></div>';
     html += '<div style="text-align:right;margin-bottom:12px"><button class="btn btn-sm btn-outline" onclick="recuperarSenha()" style="width:auto;padding:6px 12px;font-size:11px">🔑 Esqueci a senha</button></div>';
     html += '<button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
-    html += '<button class="btn btn-outline" onclick="abrirCadastro(\'' + tipo + '\')">Criar Conta</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    html += '<button class="btn btn-outline" onclick="abrirCadastro()">Criar Conta</button>';
+    html += '<button class="btn btn-outline" onclick="mostrarTelaSelecao()">Voltar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
     setTimeout(function() { document.getElementById('email').focus(); }, 100);
+}
+
+function abrirCadastro() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📝 Criar Conta</div>';
+    html += '<div class="modal-sub">Preencha seus dados</div>';
+    html += '<div class="form-group"><label class="form-label">Nome</label><input class="form-input" id="cadastro-nome" placeholder="Seu nome"></div>';
+    html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="cadastro-email" type="email" placeholder="seu@email.com"></div>';
+    html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="cadastro-senha" type="password" placeholder="Mínimo 6 caracteres"></div>';
+    html += '<div class="form-group"><label class="form-label">Confirmar Senha</label><input class="form-input" id="cadastro-senha2" type="password" placeholder="Repita a senha"></div>';
+    html += '<button class="btn btn-primary" onclick="fazerCadastro()">Cadastrar</button>';
+    html += '<button class="btn btn-outline" onclick="abrirLogin()">Já tenho conta</button>';
+    html += '<button class="btn btn-outline" onclick="mostrarTelaSelecao()">Voltar</button>';
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
 }
 
 async function verificarSessao() {
@@ -87,6 +119,14 @@ async function fazerLogin() {
     btn.disabled = false;
 }
 
+async function loginSucesso(user) {
+    currentUser = user;
+    await carregarDados();
+    fecharModal();
+    toast('Bem-vindo!', 'success');
+    mostrarApp();
+}
+
 async function recuperarSenha() {
     var email = document.getElementById('email').value.trim();
     
@@ -108,7 +148,6 @@ async function recuperarSenha() {
     btn.disabled = true;
     
     try {
-        // Usar método nativo do Supabase para reset de senha
         var result = await supabaseClient.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin + '/reset-password.html'
         });
@@ -126,15 +165,6 @@ async function recuperarSenha() {
     
     btn.innerText = texto;
     btn.disabled = false;
-}
-
-async function loginSucesso(user) {
-    currentUser = user;
-    localStorage.setItem('perfilAcesso', perfilAtual);
-    await carregarDados();
-    fecharModal();
-    toast('Bem-vindo!', 'success');
-    mostrarApp();
 }
 
 async function fazerLogout() {
