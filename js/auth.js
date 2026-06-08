@@ -202,22 +202,33 @@ async function fazerLogout() {
 }
 
 async function carregarDados() {
-    if (!isOnline) return;
-    try {
-        var r;
-        r = await supabaseClient.from('clientes').select('*').order('nome');
-        if (!r.error) { clientes = r.data || []; salvarDadosLocais(); }
-        
-        r = await supabaseClient.from('produtos').select('*').order('nome');
-        if (!r.error) { produtos = r.data || []; salvarDadosLocais(); }
-        
-        r = await supabaseClient.from('pedidos').select('*').order('created_at', { ascending: false });
-        if (!r.error) { pedidos = r.data || []; salvarDadosLocais(); }
-        
-        lastSync = new Date().toISOString();
-        localStorage.setItem('kayla_last_sync', lastSync);
-        
-    } catch(e) { console.error('Erro:', e); }
+    if (!currentUser) return;
+    
+    if (isOnline && supabaseClient) {
+        try {
+            var userId = currentUser.id;
+            var r;
+            
+            r = await supabaseClient.from('clientes').select('*').eq('user_id', userId).order('nome');
+            if (!r.error) { clientes = r.data || []; salvarDadosLocais(); }
+            
+            r = await supabaseClient.from('produtos').select('*').eq('user_id', userId).order('nome');
+            if (!r.error) { produtos = r.data || []; salvarDadosLocais(); }
+            
+            r = await supabaseClient.from('pedidos').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+            if (!r.error) { pedidos = r.data || []; salvarDadosLocais(); }
+            
+            lastSync = new Date().toISOString();
+            localStorage.setItem('kayla_last_sync', lastSync);
+            
+        } catch(e) {
+            console.error('Erro ao sincronizar:', e);
+            carregarDadosLocais(); // Fallback para offline
+        }
+    } else {
+        // Offline: carrega do localStorage
+        carregarDadosLocais();
+    }
 }
 
 async function sincronizarDados() {
