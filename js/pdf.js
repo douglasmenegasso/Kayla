@@ -9,94 +9,94 @@ async function gerarPDFPedido(pedido) {
         var logoLocal = localStorage.getItem('kayla_logo_local');
         if (logoLocal) {
             try {
-                doc.addImage(logoLocal, 'PNG', 15, 10, 40, 20);
+                doc.addImage(logoLocal, 'PNG', 15, 10, 35, 17);
             } catch(e) {}
         }
         
-        // Nome da empresa centralizado
-        doc.setFontSize(16);
+        // Nome da empresa
+        doc.setFontSize(14);
         doc.setTextColor(124, 92, 252);
         doc.setFont(undefined, 'bold');
         doc.text(configEmpresa.nome || 'Kayla - Venda Consignada', 105, 15, { align: 'center' });
         doc.setFont(undefined, 'normal');
         
         // Dados da empresa
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setTextColor(100);
-        var yEmpresa = 22;
+        var yEmpresa = 21;
         if (configEmpresa.cnpj) {
             doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 5;
+            yEmpresa += 4;
         }
         if (configEmpresa.endereco) {
             doc.text(configEmpresa.endereco, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 5;
+            yEmpresa += 4;
         }
         if (configEmpresa.telefone) {
             doc.text('Tel: ' + configEmpresa.telefone, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 5;
+            yEmpresa += 4;
         }
         
-        // Linha separadora fina
+        // Linha separadora
         doc.setDrawColor(200);
-        doc.setLineWidth(0.1);
-        doc.line(10, 38, 200, 38);
+        doc.setLineWidth(0.2);
+        doc.line(10, 35, 200, 35);
         
         // Título
-        doc.setFontSize(14);
+        doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont(undefined, 'bold');
-        doc.text('PEDIDO DE VENDA', 105, 48, { align: 'center' });
+        doc.text('PEDIDO DE VENDA', 105, 43, { align: 'center' });
         doc.setFont(undefined, 'normal');
         
-        // Linha separadora fina
+        // Linha separadora
         doc.setDrawColor(220);
         doc.setLineWidth(0.1);
-        doc.line(10, 53, 200, 53);
+        doc.line(10, 47, 200, 47);
         
         // Informações do pedido
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setTextColor(0);
-        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 63);
-        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 70);
-        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 77);
+        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 55);
+        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 61);
+        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 67);
         
-        // Cliente em destaque com fundo
-        doc.setFillColor(240, 240, 240);
-        doc.rect(15, 83, 180, 15, 'F');
-        doc.setFontSize(12);
+        // Cliente em destaque
+        doc.setFillColor(245, 245, 245);
+        doc.rect(15, 72, 180, 12, 'F');
+        doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
-        doc.text('Cliente: ' + pedido.cliente_nome, 20, 93);
+        doc.text('Cliente: ' + pedido.cliente_nome, 20, 80);
         doc.setFont(undefined, 'normal');
         
-        // Linha separadora fina
+        // Linha separadora
         doc.setDrawColor(200);
-        doc.setLineWidth(0.1);
-        doc.line(10, 105, 200, 105);
+        doc.setLineWidth(0.2);
+        doc.line(10, 90, 200, 90);
         
         // Título dos itens
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setFont(undefined, 'bold');
-        doc.text('Itens do Pedido:', 15, 115);
+        doc.text('Itens do Pedido:', 15, 98);
         
-        // Cabeçalho da tabela de itens - POSIÇÕES CORRIGIDAS
-        doc.setFontSize(9);
+        // Cabeçalho da tabela
+        doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(100);
-        doc.text('PRODUTO', 20, 123);
-        doc.text('QTD', 110, 123);
-        doc.text('PREÇO UNIT.', 140, 123);
-        doc.text('TOTAL', 185, 123);
+        doc.text('PRODUTO', 20, 105);
+        doc.text('QTD', 105, 105, { align: 'center' });
+        doc.text('PREÇO UNIT.', 135, 105, { align: 'right' });
+        doc.text('TOTAL', 185, 105, { align: 'right' });
         
-        // Linha separadora fina
+        // Linha separadora
         doc.setDrawColor(200);
         doc.setLineWidth(0.1);
-        doc.line(15, 125, 195, 125);
+        doc.line(15, 107, 195, 107);
         
-        var y = 135;
+        var y = 115;
         var itens = [];
         
-        // Buscar itens da tabela pedido_itens (online)
+        // Buscar itens
         if (isOnline && supabaseClient) {
             try {
                 var result = await supabaseClient
@@ -113,7 +113,6 @@ async function gerarPDFPedido(pedido) {
             }
         }
         
-        // Se não encontrou, tentar do itens_json (offline)
         if (itens.length === 0 && pedido.itens_json) {
             try {
                 itens = JSON.parse(pedido.itens_json);
@@ -129,90 +128,87 @@ async function gerarPDFPedido(pedido) {
                 var preco = parseFloat(item.preco) || 0;
                 var total = parseFloat(item.total) || (qtd * preco);
                 
-                // Alternar cores de fundo para melhor leitura
+                // Fundo alternado
                 if (index % 2 === 0) {
-                    doc.setFillColor(248, 248, 248);
-                    doc.rect(15, y - 7, 180, 10, 'F');
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(15, y - 6, 180, 8, 'F');
                 }
                 
                 // Nome do produto
-                doc.setFontSize(10);
+                doc.setFontSize(9);
                 doc.setFont(undefined, 'bold');
                 doc.setTextColor(0);
                 doc.text(nome, 20, y);
                 
-                // Código (se tiver) - embaixo do nome
+                // Código
                 if (codigo) {
-                    doc.setFontSize(8);
+                    doc.setFontSize(7);
                     doc.setFont(undefined, 'normal');
-                    doc.setTextColor(100);
-                    doc.text('Cód: ' + codigo, 20, y + 4);
+                    doc.setTextColor(120);
+                    doc.text('Cód: ' + codigo, 20, y + 3.5);
                 }
                 
-                // Quantidade
-                doc.setFontSize(10);
+                // Quantidade (centralizado)
+                doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0);
-                doc.text(qtd + 'x', 110, y);
+                doc.text(qtd + 'x', 105, y, { align: 'center' });
                 
-                // Preço unitário
-                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 140, y);
+                // Preço unitário (alinhado à direita)
+                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 135, y, { align: 'right' });
                 
-                // Total do item - POSIÇÃO CORRIGIDA
+                // Total (alinhado à direita)
                 doc.setFont(undefined, 'bold');
-                doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y);
+                doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y, { align: 'right' });
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora entre itens - MAIS FINA
-                doc.setDrawColor(220);
+                // Linha separadora fina
+                doc.setDrawColor(230);
                 doc.setLineWidth(0.1);
-                doc.line(15, y + 2, 195, y + 2);
+                doc.line(15, y + 1.5, 195, y + 1.5);
                 
-                y += 14;
+                y += 10;
             });
         } else {
-            doc.setFontSize(10);
+            doc.setFontSize(9);
             doc.setTextColor(150);
             doc.text('Nenhum item encontrado', 20, y);
-            y += 10;
+            y += 8;
         }
         
-        // Linha separadora antes do total - MAIS FINA
-        y += 5;
+        // Linha separadora antes do total
+        y += 4;
         doc.setDrawColor(200);
-        doc.setLineWidth(0.1);
+        doc.setLineWidth(0.2);
         doc.line(15, y, 195, y);
-        y += 12;
+        y += 8;
         
         // Total
-        doc.setFontSize(14);
+        doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0);
-        doc.text('TOTAL:', 140, y);
-        doc.setFontSize(16);
+        doc.text('TOTAL:', 140, y, { align: 'right' });
+        doc.setFontSize(13);
         doc.setTextColor(124, 92, 252);
-        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y);
+        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y, { align: 'right' });
         
-        // Linha separadora - MAIS FINA
+        // Linha separadora
         doc.setDrawColor(200);
-        doc.setLineWidth(0.1);
-        doc.line(15, y + 4, 195, y + 4);
+        doc.setLineWidth(0.2);
+        doc.line(15, y + 3, 195, y + 3);
         
         // Rodapé
-        y += 18;
-        doc.setFontSize(9);
+        y += 12;
+        doc.setFontSize(8);
         doc.setTextColor(150);
         doc.setFont(undefined, 'normal');
         doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), 105, y, { align: 'center' });
-        doc.text('Obrigado pela preferência!', 105, y + 5, { align: 'center' });
+        doc.text('Obrigado pela preferência!', 105, y + 4, { align: 'center' });
         
-        // Gerar PDF como blob
+        // Gerar PDF
         var pdfBlob = doc.output('blob');
-        
-        // Nome do arquivo
         var filename = 'Pedido-' + pedido.id.toString().substr(0,8) + '.pdf';
         
-        // Compartilhar ou baixar
         setTimeout(function() {
             if (confirm('✅ PDF gerado com sucesso!\n\nDeseja compartilhar com o cliente?')) {
                 if (navigator.share && navigator.canShare) {
