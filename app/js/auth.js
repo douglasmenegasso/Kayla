@@ -76,17 +76,28 @@ async function fazerLogin() {
     var senha = document.getElementById('senha').value;
     var lembrarMe = document.getElementById('lembrar-me').checked;
     
-    if (!email || !senha) { toast('Preencha tudo', 'error'); return; }
+    if (!email || !senha) { 
+        toast('Preencha e-mail e senha', 'error'); 
+        return; 
+    }
     
-    var btn = window.event ? window.event.target : null;
-    if (!btn) return;
-    var texto = btn.innerText;
-    btn.innerText = 'Entrando...';
-    btn.disabled = true;
+    var btn = event ? event.target : null;
+    if (!btn) {
+        btn = document.querySelector('button[type="submit"]');
+    }
+    
+    var textoOriginal = btn ? btn.innerText : 'Entrar';
+    if (btn) {
+        btn.innerText = 'Entrando...';
+        btn.disabled = true;
+    }
     
     try {
+        // Verifica se está online
         if (isOnline && supabaseClient) {
-            // Online: tenta login no Supabase
+            // ONLINE: Tenta login no Supabase
+            console.log('[AUTH] Login online via Supabase');
+            
             var result = await supabaseClient.auth.signInWithPassword({ 
                 email: email, 
                 password: senha 
@@ -96,46 +107,61 @@ async function fazerLogin() {
                 var errorMsg = result.error.message.toLowerCase();
                 
                 if (errorMsg.includes('invalid login credentials') || errorMsg.includes('bad request')) {
-                    toast('E-mail ou senha incorretos!\n\nSe esqueceu a senha, clique em "Esqueci a senha"', 'error');
+                    toast('E-mail ou senha incorretos!', 'error');
                 } else if (errorMsg.includes('email not confirmed')) {
                     toast('Confirme seu e-mail antes de entrar', 'warning');
                 } else {
                     toast('Erro: ' + result.error.message, 'error');
                 }
                 
-                console.error('Erro login:', result.error);
-                btn.innerText = texto;
-                btn.disabled = false;
+                console.error('[AUTH] Erro login:', result.error);
+                if (btn) {
+                    btn.innerText = textoOriginal;
+                    btn.disabled = false;
+                }
                 return;
             }
             
+            // Login online sucesso
             await loginSucesso(result.data.user);
             
         } else {
-            // Offline: verifica se tem sessão salva local
+            // OFFLINE: Verifica se tem sessão salva
+            console.log('[AUTH] Tentando login offline');
+            
             var userSalvo = localStorage.getItem('kayla_user');
             var emailSalvo = localStorage.getItem('kayla_email');
+            var senhaSalva = localStorage.getItem('kayla_senha_hash'); // Hash simples
             
             if (userSalvo && emailSalvo === email) {
-                // Tem sessão salva - permite login offline
-                try {
-                    var userOffline = JSON.parse(userSalvo);
-                    await loginSucesso(userOffline);
-                } catch(e) {
-                    toast('Erro ao carregar sessão offline', 'error');
-                    btn.innerText = texto;
-                    btn.disabled = false;
+                // Verifica se a senha bate (comparação simples)
+                if (senhaSalva && senha !== atob(senhaSalva)) {
+                    toast('Senha incorreta para login offline', 'error');
+                    if (btn) {
+                        btn.innerText = textoOriginal;
+                        btn.disabled = false;
+                    }
                     return;
                 }
+                
+                // Login offline sucesso
+                console.log('[AUTH] Login offline bem-sucedido');
+                var userOffline = JSON.parse(userSalvo);
+                await loginSucesso(userOffline);
+                
             } else {
-                // Sem sessão salva offline
-                toast('⚠️ Sem conexão com a internet.\n\nVocê precisa estar online no primeiro login.', 'error');
-                btn.innerText = texto;
-                btn.disabled = false;
+                // Sem sessão salva
+                console.log('[AUTH] Sem sessão offline salva');
+                toast('⚠️ Sem conexão e sem sessão salva.\n\nConecte-se à internet para fazer o primeiro login.', 'error');
+                if (btn) {
+                    btn.innerText = textoOriginal;
+                    btn.disabled = false;
+                }
                 return;
             }
         }
         
+        // Salvar "lembrar-me"
         if (lembrarMe) {
             localStorage.setItem('kayla_lembrar_me', 'true');
             localStorage.setItem('kayla_email', email);
@@ -145,70 +171,14 @@ async function fazerLogin() {
         }
         
     } catch (error) {
+        console.error('[AUTH] Erro inesperado:', error);
         toast('Erro de conexão: ' + error.message, 'error');
-        console.error(error);
     }
     
-    btn.innerText = texto;
-    btn.disabled = false;
-}
-async function loginSucesso(user) {
-    currentUser = user;
-    
-    // Salvar sessão localmente para funcionar offline
-    localStorage.setItem('kayla_user', JSON.stringify(user));
-    localStorage.setItem('kayla_email', user.email);
-    
-    if (isOnline && supabaseClient) {
-        await carregarDados();
-    } else {
-        carregarDadosLocais();
+    if (btn) {
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
     }
-    
-    fecharModal();
-    toast('Bem-vindo!', 'success');
-    mostrarApp();
-    atualizarBadgePlano();
-}
-
-async function recuperarSenha() {
-    var email = document.getElementById('email').value.trim();
-    
-    if (!email) { 
-        toast('Digite seu e-mail primeiro', 'warning'); 
-        document.getElementById('email').focus();
-        return; 
-    }
-    
-    if (!email.includes('@') || !email.includes('.')) {
-        toast('Digite um e-mail válido', 'error');
-        return;
-    }
-    
-    var btn = window.event ? window.event.target : null;
-    if (!btn) return;
-    var texto = btn.innerText;
-    btn.innerText = 'Enviando...';
-    btn.disabled = true;
-    
-    try {
-        var result = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + '/reset-password.html'
-        });
-        
-        if (result.error) {
-            toast('Erro: ' + result.error.message, 'error');
-        } else {
-            toast('📧 E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'success');
-        }
-        
-    } catch (error) {
-        toast('Erro de conexão: ' + error.message, 'error');
-        console.error(error);
-    }
-    
-    btn.innerText = texto;
-    btn.disabled = false;
 }
 
 async function fazerLogout() {
