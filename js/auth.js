@@ -128,11 +128,21 @@ async function fazerLogin() {
 
 async function loginSucesso(user) {
     currentUser = user;
-    await carregarDados();
+    
+    // Salvar sessão localmente para funcionar offline
+    localStorage.setItem('kayla_user', JSON.stringify(user));
+    localStorage.setItem('kayla_email', user.email);
+    
+    if (isOnline && supabaseClient) {
+        await carregarDados();
+    } else {
+        carregarDadosLocais();
+    }
+    
     fecharModal();
     toast('Bem-vindo!', 'success');
     mostrarApp();
-    atualizarBadgePlano(); // Atualizar badge do plano
+    atualizarBadgePlano();
 }
 
 async function recuperarSenha() {
