@@ -24,21 +24,13 @@ async function gerarPDFPedido(pedido) {
         if (logoLocal) {
             try {
                 doc.addImage(logoLocal, 'PNG', 15, yInfo, 30, 15);
-                // Informações ao lado da logo
                 doc.setFontSize(8);
                 doc.setTextColor(80);
                 var xInfo = 50;
-                if (configEmpresa.cnpj) {
-                    doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, xInfo, yInfo + 4);
-                }
-                if (configEmpresa.endereco) {
-                    doc.text(configEmpresa.endereco, xInfo, yInfo + 9);
-                }
-                if (configEmpresa.telefone) {
-                    doc.text('Tel: ' + configEmpresa.telefone, xInfo, yInfo + 14);
-                }
+                if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, xInfo, yInfo + 4);
+                if (configEmpresa.endereco) doc.text(configEmpresa.endereco, xInfo, yInfo + 9);
+                if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, xInfo, yInfo + 14);
             } catch(e) {
-                // Se der erro na logo, mostrar apenas texto
                 doc.setFontSize(8);
                 doc.setTextColor(80);
                 if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 15, yInfo + 4);
@@ -46,18 +38,11 @@ async function gerarPDFPedido(pedido) {
                 if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, 15, yInfo + 14);
             }
         } else {
-            // Sem logo, mostrar informações centralizadas
             doc.setFontSize(8);
             doc.setTextColor(80);
-            if (configEmpresa.cnpj) {
-                doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, yInfo + 4, { align: 'center' });
-            }
-            if (configEmpresa.endereco) {
-                doc.text(configEmpresa.endereco, 105, yInfo + 9, { align: 'center' });
-            }
-            if (configEmpresa.telefone) {
-                doc.text('Tel: ' + configEmpresa.telefone, 105, yInfo + 14, { align: 'center' });
-            }
+            if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, yInfo + 4, { align: 'center' });
+            if (configEmpresa.endereco) doc.text(configEmpresa.endereco, 105, yInfo + 9, { align: 'center' });
+            if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, 105, yInfo + 14, { align: 'center' });
         }
         
         // Linha separadora
@@ -151,9 +136,9 @@ async function gerarPDFPedido(pedido) {
                 var preco = parseFloat(item.preco) || 0;
                 var total = parseFloat(item.total) || (qtd * preco);
                 
-                // Fundo alternado
+                // Fundo alternado (cinza bem claro)
                 if (index % 2 === 0) {
-                    doc.setFillColor(250, 250, 250);
+                    doc.setFillColor(248, 248, 248);
                     doc.rect(15, y - 6, 180, 12, 'F');
                 }
                 
@@ -185,9 +170,9 @@ async function gerarPDFPedido(pedido) {
                 doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y + 2, { align: 'right' });
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora ESCURA
-                doc.setDrawColor(150);
-                doc.setLineWidth(0.3);
+                // Linha separadora ESCURA - DESENHADA POR ÚLTIMO
+                doc.setDrawColor(100);
+                doc.setLineWidth(0.4);
                 doc.line(15, y + 9, 195, y + 9);
                 
                 y += 13;
@@ -201,8 +186,8 @@ async function gerarPDFPedido(pedido) {
         
         // Linha separadora antes do total
         y += 4;
-        doc.setDrawColor(150);
-        doc.setLineWidth(0.3);
+        doc.setDrawColor(100);
+        doc.setLineWidth(0.4);
         doc.line(15, y, 195, y);
         y += 8;
         
@@ -216,8 +201,8 @@ async function gerarPDFPedido(pedido) {
         doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y, { align: 'right' });
         
         // Linha separadora
-        doc.setDrawColor(150);
-        doc.setLineWidth(0.3);
+        doc.setDrawColor(100);
+        doc.setLineWidth(0.4);
         doc.line(15, y + 3, 195, y + 3);
         
         // Rodapé
