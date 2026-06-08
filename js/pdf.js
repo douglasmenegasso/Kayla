@@ -52,49 +52,48 @@ async function gerarPDFPedido(pedido) {
         // Linha separadora
         doc.setDrawColor(220);
         doc.setLineWidth(0.3);
-        doc.line(10, 52, 200, 52);
+        doc.line(10, 53, 200, 53);
         
         // Informações do pedido
         doc.setFontSize(11);
         doc.setTextColor(0);
-        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 62);
-        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 69);
-        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 76);
+        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 63);
+        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 70);
+        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 77);
         
         // Cliente em destaque com fundo
         doc.setFillColor(240, 240, 240);
-        doc.rect(15, 82, 180, 15, 'F');
+        doc.rect(15, 83, 180, 15, 'F');
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
-        doc.text('Cliente: ' + pedido.cliente_nome, 20, 92);
+        doc.text('Cliente: ' + pedido.cliente_nome, 20, 93);
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
         doc.setDrawColor(200);
         doc.setLineWidth(0.5);
-        doc.line(10, 102, 200, 102);
+        doc.line(10, 105, 200, 105);
         
         // Título dos itens
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
-        doc.text('Itens do Pedido:', 15, 112);
-        doc.setFont(undefined, 'normal');
+        doc.text('Itens do Pedido:', 15, 115);
         
         // Cabeçalho da tabela de itens
         doc.setFontSize(9);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(100);
-        doc.text('PRODUTO', 20, 120);
-        doc.text('QTD', 120, 120);
-        doc.text('PREÇO', 150, 120);
-        doc.text('TOTAL', 175, 120, { align: 'right' });
+        doc.text('PRODUTO', 20, 123);
+        doc.text('QTD', 120, 123);
+        doc.text('PREÇO', 150, 123);
+        doc.text('TOTAL', 180, 123);
         
         // Linha separadora
         doc.setDrawColor(200);
         doc.setLineWidth(0.3);
-        doc.line(15, 122, 195, 122);
+        doc.line(15, 125, 195, 125);
         
-        var y = 130;
+        var y = 135;
         var itens = [];
         
         // Buscar itens da tabela pedido_itens (online)
@@ -133,7 +132,7 @@ async function gerarPDFPedido(pedido) {
                 // Alternar cores de fundo para melhor leitura
                 if (index % 2 === 0) {
                     doc.setFillColor(248, 248, 248);
-                    doc.rect(15, y - 6, 180, 8, 'F');
+                    doc.rect(15, y - 7, 180, 10, 'F');
                 }
                 
                 // Nome do produto
@@ -142,7 +141,7 @@ async function gerarPDFPedido(pedido) {
                 doc.setTextColor(0);
                 doc.text(nome, 20, y);
                 
-                // Código (se tiver)
+                // Código (se tiver) - embaixo do nome
                 if (codigo) {
                     doc.setFontSize(8);
                     doc.setFont(undefined, 'normal');
@@ -161,7 +160,7 @@ async function gerarPDFPedido(pedido) {
                 
                 // Total do item
                 doc.setFont(undefined, 'bold');
-                doc.text('R$ ' + total.toFixed(2).replace('.',','), 175, y, { align: 'right' });
+                doc.text('R$ ' + total.toFixed(2).replace('.',','), 180, y);
                 doc.setFont(undefined, 'normal');
                 
                 // Linha separadora entre itens
@@ -169,7 +168,7 @@ async function gerarPDFPedido(pedido) {
                 doc.setLineWidth(0.2);
                 doc.line(15, y + 2, 195, y + 2);
                 
-                y += 12;
+                y += 14; // Mais espaço entre itens
             });
         } else {
             doc.setFontSize(10);
@@ -179,28 +178,28 @@ async function gerarPDFPedido(pedido) {
         }
         
         // Linha separadora antes do total
-        y += 3;
+        y += 5;
         doc.setDrawColor(200);
         doc.setLineWidth(0.5);
         doc.line(15, y, 195, y);
-        y += 10;
+        y += 12;
         
         // Total
         doc.setFontSize(14);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(0);
-        doc.text('TOTAL:', 120, y);
+        doc.text('TOTAL:', 140, y);
         doc.setFontSize(16);
         doc.setTextColor(124, 92, 252);
-        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 175, y, { align: 'right' });
+        doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 180, y);
         
         // Linha separadora
         doc.setDrawColor(200);
         doc.setLineWidth(0.5);
-        doc.line(15, y + 3, 195, y + 3);
+        doc.line(15, y + 4, 195, y + 4);
         
         // Rodapé
-        y += 15;
+        y += 18;
         doc.setFontSize(9);
         doc.setTextColor(150);
         doc.setFont(undefined, 'normal');
@@ -227,19 +226,15 @@ async function gerarPDFPedido(pedido) {
                             files: [file]
                         }).catch(function(error) {
                             console.log('Erro ao compartilhar:', error);
-                            // Fallback: download
                             doc.save(filename);
                         });
                     } else {
-                        // Fallback: download
                         doc.save(filename);
                     }
                 } else {
-                    // Desktop: download
                     doc.save(filename);
                 }
             } else {
-                // Apenas download
                 doc.save(filename);
             }
         }, 500);
