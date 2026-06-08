@@ -43,27 +43,23 @@ async function salvarProduto() {
     var preco = parseFloat(document.getElementById('produto-preco-manual').value);
     if (!nome || !codigo || !preco) { toast('Preencha tudo', 'error'); return; }
     
-    // Verificar duplicata NO BANCO quando online
+    // Verificar duplicata NO BANCO (sempre)
     if (isOnline && supabaseClient) {
         try {
             var check = await supabaseClient
                 .from('produtos')
-                .select('id')
-                .eq('codigo', codigo)
-                .single();
+                .select('codigo')
+                .eq('codigo', codigo);
             
-            if (check.data) {
-                toast('Já existe um produto com este código!', 'error');
+            if (check.data && check.data.length > 0) {
+                toast('⚠️ Este código já existe no banco!', 'error');
                 return;
             }
         } catch(e) {
-            // Se der erro 404 (not found), significa que não existe - pode continuar
-            if (e.code !== 'PGRST116') {
-                console.error('Erro ao verificar duplicata:', e);
-            }
+            console.error('Erro ao verificar:', e);
         }
     } else {
-        // Offline: verificar no array local
+        // Offline: verificar local
         if (produtos.find(function(p) { return p.codigo === codigo; })) {
             toast('Já existe!', 'error');
             return;
