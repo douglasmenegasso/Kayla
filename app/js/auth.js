@@ -181,20 +181,74 @@ async function fazerLogin() {
     }
 }
 
+async function loginSucesso(user) {
+    console.log('[AUTH] Login sucesso:', user.email);
+    
+    currentUser = user;
+    
+    // Salvar sessão localmente para funcionar offline
+    try {
+        localStorage.setItem('kayla_user', JSON.stringify(user));
+        localStorage.setItem('kayla_email', user.email);
+        
+        // Salvar senha (hash simples em base64)
+        var senhaInput = document.getElementById('senha');
+        if (senhaInput && senhaInput.value) {
+            localStorage.setItem('kayla_senha_hash', btoa(senhaInput.value));
+        }
+        
+        console.log('[AUTH] Sessão salva no localStorage');
+    } catch(e) {
+        console.error('[AUTH] Erro ao salvar sessão:', e);
+    }
+    
+    // Carregar dados
+    if (isOnline && supabaseClient) {
+        console.log('[AUTH] Carregando dados online...');
+        await carregarDados();
+    } else {
+        console.log('[AUTH] Carregando dados offline...');
+        carregarDadosLocais();
+    }
+    
+    // Fechar modal e mostrar app
+    fecharModal();
+    toast('Bem-vindo!', 'success');
+    mostrarApp();
+    atualizarBadgePlano();
+    
+    console.log('[AUTH] Login completo!');
+}
+
 async function fazerLogout() {
-    if (supabaseClient && isOnline) await supabaseClient.auth.signOut();
-    localStorage.removeItem('perfilAcesso');
+    console.log('[AUTH] Logout iniciado');
+    
+    if (supabaseClient && isOnline) {
+        try {
+            await supabaseClient.auth.signOut();
+        } catch(e) {
+            console.warn('[AUTH] Erro ao fazer logout no Supabase:', e);
+        }
+    }
+    
+    // Limpar TODOS os dados locais
     localStorage.removeItem('kayla_lembrar_me');
     localStorage.removeItem('kayla_email');
-    localStorage.removeItem('kayla_user'); // Remover sessão local
+    localStorage.removeItem('kayla_user');
+    localStorage.removeItem('kayla_senha_hash'); // Remover senha salva
+    localStorage.removeItem('perfilAcesso');
+    
     currentUser = null;
     clienteAtual = null;
     pedidoItens = [];
+    
     toast('Logout realizado', 'success');
     
     // Mostrar tela de login
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
+    
+    console.log('[AUTH] Logout completo');
 }
 
 async function carregarDados() {
