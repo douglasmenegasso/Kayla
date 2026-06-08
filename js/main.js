@@ -94,7 +94,23 @@ function renderizarConfig() {
         html += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
         html += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px">⚡ Ativar Key</button></div>';
     }
-    
+        // Configurações da Empresa
+            html += '<div class="form-group" style="margin-top:16px">';
+            html += '<label class="form-label">🏢 Dados da Empresa</label>';
+            html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">';
+            if (configEmpresa.nome) {
+            html += '<div style="font-weight:600">' + configEmpresa.nome + '</div>';
+            if (configEmpresa.cnpj) html += '<div style="font-size:12px;color:var(--text2)">CNPJ: ' + configEmpresa.cnpj + '</div>';
+            if (configEmpresa.telefone) html += '<div style="font-size:12px;color:var(--text2)">Tel: ' + configEmpresa.telefone + '</div>';
+    } else {
+        html += '<div style="color:var(--text2);font-size:13px">Nenhuma configuração</div>';
+    }
+    html += '</div>';
+    html += '<button class="btn ' + (LIMITES.proAtivo ? 'btn-primary' : 'btn-outline') + '" onclick="configurarEmpresa()">⚙️ Configurar</button>';
+    if (!LIMITES.proAtivo) {
+        html += '<div style="font-size:11px;color:var(--warning);margin-top:8px">🔒 Disponível apenas no plano PRO</div>';
+    }
+    html += '</div>';
     html += '<div class="form-group" style="margin-top:16px"><label class="form-label">Versão</label><div style="background:var(--bg3);padding:12px;border-radius:8px">v' + appVersion + '</div></div>';
     
     html += '<button class="btn btn-red" onclick="fazerLogout()" style="margin-top:12px">🚪 Sair</button></div>';
