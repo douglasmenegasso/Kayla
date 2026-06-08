@@ -113,6 +113,7 @@ async function loginSucesso(user) {
     fecharModal();
     toast('Bem-vindo!', 'success');
     mostrarApp();
+    atualizarBadgePlano(); // Atualizar badge do plano
 }
 
 async function recuperarSenha() {
