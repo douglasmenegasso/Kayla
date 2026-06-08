@@ -1,5 +1,5 @@
 // Service Worker para funcionamento Offline
-const CACHE_NAME = 'kayla-v5';
+const CACHE_NAME = 'kayla-v5.1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -49,25 +49,50 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch - Servir do cache, fallback para rede
+// Fetch - Estratégia Cache First, depois Network
 self.addEventListener('fetch', (event) => {
-  // Ignorar requisições externas (Supabase, CDN, etc)
   const url = new URL(event.request.url);
-  if (url.origin !== location.origin) {
+  
+  // Para requisições da mesma origem (app local)
+  if (url.origin === location.origin) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).catch(() => {
+          if (event.request.mode === 'navigate') {
+            return caches.match('/index.html');
+          }
+        });
+      })
+    );
     return;
   }
   
+  // Para requisições externas (CDN, Supabase) - tenta rede, fallback cache
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Servir do cache
-        return cachedResponse;
+    fetch(event.request).then((networkResponse) => {
+      // Se conseguiu, salva no cache
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
       }
-      // Fallback para rede
-      return fetch(event.request).catch(() => {
-        // Se for navegação, retornar index.html offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+      return networkResponse;
+    }).catch(() => {
+      // Falhou rede - tenta do cache
+      return caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // Sem cache - retorna resposta vazia para APIs
+        if (url.hostname.includes('supabase')) {
+          return new Response(JSON.stringify({error: 'offline'}), {
+            status: 503,
+            headers: {'Content-Type': 'application/json'}
+          });
         }
       });
     })
