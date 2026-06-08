@@ -13,7 +13,7 @@ async function gerarPDFPedido(pedido) {
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
-        doc.setDrawColor(150);
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(10, 20, 200, 20);
         
@@ -46,7 +46,7 @@ async function gerarPDFPedido(pedido) {
         }
         
         // Linha separadora
-        doc.setDrawColor(150);
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(10, 45, 200, 45);
         
@@ -58,7 +58,7 @@ async function gerarPDFPedido(pedido) {
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
-        doc.setDrawColor(150);
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(10, 57, 200, 57);
         
@@ -78,7 +78,7 @@ async function gerarPDFPedido(pedido) {
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
-        doc.setDrawColor(150);
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(10, 100, 200, 100);
         
@@ -97,7 +97,7 @@ async function gerarPDFPedido(pedido) {
         doc.text('TOTAL', 185, 115, { align: 'right' });
         
         // Linha separadora
-        doc.setDrawColor(150);
+        doc.setDrawColor(0);
         doc.setLineWidth(0.3);
         doc.line(15, 117, 195, 117);
         
@@ -127,20 +127,14 @@ async function gerarPDFPedido(pedido) {
             } catch(e) {}
         }
         
-        // Listar itens
+        // Listar itens - SEM FAIXAS, APENAS LINHAS
         if (itens.length > 0) {
-            itens.forEach(function(item, index) {
+            itens.forEach(function(item) {
                 var nome = item.nome || 'Sem nome';
                 var codigo = item.codigo || '';
                 var qtd = parseInt(item.qtd) || 0;
                 var preco = parseFloat(item.preco) || 0;
                 var total = parseFloat(item.total) || (qtd * preco);
-                
-                // Fundo alternado (cinza bem claro)
-                if (index % 2 === 0) {
-                    doc.setFillColor(248, 248, 248);
-                    doc.rect(15, y - 6, 180, 12, 'F');
-                }
                 
                 // Nome do produto
                 doc.setFontSize(9);
@@ -170,9 +164,9 @@ async function gerarPDFPedido(pedido) {
                 doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y + 2, { align: 'right' });
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora ESCURA - DESENHADA POR ÚLTIMO
-                doc.setDrawColor(100);
-                doc.setLineWidth(0.4);
+                // Linha preta separando itens
+                doc.setDrawColor(0);
+                doc.setLineWidth(0.3);
                 doc.line(15, y + 9, 195, y + 9);
                 
                 y += 13;
@@ -184,10 +178,10 @@ async function gerarPDFPedido(pedido) {
             y += 8;
         }
         
-        // Linha separadora antes do total
+        // Linha antes do total
         y += 4;
-        doc.setDrawColor(100);
-        doc.setLineWidth(0.4);
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
         doc.line(15, y, 195, y);
         y += 8;
         
@@ -200,9 +194,9 @@ async function gerarPDFPedido(pedido) {
         doc.setTextColor(124, 92, 252);
         doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y, { align: 'right' });
         
-        // Linha separadora
-        doc.setDrawColor(100);
-        doc.setLineWidth(0.4);
+        // Linha após total
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.3);
         doc.line(15, y + 3, 195, y + 3);
         
         // Rodapé
