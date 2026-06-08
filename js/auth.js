@@ -85,26 +85,55 @@ async function fazerLogin() {
     btn.disabled = true;
     
     try {
-        var result = await supabaseClient.auth.signInWithPassword({ 
-            email: email, 
-            password: senha 
-        });
-        
-        if (result.error) {
-            var errorMsg = result.error.message.toLowerCase();
+        if (isOnline && supabaseClient) {
+            // Online: tenta login no Supabase
+            var result = await supabaseClient.auth.signInWithPassword({ 
+                email: email, 
+                password: senha 
+            });
             
-            if (errorMsg.includes('invalid login credentials') || errorMsg.includes('bad request')) {
-                toast('E-mail ou senha incorretos!\n\nSe esqueceu a senha, clique em "Esqueci a senha"', 'error');
-            } else if (errorMsg.includes('email not confirmed')) {
-                toast('Confirme seu e-mail antes de entrar', 'warning');
-            } else {
-                toast('Erro: ' + result.error.message, 'error');
+            if (result.error) {
+                var errorMsg = result.error.message.toLowerCase();
+                
+                if (errorMsg.includes('invalid login credentials') || errorMsg.includes('bad request')) {
+                    toast('E-mail ou senha incorretos!\n\nSe esqueceu a senha, clique em "Esqueci a senha"', 'error');
+                } else if (errorMsg.includes('email not confirmed')) {
+                    toast('Confirme seu e-mail antes de entrar', 'warning');
+                } else {
+                    toast('Erro: ' + result.error.message, 'error');
+                }
+                
+                console.error('Erro login:', result.error);
+                btn.innerText = texto;
+                btn.disabled = false;
+                return;
             }
             
-            console.error('Erro login:', result.error);
-            btn.innerText = texto;
-            btn.disabled = false;
-            return;
+            await loginSucesso(result.data.user);
+            
+        } else {
+            // Offline: verifica se tem sessão salva local
+            var userSalvo = localStorage.getItem('kayla_user');
+            var emailSalvo = localStorage.getItem('kayla_email');
+            
+            if (userSalvo && emailSalvo === email) {
+                // Tem sessão salva - permite login offline
+                try {
+                    var userOffline = JSON.parse(userSalvo);
+                    await loginSucesso(userOffline);
+                } catch(e) {
+                    toast('Erro ao carregar sessão offline', 'error');
+                    btn.innerText = texto;
+                    btn.disabled = false;
+                    return;
+                }
+            } else {
+                // Sem sessão salva offline
+                toast('⚠️ Sem conexão com a internet.\n\nVocê precisa estar online no primeiro login.', 'error');
+                btn.innerText = texto;
+                btn.disabled = false;
+                return;
+            }
         }
         
         if (lembrarMe) {
@@ -115,8 +144,6 @@ async function fazerLogin() {
             localStorage.removeItem('kayla_email');
         }
         
-        await loginSucesso(result.data.user);
-        
     } catch (error) {
         toast('Erro de conexão: ' + error.message, 'error');
         console.error(error);
@@ -125,7 +152,6 @@ async function fazerLogin() {
     btn.innerText = texto;
     btn.disabled = false;
 }
-
 async function loginSucesso(user) {
     currentUser = user;
     
