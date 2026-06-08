@@ -42,13 +42,48 @@ async function salvarProduto() {
     var codigo = document.getElementById('produto-codigo-manual').value.trim();
     var preco = parseFloat(document.getElementById('produto-preco-manual').value);
     if (!nome || !codigo || !preco) { toast('Preencha tudo', 'error'); return; }
-    if (produtos.find(function(p) { return p.codigo === codigo; })) { toast('Já existe!', 'error'); return; }
     
-    var produtoData = { nome: nome, codigo: codigo, preco: preco, user_id: currentUser ? currentUser.id : 'local', created_at: new Date().toISOString() };
+    // Verificar duplicata NO BANCO quando online
+    if (isOnline && supabaseClient) {
+        try {
+            var check = await supabaseClient
+                .from('produtos')
+                .select('id')
+                .eq('codigo', codigo)
+                .single();
+            
+            if (check.data) {
+                toast('Já existe um produto com este código!', 'error');
+                return;
+            }
+        } catch(e) {
+            // Se der erro 404 (not found), significa que não existe - pode continuar
+            if (e.code !== 'PGRST116') {
+                console.error('Erro ao verificar duplicata:', e);
+            }
+        }
+    } else {
+        // Offline: verificar no array local
+        if (produtos.find(function(p) { return p.codigo === codigo; })) {
+            toast('Já existe!', 'error');
+            return;
+        }
+    }
+    
+    var produtoData = { 
+        nome: nome, 
+        codigo: codigo, 
+        preco: preco, 
+        user_id: currentUser ? currentUser.id : 'local', 
+        created_at: new Date().toISOString() 
+    };
     
     if (isOnline && supabaseClient) {
         var result = await supabaseClient.from('produtos').insert(produtoData).select();
-        if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+        if (result.error) { 
+            toast('Erro: ' + result.error.message, 'error'); 
+            return; 
+        }
         await carregarDados();
     } else {
         produtoData.id = 'local_' + Date.now();
