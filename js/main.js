@@ -150,7 +150,10 @@ window.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('online', function() { 
         isOnline = true; 
         atualizarBadgeConexao();
-        if (currentUser) sincronizarDados();
+        if (currentUser) {
+            toast('🔄 Online! Sincronizando...', 'warning');
+            carregarDados();
+        }
     });
     window.addEventListener('offline', function() { 
         isOnline = false; 
