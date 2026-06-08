@@ -131,7 +131,7 @@ async function gerarPDFPedido(pedido) {
                 // Fundo alternado
                 if (index % 2 === 0) {
                     doc.setFillColor(250, 250, 250);
-                    doc.rect(15, y - 6, 180, 8, 'F');
+                    doc.rect(15, y - 6, 180, 12, 'F');
                 }
                 
                 // Nome do produto
@@ -140,34 +140,34 @@ async function gerarPDFPedido(pedido) {
                 doc.setTextColor(0);
                 doc.text(nome, 20, y);
                 
-                // Código
+                // Código (embaixo do nome)
                 if (codigo) {
                     doc.setFontSize(7);
                     doc.setFont(undefined, 'normal');
                     doc.setTextColor(120);
-                    doc.text('Cód: ' + codigo, 20, y + 3.5);
+                    doc.text('Cód: ' + codigo, 20, y + 4);
                 }
                 
-                // Quantidade (centralizado)
+                // Quantidade (centralizado verticalmente)
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0);
-                doc.text(qtd + 'x', 105, y, { align: 'center' });
+                doc.text(qtd + 'x', 105, y + 2, { align: 'center' });
                 
-                // Preço unitário (alinhado à direita)
-                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 135, y, { align: 'right' });
+                // Preço unitário (alinhado à direita, centralizado verticalmente)
+                doc.text('R$ ' + preco.toFixed(2).replace('.',','), 135, y + 2, { align: 'right' });
                 
-                // Total (alinhado à direita)
+                // Total (alinhado à direita, centralizado verticalmente)
                 doc.setFont(undefined, 'bold');
-                doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y, { align: 'right' });
+                doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y + 2, { align: 'right' });
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora fina
+                // Linha separadora ABAIXO do código
                 doc.setDrawColor(230);
                 doc.setLineWidth(0.1);
-                doc.line(15, y + 1.5, 195, y + 1.5);
+                doc.line(15, y + 9, 195, y + 9);
                 
-                y += 10;
+                y += 13; // Mais espaço entre itens
             });
         } else {
             doc.setFontSize(9);
