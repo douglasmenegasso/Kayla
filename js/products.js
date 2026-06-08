@@ -137,13 +137,25 @@ async function salvarProdutoEdit(id) {
 }
 
 async function excluirProduto(produtoId) {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!confirm('Tem certeza que deseja excluir este produto permanentemente?')) return;
     
     if (isOnline && supabaseClient) {
-        var result = await supabaseClient.from('produtos').delete().eq('id', produtoId);
-        if (result.error) { toast('Erro: ' + result.error.message, 'error'); return; }
+        // Exclusão FÍSICA do banco
+        var result = await supabaseClient
+            .from('produtos')
+            .delete()
+            .eq('id', produtoId);
+        
+        if (result.error) { 
+            toast('Erro: ' + result.error.message, 'error'); 
+            return; 
+        }
+        
+        // Aguardar e recarregar dados
+        await new Promise(resolve => setTimeout(resolve, 500));
         await carregarDados();
     } else {
+        // Offline: remover do array
         produtos = produtos.filter(function(p) { return p.id !== produtoId; });
         salvarDadosLocais();
     }
