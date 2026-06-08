@@ -37,18 +37,37 @@ function abrirCadastro() {
 }
 
 async function verificarSessao() {
-    if (!supabaseClient) { mostrarTelaSelecao(); return; }
     var lembrarMe = localStorage.getItem('kayla_lembrar_me');
+    
+    // Se tem sessão salva, entra direto (online ou offline)
     if (lembrarMe === 'true') {
-        var result = await supabaseClient.auth.getSession();
-        if (result.data && result.data.session && result.data.session.user) {
-            currentUser = result.data.session.user;
-            await carregarDados();
+        var emailSalvo = localStorage.getItem('kayla_email');
+        var userSalvo = localStorage.getItem('kayla_user');
+        
+        if (userSalvo) {
+            try {
+                currentUser = JSON.parse(userSalvo);
+            } catch(e) {
+                currentUser = { email: emailSalvo, id: 'local' };
+            }
+            
+            // Tenta carregar online, mas se falhar usa dados locais
+            if (isOnline && supabaseClient) {
+                try {
+                    await carregarDados();
+                } catch(e) {
+                    console.warn('Falha ao sincronizar, usando dados locais');
+                }
+            } else {
+                carregarDadosLocais();
+            }
+            
             mostrarApp();
             return;
         }
     }
-    // Não abre login automaticamente - fica na tela inicial
+    
+    // Sem sessão salva - mostra tela de login
     mostrarTelaSelecao();
 }
 
