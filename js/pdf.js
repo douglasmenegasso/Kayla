@@ -5,95 +5,118 @@ async function gerarPDFPedido(pedido) {
         var { jsPDF } = window.jspdf;
         var doc = new jsPDF();
         
-        // Cabeçalho com logo
-        var logoLocal = localStorage.getItem('kayla_logo_local');
-        if (logoLocal) {
-            try {
-                doc.addImage(logoLocal, 'PNG', 15, 10, 35, 17);
-            } catch(e) {}
-        }
-        
-        // Nome da empresa
-        doc.setFontSize(14);
+        // Nome do app no topo
+        doc.setFontSize(16);
         doc.setTextColor(124, 92, 252);
         doc.setFont(undefined, 'bold');
         doc.text(configEmpresa.nome || 'Kayla - Venda Consignada', 105, 15, { align: 'center' });
         doc.setFont(undefined, 'normal');
         
-        // Dados da empresa
-        doc.setFontSize(8);
-        doc.setTextColor(100);
-        var yEmpresa = 21;
-        if (configEmpresa.cnpj) {
-            doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 4;
-        }
-        if (configEmpresa.endereco) {
-            doc.text(configEmpresa.endereco, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 4;
-        }
-        if (configEmpresa.telefone) {
-            doc.text('Tel: ' + configEmpresa.telefone, 105, yEmpresa, { align: 'center' });
-            yEmpresa += 4;
+        // Linha separadora
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
+        doc.line(10, 20, 200, 20);
+        
+        // Logo e informações da empresa
+        var logoLocal = localStorage.getItem('kayla_logo_local');
+        var yInfo = 25;
+        
+        if (logoLocal) {
+            try {
+                doc.addImage(logoLocal, 'PNG', 15, yInfo, 30, 15);
+                // Informações ao lado da logo
+                doc.setFontSize(8);
+                doc.setTextColor(80);
+                var xInfo = 50;
+                if (configEmpresa.cnpj) {
+                    doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, xInfo, yInfo + 4);
+                }
+                if (configEmpresa.endereco) {
+                    doc.text(configEmpresa.endereco, xInfo, yInfo + 9);
+                }
+                if (configEmpresa.telefone) {
+                    doc.text('Tel: ' + configEmpresa.telefone, xInfo, yInfo + 14);
+                }
+            } catch(e) {
+                // Se der erro na logo, mostrar apenas texto
+                doc.setFontSize(8);
+                doc.setTextColor(80);
+                if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 15, yInfo + 4);
+                if (configEmpresa.endereco) doc.text(configEmpresa.endereco, 15, yInfo + 9);
+                if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, 15, yInfo + 14);
+            }
+        } else {
+            // Sem logo, mostrar informações centralizadas
+            doc.setFontSize(8);
+            doc.setTextColor(80);
+            if (configEmpresa.cnpj) {
+                doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, yInfo + 4, { align: 'center' });
+            }
+            if (configEmpresa.endereco) {
+                doc.text(configEmpresa.endereco, 105, yInfo + 9, { align: 'center' });
+            }
+            if (configEmpresa.telefone) {
+                doc.text('Tel: ' + configEmpresa.telefone, 105, yInfo + 14, { align: 'center' });
+            }
         }
         
         // Linha separadora
-        doc.setDrawColor(200);
-        doc.setLineWidth(0.2);
-        doc.line(10, 35, 200, 35);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
+        doc.line(10, 45, 200, 45);
         
         // Título
         doc.setFontSize(12);
         doc.setTextColor(0);
         doc.setFont(undefined, 'bold');
-        doc.text('PEDIDO DE VENDA', 105, 43, { align: 'center' });
+        doc.text('PEDIDO DE VENDA', 105, 53, { align: 'center' });
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
-        doc.setDrawColor(220);
-        doc.setLineWidth(0.1);
-        doc.line(10, 47, 200, 47);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
+        doc.line(10, 57, 200, 57);
         
         // Informações do pedido
         doc.setFontSize(10);
         doc.setTextColor(0);
-        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 55);
-        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 61);
-        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 67);
+        doc.text('Pedido #' + pedido.id.toString().substr(0,8), 15, 65);
+        doc.text('Data: ' + new Date(pedido.created_at).toLocaleDateString('pt-BR'), 15, 71);
+        doc.text('Status: ' + pedido.status.toUpperCase(), 15, 77);
         
         // Cliente em destaque
         doc.setFillColor(245, 245, 245);
-        doc.rect(15, 72, 180, 12, 'F');
+        doc.rect(15, 82, 180, 12, 'F');
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
-        doc.text('Cliente: ' + pedido.cliente_nome, 20, 80);
+        doc.text('Cliente: ' + pedido.cliente_nome, 20, 90);
         doc.setFont(undefined, 'normal');
         
         // Linha separadora
-        doc.setDrawColor(200);
-        doc.setLineWidth(0.2);
-        doc.line(10, 90, 200, 90);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
+        doc.line(10, 100, 200, 100);
         
         // Título dos itens
         doc.setFontSize(10);
         doc.setFont(undefined, 'bold');
-        doc.text('Itens do Pedido:', 15, 98);
+        doc.text('Itens do Pedido:', 15, 108);
         
         // Cabeçalho da tabela
         doc.setFontSize(8);
         doc.setFont(undefined, 'bold');
-        doc.setTextColor(100);
-        doc.text('PRODUTO', 20, 105);
-        doc.text('QTD', 105, 105, { align: 'center' });
-        doc.text('PREÇO UNIT.', 135, 105, { align: 'right' });
-        doc.text('TOTAL', 185, 105, { align: 'right' });
+        doc.setTextColor(80);
+        doc.text('PRODUTO', 20, 115);
+        doc.text('QTD', 105, 115, { align: 'center' });
+        doc.text('PREÇO UNIT.', 135, 115, { align: 'right' });
+        doc.text('TOTAL', 185, 115, { align: 'right' });
         
         // Linha separadora
-        doc.setDrawColor(200);
-        doc.setLineWidth(0.1);
-        doc.line(15, 107, 195, 107);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
+        doc.line(15, 117, 195, 117);
         
-        var y = 115;
+        var y = 125;
         var itens = [];
         
         // Buscar itens
@@ -140,34 +163,34 @@ async function gerarPDFPedido(pedido) {
                 doc.setTextColor(0);
                 doc.text(nome, 20, y);
                 
-                // Código (embaixo do nome)
+                // Código
                 if (codigo) {
                     doc.setFontSize(7);
                     doc.setFont(undefined, 'normal');
-                    doc.setTextColor(120);
+                    doc.setTextColor(100);
                     doc.text('Cód: ' + codigo, 20, y + 4);
                 }
                 
-                // Quantidade (centralizado verticalmente)
+                // Quantidade
                 doc.setFontSize(9);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(0);
                 doc.text(qtd + 'x', 105, y + 2, { align: 'center' });
                 
-                // Preço unitário (alinhado à direita, centralizado verticalmente)
+                // Preço unitário
                 doc.text('R$ ' + preco.toFixed(2).replace('.',','), 135, y + 2, { align: 'right' });
                 
-                // Total (alinhado à direita, centralizado verticalmente)
+                // Total
                 doc.setFont(undefined, 'bold');
                 doc.text('R$ ' + total.toFixed(2).replace('.',','), 185, y + 2, { align: 'right' });
                 doc.setFont(undefined, 'normal');
                 
-                // Linha separadora ABAIXO do código
-                doc.setDrawColor(230);
-                doc.setLineWidth(0.1);
+                // Linha separadora ESCURA
+                doc.setDrawColor(150);
+                doc.setLineWidth(0.3);
                 doc.line(15, y + 9, 195, y + 9);
                 
-                y += 13; // Mais espaço entre itens
+                y += 13;
             });
         } else {
             doc.setFontSize(9);
@@ -178,8 +201,8 @@ async function gerarPDFPedido(pedido) {
         
         // Linha separadora antes do total
         y += 4;
-        doc.setDrawColor(200);
-        doc.setLineWidth(0.2);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
         doc.line(15, y, 195, y);
         y += 8;
         
@@ -193,8 +216,8 @@ async function gerarPDFPedido(pedido) {
         doc.text('R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',','), 185, y, { align: 'right' });
         
         // Linha separadora
-        doc.setDrawColor(200);
-        doc.setLineWidth(0.2);
+        doc.setDrawColor(150);
+        doc.setLineWidth(0.3);
         doc.line(15, y + 3, 195, y + 3);
         
         // Rodapé
