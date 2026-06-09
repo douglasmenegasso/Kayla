@@ -1,6 +1,14 @@
 // ============ GERAÇÃO DE PDF ============
 
 async function gerarPDFPedido(pedido) {
+    // Verificar se é PRO
+    var isPro = LIMITES.proAtivo || localStorage.getItem('kayla_plano') === 'pro';
+    
+    if (!isPro) {
+        toast('🔒 Geração de PDF disponível apenas no plano PRO\n\nAssine o plano PRO para usar esta função', 'error');
+        return;
+    }
+    
     try {
         var { jsPDF } = window.jspdf;
         var doc = new jsPDF();
