@@ -190,4 +190,24 @@ function atualizarBadgePlano() {
     }
 }
 
+// ============ RELÓGIO E DATA ============
+function atualizarRelogio() {
+    var agora = new Date();
+    var horas = String(agora.getHours()).padStart(2, '0');
+    var minutos = String(agora.getMinutes()).padStart(2, '0');
+    var segundos = String(agora.getSeconds()).padStart(2, '0');
+    
+    var dia = String(agora.getDate()).padStart(2, '0');
+    var mes = String(agora.getMonth() + 1).padStart(2, '0');
+    var ano = agora.getFullYear();
+    
+    var horario = document.getElementById('app-relogio');
+    if (horario) {
+        horario.innerHTML = horas + ':' + minutos + ':' + segundos + '<br><small>' + dia + '/' + mes + '/' + ano + '</small>';
+    }
+}
+
+// Atualizar a cada segundo
+setInterval(atualizarRelogio, 1000);
+
 console.log('✅ Main.js carregado');
