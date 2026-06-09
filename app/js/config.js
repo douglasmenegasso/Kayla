@@ -47,6 +47,25 @@ try {
     console.error('Erro ao inicializar Supabase:', e);
 }
 
+// ============ INFORMAÇÕES DO APP ============
+var APP_INFO = {
+    versao: '5.3.0',
+    dataLancamento: '2026-06-09',
+    build: '20260609'
+};
+
+// Histórico de versões
+var HISTORICO_VERSOES = [
+    { versao: '5.3.0', data: '09/06/2026', mudancas: ['Correção login offline', 'Service Worker otimizado', 'Bloqueio PDF para free'] },
+    { versao: '5.2.0', data: '08/06/2026', mudancas: ['Landing page kayla.app.br', 'Domínio configurado', 'E-mails Microsoft 365'] },
+    { versao: '5.1.0', data: '07/06/2026', mudancas: ['Correção caminhos pasta app/', 'Offline funcionando', 'DNS configurado'] },
+    { versao: '5.0.1', data: '06/06/2026', mudancas: ['Movido para pasta app/', 'GitHub Pages configurado', 'PWA funcional'] },
+    { versao: '5.0.0', data: '05/06/2026', mudancas: ['Nova arquitetura', 'Service Worker', 'Sincronização offline'] }
+];
+
+// Atualizar variável global
+var appVersion = APP_INFO.versao;
+
 function configurarEmpresa() {
     var isPro = LIMITES.proAtivo;
     
