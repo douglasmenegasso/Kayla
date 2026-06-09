@@ -1,8 +1,9 @@
 // Service Worker para funcionamento Offline
-const CACHE_NAME = 'kayla-v5.1';
+const CACHE_NAME = 'kayla-v5.2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/app/index.html',
   '/manifest.json',
   '/js/config.js',
   '/js/utils.js',
@@ -53,6 +54,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
+  // IGNORAR requisições POST, PUT, DELETE (APIs, Supabase, etc)
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
   // Para requisições da mesma origem (app local)
   if (url.origin === location.origin) {
     event.respondWith(
@@ -62,7 +68,7 @@ self.addEventListener('fetch', (event) => {
         }
         return fetch(event.request).catch(() => {
           if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
+            return caches.match('/app/index.html');
           }
         });
       })
@@ -73,8 +79,8 @@ self.addEventListener('fetch', (event) => {
   // Para requisições externas (CDN, Supabase) - tenta rede, fallback cache
   event.respondWith(
     fetch(event.request).then((networkResponse) => {
-      // Se conseguiu, salva no cache
-      if (networkResponse && networkResponse.status === 200) {
+      // Se conseguiu, salva no cache (apenas GET)
+      if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
         const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseClone);
