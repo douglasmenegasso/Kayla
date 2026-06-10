@@ -1,5 +1,63 @@
 // ============ MAIN - INICIALIZAÇÃO E NAVEGAÇÃO ============
 
+// ============ RELÓGIO E DATA ============
+function atualizarRelogio() {
+    var agora = new Date();
+    var horas = String(agora.getHours()).padStart(2, '0');
+    var minutos = String(agora.getMinutes()).padStart(2, '0');
+    var segundos = String(agora.getSeconds()).padStart(2, '0');
+    
+    var dia = String(agora.getDate()).padStart(2, '0');
+    var mes = String(agora.getMonth() + 1).padStart(2, '0');
+    var ano = agora.getFullYear();
+    
+    var horario = document.getElementById('app-relogio');
+    if (horario) {
+        horario.innerHTML = horas + ':' + minutos + ':' + segundos + '<br><small>' + dia + '/' + mes + '/' + ano + '</small>';
+    }
+}
+
+// Atualizar a cada segundo
+setInterval(atualizarRelogio, 1000);
+
+// ============ HISTÓRICO DE VERSÕES ============
+function mostrarHistoricoVersoes() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Kayla</div>';
+    html += '<div style="text-align:center;margin-bottom:20px">';
+    html += '<div style="font-size:48px;margin-bottom:10px">🛍️</div>';
+    html += '<div style="font-size:20px;font-weight:700;color:var(--accent)">Sistema de Venda Consignada</div>';
+    html += '<div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:8px;display:inline-block">';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--success)">v' + APP_INFO.versao + '</div>';
+    html += '<div style="font-size:11px;color:var(--text2)">Lançamento: ' + APP_INFO.dataLancamento + '</div>';
+    html += '</div></div>';
+    
+    html += '<div style="margin-bottom:12px"><strong style="color:var(--accent)">📋 Histórico de Versões:</strong></div>';
+    
+    HISTORICO_VERSOES.forEach(function(ver, index) {
+        html += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:8px';
+        if (index === 0) html += ';border:2px solid var(--accent)';
+        html += '">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+        html += '<div style="font-weight:700;color:var(--accent)">v' + ver.versao + '</div>';
+        html += '<div style="font-size:11px;color:var(--text2)">' + ver.data + '</div>';
+        html += '</div>';
+        html += '<ul style="margin:0;padding-left:20px;font-size:12px;color:var(--text2)">';
+        ver.mudancas.forEach(function(mudanca) {
+            html += '<li style="margin-bottom:4px">' + mudanca + '</li>';
+        });
+        html += '</ul></div>';
+    });
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:12px">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+// ============ RESTO DO CÓDIGO EXISTENTE ============
+// (mantenha todo o resto do main.js existente após estas funções)
+
 // Navegação entre abas
 function mudarAba(aba) {
     console.log('🔄 Mudando para aba:', aba);
