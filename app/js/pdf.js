@@ -273,7 +273,8 @@ function mostrarModalUpgradePDF() {
     
     html += '<div style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);border-radius:12px;padding:20px;margin-bottom:20px;text-align:center">';
     html += '<div style="font-size:13px;color:rgba(255,255,255,0.9);margin-bottom:4px">Plano PRO</div>';
-    html += '<div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:4px">R$ 29,90<span style="font-size:14px;font-weight:400">/mês</span></div>';
+    html += '<div style="font-size:14px;color:rgba(255,255,255,0.8);margin-bottom:4px">A partir de</div>';
+    html += '<div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:4px">R$ 19,90<span style="font-size:14px;font-weight:400">/mês</span></div>';
     html += '<div style="font-size:11px;color:rgba(255,255,255,0.8)">Cancele quando quiser</div>';
     html += '</div>';
     
