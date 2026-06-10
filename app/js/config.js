@@ -1,5 +1,24 @@
 // ============ CONFIGURAÇÕES GLOBAIS ============
 
+// ============ INFORMAÇÕES DO APP ============
+var APP_INFO = {
+    versao: '5.3.1',
+    dataLancamento: '2026-06-10',
+    build: '20260610'
+};
+
+// Histórico de versões
+var HISTORICO_VERSOES = [
+    { versao: '5.3.1', data: '10/06/2026', mudancas: ['Relógio e data no header', 'Botão ? com histórico de versões', 'Versão centralizada'] },
+    { versao: '5.3.0', data: '09/06/2026', mudancas: ['Correção login offline', 'Service Worker otimizado', 'Bloqueio PDF para free'] },
+    { versao: '5.2.0', data: '08/06/2026', mudancas: ['Landing page kayla.app.br', 'Domínio configurado', 'E-mails Microsoft 365'] },
+    { versao: '5.1.0', data: '07/06/2026', mudancas: ['Correção caminhos pasta app/', 'Offline funcionando', 'DNS configurado'] },
+    { versao: '5.0.1', data: '06/06/2026', mudancas: ['Movido para pasta app/', 'GitHub Pages configurado', 'PWA funcional'] }
+];
+
+// Atualizar variável global
+var appVersion = APP_INFO.versao;
+
 // Supabase
 var SUPABASE_URL = 'https://xwwklngrkvdwgiinycvt.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S';
@@ -8,8 +27,8 @@ var supabaseClient = null;
 // Edge Functions
 var SUPABASE_EDGE_URL = SUPABASE_URL + '/functions/v1';
 
-// Versão do App
-var appVersion = '5.0.1';
+// Versão do App (referência para APP_INFO)
+var appVersion = APP_INFO.versao;
 
 // Variáveis Globais de Estado
 var currentUser = null;
@@ -47,135 +66,4 @@ try {
     console.error('Erro ao inicializar Supabase:', e);
 }
 
-// ============ INFORMAÇÕES DO APP ============
-var APP_INFO = {
-    versao: '5.3.0',
-    dataLancamento: '2026-06-09',
-    build: '20260609'
-};
-
-// Histórico de versões
-var HISTORICO_VERSOES = [
-    { versao: '5.3.0', data: '09/06/2026', mudancas: ['Correção login offline', 'Service Worker otimizado', 'Bloqueio PDF para free'] },
-    { versao: '5.2.0', data: '08/06/2026', mudancas: ['Landing page kayla.app.br', 'Domínio configurado', 'E-mails Microsoft 365'] },
-    { versao: '5.1.0', data: '07/06/2026', mudancas: ['Correção caminhos pasta app/', 'Offline funcionando', 'DNS configurado'] },
-    { versao: '5.0.1', data: '06/06/2026', mudancas: ['Movido para pasta app/', 'GitHub Pages configurado', 'PWA funcional'] },
-    { versao: '5.0.0', data: '05/06/2026', mudancas: ['Nova arquitetura', 'Service Worker', 'Sincronização offline'] }
-];
-
-// Atualizar variável global
-var appVersion = APP_INFO.versao;
-
-function configurarEmpresa() {
-    var isPro = LIMITES.proAtivo;
-    
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">🏢 Dados da Empresa</div>';
-    html += '<div class="modal-sub">Personalize o PDF dos pedidos</div>';
-    
-    if (!isPro) {
-        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;border-left:4px solid var(--warning)">';
-        html += '<div style="display:flex;align-items:center;gap:12px">';
-        html += '<div style="font-size:24px">🔒</div>';
-        html += '<div>';
-        html += '<div style="font-weight:700;color:var(--warning)">Recurso PRO</div>';
-        html += '<div style="font-size:12px;color:var(--text2)">Esta função está disponível apenas no plano PRO</div>';
-        html += '</div></div></div>';
-    }
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    
-    // Logo
-    html += '<div style="margin-bottom:16px">';
-    html += '<label class="form-label">📷 Logotipo da Empresa</label>';
-    if (configEmpresa.logo) {
-        html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2)"></div>';
-    }
-    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">Formato: PNG • Tamanho máx: 500KB • Dimensão: 400x200px</div>';
-    html += '<input type="file" id="config-logo" accept="image/png" ' + (isPro ? '' : 'disabled') + ' onchange="uploadLogo()">';
-    if (!isPro) {
-        html += '<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠️ Disponível apenas no plano PRO</div>';
-    }
-    html += '</div>';
-    
-    // Nome
-    html += '<div class="form-group">';
-    html += '<label class="form-label">📛 Nome da Empresa</label>';
-    html += '<input class="form-input" id="config-nome" value="' + (configEmpresa.nome || '') + '" ' + (isPro ? '' : 'disabled') + ' placeholder="Nome da sua empresa">';
-    if (!isPro) html += '<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠️ Disponível apenas no plano PRO</div>';
-    html += '</div>';
-    
-    // CNPJ
-    html += '<div class="form-group">';
-    html += '<label class="form-label">🆔 CNPJ/CPF</label>';
-    html += '<input class="form-input" id="config-cnpj" value="' + (configEmpresa.cnpj || '') + '" ' + (isPro ? '' : 'disabled') + ' placeholder="00.000.000/0000-00">';
-    if (!isPro) html += '<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠️ Disponível apenas no plano PRO</div>';
-    html += '</div>';
-    
-    // Endereço
-    html += '<div class="form-group">';
-    html += '<label class="form-label">📍 Endereço Completo</label>';
-    html += '<input class="form-input" id="config-endereco" value="' + (configEmpresa.endereco || '') + '" ' + (isPro ? '' : 'disabled') + ' placeholder="Rua, número, bairro, cidade - UF">';
-    if (!isPro) html += '<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠️ Disponível apenas no plano PRO</div>';
-    html += '</div>';
-    
-    // Telefone
-    html += '<div class="form-group">';
-    html += '<label class="form-label">📞 Telefone/WhatsApp</label>';
-    html += '<input class="form-input" id="config-telefone" value="' + (configEmpresa.telefone || '') + '" ' + (isPro ? '' : 'disabled') + ' placeholder="(00) 00000-0000">';
-    if (!isPro) html += '<div style="font-size:11px;color:var(--warning);margin-top:4px">⚠️ Disponível apenas no plano PRO</div>';
-    html += '</div>';
-    
-    html += '</div>';
-    
-    if (isPro) {
-        html += '<button class="btn btn-primary" onclick="salvarConfiguracoesEmpresa()">💾 Salvar Configurações</button>';
-    }
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-function uploadLogo() {
-    var input = document.getElementById('config-logo');
-    var file = input.files[0];
-    
-    if (!file) return;
-    
-    // Verificar tipo
-    if (file.type !== 'image/png') {
-        toast('Apenas arquivos PNG são aceitos', 'error');
-        input.value = '';
-        return;
-    }
-    
-    // Verificar tamanho (500KB)
-    if (file.size > 500 * 1024) {
-        toast('Imagem muito grande. Máximo 500KB', 'error');
-        input.value = '';
-        return;
-    }
-    
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        configEmpresa.logo = e.target.result;
-        localStorage.setItem('kayla_logo_local', e.target.result);
-        toast('✅ Logotipo carregado!', 'success');
-        configurarEmpresa(); // Recarregar modal para mostrar preview
-    };
-    reader.readAsDataURL(file);
-}
-
-function salvarConfiguracoesEmpresa() {
-    configEmpresa.nome = document.getElementById('config-nome').value.trim();
-    configEmpresa.cnpj = document.getElementById('config-cnpj').value.trim();
-    configEmpresa.endereco = document.getElementById('config-endereco').value.trim();
-    configEmpresa.telefone = document.getElementById('config-telefone').value.trim();
-    
-    salvarConfigEmpresa();
-    toast('✅ Configurações salvas!', 'success');
-    fecharModal();
-}
-
-console.log('✅ Config.js carregado - v' + appVersion);
+console.log('✅ Config.js carregado - v' + APP_INFO.versao);
