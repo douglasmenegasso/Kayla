@@ -343,4 +343,50 @@ async function sincronizarDados() {
     toast('✅ Dados sincronizados!', 'success');
 }
 
+function recuperarSenha() {
+    var email = document.getElementById('email').value.trim();
+    
+    if (!email) {
+        toast('Digite seu e-mail', 'warning');
+        document.getElementById('email').focus();
+        return;
+    }
+    
+    // Validar e-mail
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        toast('E-mail inválido', 'error');
+        return;
+    }
+    
+    confirmar('Recuperar Senha', 'Será enviado um link de recuperação para:\n\n' + email + '\n\nDeseja continuar?', function(confirmed) {
+        if (!confirmed) return;
+        
+        (async function() {
+            try {
+                if (supabaseClient) {
+                    var result = await supabaseClient.auth.resetPasswordForEmail(email, {
+                        redirectTo: window.location.origin + '/app/#reset-password'
+                    });
+                    
+                    if (result.error) {
+                        toast('Erro: ' + result.error.message, 'error');
+                    } else {
+                        toast('✅ E-mail de recuperação enviado!\n\nVerifique sua caixa de entrada e spam.', 'success');
+                        fecharModal();
+                    }
+                } else {
+                    // Modo offline - apenas simular
+                    toast('⚠️ Modo offline\n\nEm produção, o e-mail seria enviado para: ' + email, 'warning');
+                    console.log('Recuperação de senha solicitada para:', email);
+                    console.log('Email de suporte: suporte@kayla.app.br');
+                }
+            } catch(e) {
+                toast('Erro de conexão: ' + e.message, 'error');
+                console.error('Erro na recuperação:', e);
+            }
+        })();
+    });
+}
+
 console.log('✅ Auth.js carregado');
