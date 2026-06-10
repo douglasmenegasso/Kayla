@@ -386,7 +386,89 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             return;
         }
         
-        // Calcular novo total
+        // Se reduziu a quantidade, registrar devolução
+        if (novaQtd < qtdAtual) {
+            var qtdDevolvida = qtdAtual - novaQtd;
+            
+            // Buscar pedido atual
+            var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+            if (!pedido) {
+                toast('Pedido não encontrado', 'error');
+                return;
+            }
+            
+            // Carregar histórico existente
+            var historicoDevolucoes = [];
+            if (pedido.historico_devolucoes) {
+                try {
+                    historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+                } catch(e) {}
+            }
+            
+            // Registrar devolução da diferença
+            historicoDevolucoes.push({
+                data: new Date().toISOString(),
+                itens: [{
+                    produto_id: item.produto_id,
+                    nome: item.nome,
+                    codigo: item.codigo,
+                    preco: parseFloat(item.preco) || 0,
+                    qtd: qtdDevolvida,
+                    total: qtdDevolvida * (parseFloat(item.preco) || 0)
+                }],
+                motivo: 'Redução de quantidade (de ' + qtdAtual + ' para ' + novaQtd + ')',
+                tipo: 'devolucao_parcial'
+            });
+            
+            console.log('📋 Devolução parcial registrada:', qtdDevolvida + 'x ' + item.nome);
+            
+            // Calcular novo total do item
+            var precoUnitario = parseFloat(item.preco) || 0;
+            var novoTotalItem = novaQtd * precoUnitario;
+            
+            // Calcular novo total do pedido
+            var totalAntigo = parseFloat(item.total) || 0;
+            var diferencaTotal = novoTotalItem - totalAntigo;
+            var novoTotalPedido = parseFloat(pedido.total) + diferencaTotal;
+            
+            // Atualizar item E pedido COM histórico
+            await supabaseClient
+                .from('pedido_itens')
+                .update({ 
+                    qtd: novaQtd,
+                    total: novoTotalItem
+                })
+                .eq('id', itemId);
+            
+            await supabaseClient
+                .from('pedidos')
+                .update({ 
+                    total: novoTotalPedido,
+                    historico_devolucoes: JSON.stringify(historicoDevolucoes)
+                })
+                .eq('id', pedidoId);
+            
+            await carregarDados();
+            
+            // ATUALIZAR VISUALMENTE
+            var itemContainer = document.querySelector('[data-item-id="' + itemId + '"]');
+            if (itemContainer) {
+                var qtdDisplay = itemContainer.querySelector('[data-item-qtd]');
+                if (qtdDisplay) {
+                    qtdDisplay.textContent = novaQtd;
+                }
+                
+                var totalDisplay = itemContainer.querySelector('[data-item-total]');
+                if (totalDisplay) {
+                    totalDisplay.textContent = 'R$ ' + novoTotalItem.toFixed(2).replace('.',',');
+                }
+            }
+            
+            toast('✅ Qtd reduzida: ' + qtdDevolvida + 'x devolvido(s)', 'success');
+            return;
+        }
+        
+        // Se aumentou a quantidade (sem devolução)
         var precoUnitario = parseFloat(item.preco) || 0;
         var novoTotal = novaQtd * precoUnitario;
         
@@ -424,13 +506,11 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
         // ATUALIZAR VISUALMENTE (sem recarregar tudo)
         var itemContainer = document.querySelector('[data-item-id="' + itemId + '"]');
         if (itemContainer) {
-            // Atualizar quantidade
             var qtdDisplay = itemContainer.querySelector('[data-item-qtd]');
             if (qtdDisplay) {
                 qtdDisplay.textContent = novaQtd;
             }
             
-            // Atualizar valor total
             var totalDisplay = itemContainer.querySelector('[data-item-total]');
             if (totalDisplay) {
                 totalDisplay.textContent = 'R$ ' + novoTotal.toFixed(2).replace('.',',');
@@ -444,7 +524,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
         console.error(e);
     }
 }
-
 async function confirmarDevolucao(pedidoId) {
     toast('Use os botões 🗑️ para remover itens', 'warning');
 }
@@ -529,9 +608,21 @@ async function carregarItensParaVerPedido(pedidoId) {
         }
     });
     
+    // Calcular total de itens RESTANTES
+    var totalItensRestantes = 0;
+    itens.forEach(function(item) {
+        var qtdOriginal = parseInt(item.qtd) || 0;
+        var chave = (item.codigo || '') + '_' + (item.nome || '').toLowerCase().trim();
+        var qtdDevolvida = itensDevolvidosMap[chave] || 0;
+        var qtdRestante = qtdOriginal - qtdDevolvida;
+        if (qtdRestante > 0) {
+            totalItensRestantes += qtdRestante;
+        }
+    });
+    
     if (itens.length > 0) {
         var html = '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido</strong></div>';
+        html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + totalItensRestantes + ')</strong></div>';
         html += '<div class="item-list">';
         itens.forEach(function(item) {
             var qtdOriginal = parseInt(item.qtd) || 0;
