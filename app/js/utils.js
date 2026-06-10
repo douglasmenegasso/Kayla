@@ -185,31 +185,12 @@ function onBackButton() {
     }
 }
 
-// Modal de confirmação personalizado
-function confirmar(titulo, mensagem, onConfirm) {
-    document.getElementById('confirm-title').innerText = titulo;
-    document.getElementById('confirm-message').innerText = mensagem;
-    
-    var modal = document.getElementById('confirm-modal');
-    var btnOk = document.getElementById('confirm-btn-ok');
-    var btnCancel = document.getElementById('confirm-btn-cancel');
-    
-    modal.classList.add('show');
-    
-    // Remover listeners anteriores
-    var newBtnOk = btnOk.cloneNode(true);
-    var newBtnCancel = btnCancel.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-    btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
-    
-    newBtnOk.addEventListener('click', function() {
-        modal.classList.remove('show');
-        if (onConfirm) onConfirm();
-    });
-    
-    newBtnCancel.addEventListener('click', function() {
-        modal.classList.remove('show');
-    });
+// Rolar para o topo da página
+function rolarParaTopo() {
+    var content = document.getElementById('content');
+    if (content) {
+        content.scrollTop = 0;
+    }
 }
 
 console.log('✅ Utils.js carregado');
