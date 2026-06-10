@@ -5,8 +5,8 @@ async function gerarPDFPedido(pedido) {
     var isPro = LIMITES.proAtivo || localStorage.getItem('kayla_plano') === 'pro';
     
     if (!isPro) {
-        toast('🔒 Geração de PDF disponível apenas no plano PRO\n\nAssine o plano PRO para usar esta função', 'error');
-        return;
+        mostrarModalUpgradePDF();
+    return;
     }
     
     try {
@@ -249,4 +249,40 @@ async function gerarPDFPedido(pedido) {
         console.error('Erro ao gerar PDF:', error);
     }
 }
+// Modal de Upgrade para PDF
+function mostrarModalUpgradePDF() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🔒 Recurso PRO</div>';
+    html += '<div style="text-align:center;margin:20px 0">';
+    html += '<div style="font-size:64px;margin-bottom:16px">📄</div>';
+    html += '<div style="font-size:18px;font-weight:600;margin-bottom:8px;color:var(--accent)">Geração de PDF</div>';
+    html += '<div style="font-size:14px;color:var(--text2);margin-bottom:24px">';
+    html += 'A geração de PDFs personalizados está disponível apenas no plano PRO';
+    html += '</div>';
+    
+    html += '<div style="background:var(--bg3);border-radius:12px;padding:20px;margin-bottom:20px">';
+    html += '<div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text)">Benefícios do PRO:</div>';
+    html += '<ul style="text-align:left;font-size:13px;color:var(--text2);padding-left:20px;margin:0">';
+    html += '<li style="margin-bottom:8px">✅ Geração ilimitada de PDFs</li>';
+    html += '<li style="margin-bottom:8px">✅ Logotipo da empresa nos PDFs</li>';
+    html += '<li style="margin-bottom:8px">✅ Compartilhamento direto</li>';
+    html += '<li style="margin-bottom:8px">✅ Clientes ilimitados</li>';
+    html += '<li style="margin-bottom:8px">✅ Produtos ilimitados</li>';
+    html += '<li>✅ Pedidos ilimitados</li>';
+    html += '</ul></div>';
+    
+    html += '<div style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);border-radius:12px;padding:20px;margin-bottom:20px;text-align:center">';
+    html += '<div style="font-size:13px;color:rgba(255,255,255,0.9);margin-bottom:4px">Plano PRO</div>';
+    html += '<div style="font-size:32px;font-weight:700;color:#fff;margin-bottom:4px">R$ 29,90<span style="font-size:14px;font-weight:400">/mês</span></div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.8)">Cancele quando quiser</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="fecharModal(); toast(\'Em breve! Entre em contato: contato@kayla.app.br\', \'warning\')" style="margin-bottom:12px">🚀 Assinar Plano PRO</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Depois eu assino</button>';
+    html += '</div>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
 console.log('✅ PDF.js carregado');
