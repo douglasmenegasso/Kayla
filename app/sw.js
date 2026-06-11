@@ -13,6 +13,14 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-192-dark.png'
 ];
 
+// ============ ADICIONADO: Assets extras para PWA ============
+const PWA_ASSETS = [
+  './assets/icons/icon-512-dark.png',
+  './assets/icons/apple-touch-icon-dark.png',
+  './assets/icons/favicon.ico'
+];
+// ==========================================================
+
 // Install - Cache dos assets
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando Service Worker');
@@ -114,5 +122,51 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// ============ ADICIONADO: Suporte a PWA e Instalação ============
+
+// Notificar cliente quando novo SW estiver disponível
+self.addEventListener('install', (event) => {
+  self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({ type: 'SW_UPDATING' });
+    });
+  });
+});
+
+// Notificar quando SW estiver pronto
+self.addEventListener('activate', (event) => {
+  self.clients.matchAll().then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({ type: 'SW_READY' });
+    });
+  });
+});
+
+// Cache de ícones PWA em background (após instalação)
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.all(
+        PWA_ASSETS.map(async (url) => {
+          try {
+            const exists = await cache.match(url);
+            if (!exists) {
+              const response = await fetch(url);
+              if (response.ok) {
+                await cache.put(url, response);
+                console.log('[SW] PWA asset cacheado:', url);
+              }
+            }
+          } catch (err) {
+            console.warn('[SW] PWA asset não encontrado:', url);
+          }
+        })
+      );
+    })
+  );
+});
+
+// ==========================================================
 
 console.log('[SW] Service Worker carregado');
