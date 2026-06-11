@@ -167,6 +167,26 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ==========================================================
+// ============ ADICIONADO: Melhorar detecção de instalação ============
+
+// Forçar atualização do SW
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        self.clients.claim()
+    );
+});
+
+// Mensagem para verificar se é instalável
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'CHECK_INSTALLABLE') {
+        event.ports[0].postMessage({ installable: true });
+    }
+});
+
+// ================================================================
 
 console.log('[SW] Service Worker carregado');
