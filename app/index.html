@@ -311,26 +311,26 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 <script src="js/main.js"></script>
 
 <!-- Banner de Instalação PWA -->
-<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:2px solid var(--accent);padding:16px;z-index:4000;box-shadow:0-4px-20px rgba(0,0,0,0.5)">
-    <div style="display:flex;align-items:center;justify-content:space-between;max-width:600px;margin:0 auto">
+<div id="install-banner" style="display:none;position:fixed;bottom:70px;left:10px;right:10px;background:var(--bg2);border:2px solid var(--accent);border-radius:12px;padding:16px;z-index:4000;box-shadow:0 4px 20px rgba(124,92,252,0.3)">
+    <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:32px">📱</div>
         <div style="flex:1">
-            <div style="font-weight:700;color:var(--accent);margin-bottom:4px">📱 Instalar Kayla App</div>
-            <div style="font-size:12px;color:var(--text2)">Instale o app na tela inicial para acesso rápido</div>
+            <div style="font-weight:700;color:var(--accent);margin-bottom:4px">Instalar Kayla App</div>
+            <div style="font-size:12px;color:var(--text2)">Acesso rápido na tela inicial</div>
         </div>
         <div style="display:flex;gap:8px">
-            <button id="btn-install" class="btn btn-sm btn-primary">Instalar</button>
-            <button id="btn-dismiss-install" class="btn btn-sm btn-outline">Depois</button>
+            <button id="btn-install" class="btn btn-sm btn-primary" style="margin:0;width:auto;padding:8px 16px">Instalar</button>
+            <button id="btn-dismiss-install" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">✕</button>
         </div>
     </div>
 </div>
 
-<!-- Modal de Instruções de Instalação -->
+<!-- Modal de Instruções -->
 <div id="install-instructions-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:5000;align-items:center;justify-content:center;padding:20px">
     <div style="background:var(--bg2);border-radius:16px;max-width:400px;width:100%;padding:24px;max-height:90vh;overflow-y:auto">
         <div style="text-align:center;margin-bottom:20px">
             <div style="font-size:48px;margin-bottom:12px">📲</div>
             <div style="font-size:20px;font-weight:700;color:var(--accent)">Como Instalar</div>
-            <div style="font-size:13px;color:var(--text2)">Siga os passos abaixo</div>
         </div>
         
         <div id="android-steps" style="display:none">
@@ -362,7 +362,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 </div>
 
 <script>
-// Detectar sistema operacional
+// ============ PWA INSTALL ============
+var deferredPrompt;
+var installBanner = document.getElementById('install-banner');
+var installButton = document.getElementById('btn-install');
+var dismissButton = document.getElementById('btn-dismiss-install');
+
+// Detectar OS
 function getOS() {
     var userAgent = navigator.userAgent || navigator.vendor || window.opera;
     if (/android/i.test(userAgent)) return 'android';
@@ -370,19 +376,15 @@ function getOS() {
     return 'other';
 }
 
-// Verificar se é instalável
-var deferredPrompt;
-var installButton = document.getElementById('btn-install');
-var dismissButton = document.getElementById('btn-dismiss-install');
-var installBanner = document.getElementById('install-banner');
-
+// Evento antes de instalar
 window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     deferredPrompt = e;
     
-    // Verificar se já foi dispensado
     if (!localStorage.getItem('kayla_install_dismissed')) {
-        installBanner.style.display = 'block';
+        setTimeout(function() {
+            installBanner.style.display = 'block';
+        }, 3000);
     }
 });
 
@@ -393,19 +395,16 @@ if (installButton) {
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then(function(choiceResult) {
                 if (choiceResult.outcome === 'accepted') {
-                    toast('✅ App instalado com sucesso!', 'success');
+                    toast('✅ App instalado!', 'success');
                 }
                 deferredPrompt = null;
                 installBanner.style.display = 'none';
             });
         } else {
-            // Se não tem evento beforeinstallprompt, mostrar instruções
+            // Mostrar instruções
             var os = getOS();
-            if (os === 'android') {
-                document.getElementById('android-steps').style.display = 'block';
-            } else if (os === 'ios') {
-                document.getElementById('ios-steps').style.display = 'block';
-            }
+            document.getElementById('android-steps').style.display = os === 'android' ? 'block' : 'none';
+            document.getElementById('ios-steps').style.display = os === 'ios' ? 'block' : 'none';
             document.getElementById('install-instructions-modal').style.display = 'flex';
         }
     });
@@ -419,32 +418,16 @@ if (dismissButton) {
     });
 }
 
-// Mostrar botão de instruções no menu
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        if (!localStorage.getItem('kayla_install_dismissed') && !deferredPrompt) {
-            // Criar botão no header se não existir
-            var header = document.querySelector('.header-actions');
-            if (header && !document.getElementById('btn-install-help')) {
-                var btnHelp = document.createElement('button');
-                btnHelp.id = 'btn-install-help';
-                btnHelp.innerHTML = '📲';
-                btnHelp.style.cssText = 'background:var(--bg3);border:none;border-radius:8px;padding:8px;cursor:pointer;font-size:16px;margin-right:8px';
-                btnHelp.title = 'Como instalar o app';
-                btnHelp.onclick = function() {
-                    var os = getOS();
-                    if (os === 'android') {
-                        document.getElementById('android-steps').style.display = 'block';
-                    } else if (os === 'ios') {
-                        document.getElementById('ios-steps').style.display = 'block';
-                    }
-                    document.getElementById('install-instructions-modal').style.display = 'flex';
-                };
-                header.insertBefore(btnHelp, header.firstChild);
-            }
-        }
-    }, 2000);
+// App instalado - esconder banner
+window.addEventListener('appinstalled', function() {
+    installBanner.style.display = 'none';
+    toast('✅ Kayla instalado com sucesso!', 'success');
 });
+
+// Detectar se já está instalado
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    console.log('[PWA] App já está instalado');
+}
 </script>
     
 </body>
