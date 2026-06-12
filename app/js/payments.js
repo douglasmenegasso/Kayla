@@ -1,5 +1,31 @@
 // ============ PAGAMENTOS E ATIVAÇÃO ============
 
+// Configurações de planos
+const PLANOS = {
+    mensal: {
+        id: 'mensal',
+        nome: 'Plano Mensal',
+        precoBase: 19.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 30,
+        tipo: 'mensal'
+    },
+    anual: {
+        id: 'anual',
+        nome: 'Plano Anual',
+        precoBase: 199.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 365,
+        tipo: 'anual'
+    }
+};
+
+// ============ VALIDAÇÃO E ATIVAÇÃO ============
+
 async function validarKeyBackend(keyCode) {
     try {
         var response = await fetch(SUPABASE_EDGE_URL + '/validate-key', {
@@ -56,37 +82,572 @@ async function ativarPro() {
     btn.disabled = false;
 }
 
+// ============ TELA DE PLANOS ============
+
 function mostrarPlanos() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🚀 Escolha seu Plano</div>';
     html += '<div class="modal-sub">Selecione o plano ideal para você</div>';
     
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-    html += '<div class="card" style="background:var(--bg3);padding:16px;cursor:pointer;border:2px solid var(--accent)" onclick="selecionarPlano(\'Mensal\', 19.90)">';
-    html += '<div style="font-size:24px;font-weight:700;color:var(--accent)">R$ 19,90</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Mensal<br>1 Dispositivo</div></div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;cursor:pointer;border:2px solid transparent" onclick="selecionarPlano(\'Trimestral\', 49.90)">';
-    html += '<div style="font-size:24px;font-weight:700;color:var(--accent)">R$ 49,90</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Trimestral<br>1 Dispositivo</div></div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;cursor:pointer;border:2px solid transparent" onclick="selecionarPlano(\'Semestral\', 89.90)">';
-    html += '<div style="font-size:24px;font-weight:700;color:var(--accent)">R$ 89,90</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Semestral<br>1 Dispositivo</div></div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;cursor:pointer;border:2px solid transparent" onclick="selecionarPlano(\'Anual\', 159.90)">';
-    html += '<div style="font-size:24px;font-weight:700;color:var(--accent)">R$ 159,90</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Anual<br>1 Dispositivo</div></div>';
+    // Plano Mensal
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent)" onclick="selecionarPlano(\'mensal\')">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-weight:700;font-size:16px">📅 Mensal</div>';
+    html += '<span class="badge-pro">POPULAR</span>';
     html += '</div>';
+    html += '<div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">R$ 19,90<span style="font-size:14px;color:var(--text2)">/mês</span></div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Cancele quando quiser</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ 1 dispositivo incluso</li>';
+    html += '<li>✅ Clientes ilimitados</li>';
+    html += '<li>✅ Produtos ilimitados</li>';
+    html += '<li>✅ Geração de PDF</li>';
+    html += '<li>✅ Suporte prioritário</li>';
+    html += '</ul></div>';
+    
+    // Plano Anual
+    html += '<div class="card" style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent);position:relative" onclick="selecionarPlano(\'anual\')">';
+    html += '<div style="position:absolute;top:-10px;right:16px;background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700">ECONOMIA 17%</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-weight:700;font-size:16px;color:#fff">🎯 Anual</div>';
+    html += '<span style="background:rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MELHOR VALOR</span>';
+    html += '</div>';
+    html += '<div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">R$ 199,90<span style="font-size:14px;opacity:0.9">/ano</span></div>';
+    html += '<div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:12px">2 meses grátis!</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:rgba(255,255,255,0.95);margin:0">';
+    html += '<li>✅ Tudo do plano mensal</li>';
+    html += '<li>✅ Economia de R$ 38,90</li>';
+    html += '<li>✅ Suporte VIP</li>';
+    html += '<li>✅ Recursos exclusivos</li>';
+    html += '</ul></div>';
+    
+    // Info sobre dispositivos
+    html += '<div class="card" style="background:var(--bg3);padding:12px;margin-bottom:12px">';
+    html += '<div style="font-size:12px;color:var(--text2);text-align:center">';
+    html += '💡 <strong>Dispositivos adicionais:</strong> R$ 5,00/mês cada<br>';
+    html += 'Máximo de 5 dispositivos por conta';
+    html += '</div></div>';
     
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-function selecionarPlano(plano, valor) {
-    toast('Em breve: Integração com Asaas para ' + plano + ' (R$ ' + valor.toFixed(2).replace('.', ',') + ')', 'warning');
+// ============ SELEÇÃO DE DISPOSITIVOS ============
+
+function selecionarPlano(planoId) {
+    var plano = PLANOS[planoId];
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Dispositivos</div>';
+    html += '<div class="modal-sub">Quantos dispositivos deseja usar?</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px;text-align:center">';
+    html += 'Selecione o número de dispositivos que terão acesso ao plano PRO';
+    html += '</div>';
+    
+    // Opções de dispositivos
+    for (var i = 1; i <= 5; i++) {
+        var dispositivosExtras = Math.max(0, i - plano.dispositivosInclusos);
+        var precoTotal = planoId === 'anual' 
+            ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
+            : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+        
+        var destaque = i === 1 ? 'border:2px solid var(--accent);' : '';
+        
+        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="confirmarPlano(\'' + planoId + '\', ' + i + ')">';
+        html += '<div class="item-info">';
+        html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
+        html += '<div class="item-detail">';
+        if (i === 1) {
+            html += 'Incluso no plano';
+        } else {
+            html += '+R$ ' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + '/mês extra';
+        }
+        html += '</div></div>';
+        html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + precoTotal.toFixed(2).replace('.', ',') + '</div>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="mostrarPlanos()">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+// ============ CONFIRMAÇÃO E PAGAMENTO ============
+
+function confirmarPlano(planoId, numDispositivos) {
+    var plano = PLANOS[planoId];
+    var dispositivosExtras = Math.max(0, numDispositivos - plano.dispositivosInclusos);
+    var precoTotal = planoId === 'anual' 
+        ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
+        : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">💳 Pagamento</div>';
+    html += '<div class="modal-sub">' + plano.nome + '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Plano:</span><strong>' + plano.nome + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Dispositivos:</span><strong>' + numDispositivos + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Duração:</span><strong>' + (planoId === 'anual' ? '12 meses' : '1 mês') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border);margin-top:12px"><span style="font-size:16px">Total:</span><strong style="color:var(--accent);font-size:20px">R$ ' + precoTotal.toFixed(2).replace('.', ',') + '</strong></div>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
+    html += '<button class="btn btn-primary" onclick="pagarComPix(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💠 Pagar com PIX</button>';
+    html += '<button class="btn btn-outline" onclick="pagarComCartao(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Cartão de Crédito</button>';
+    html += '<button class="btn btn-outline" onclick="pagarComBoleto(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">📄 Boleto Bancário</button>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+// ============ FORMAS DE PAGAMENTO ============
+
+async function pagarComPix(planoId, numDispositivos, valor) {
+    toast('Processando...', 'warning');
+    
+    // Criar registro de pagamento
+    var pagamento = await criarRegistroPagamento(planoId, numDispositivos, valor, 'pix');
+    if (!pagamento) return;
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">💠 Pagamento PIX</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+    html += '<div style="font-size:48px;margin-bottom:12px">💠</div>';
+    html += '<div style="font-size:24px;font-weight:700;color:var(--accent);margin-bottom:8px">R$ ' + valor.toFixed(2).replace('.', ',') + '</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Escaneie o QR Code ou copie o código PIX</div>';
+    
+    // QR Code (placeholder - integrar com API real)
+    html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
+    html += '<div style="width:200px;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999">QR Code</div>';
+    html += '</div>';
+    
+    html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
+    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Código PIX Copia e Cola:</div>';
+    html += '<div id="pix-code" style="font-size:10px;word-break:break-all;color:var(--text);font-family:monospace">00020126580014BR.GOV.BCB.PIX0136' + pagamento.id + '520400005303986540' + valor.toFixed(2) + '5802BR5913KAYLA APP6009SAO PAULO62070503***6304ABCD</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-sm btn-outline" onclick="copiarPix()" style="width:100%;margin:0">📋 Copiar Código PIX</button>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--warning);color:#000;padding:12px;border-radius:8px;margin-bottom:16px;text-align:center">';
+    html += '<div style="font-weight:600">⏱️ Após o pagamento:</div>';
+    html += '<div style="font-size:12px;margin-top:4px">Aprovação em até 5 minutos</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="verificarStatusPagamento(\'' + pagamento.id + '\')">✅ Já Paguei - Verificar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+function copiarPix() {
+    var pixCode = document.getElementById('pix-code').innerText;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(pixCode).then(function() {
+            toast('✅ Código PIX copiado!', 'success');
+        });
+    } else {
+        var textarea = document.createElement('textarea');
+        textarea.value = pixCode;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        toast('✅ Código PIX copiado!', 'success');
+    }
+}
+
+function pagarComCartao(planoId, numDispositivos, valor) {
+    toast('💳 Pagamento com cartão em breve!', 'warning');
+}
+
+function pagarComBoleto(planoId, numDispositivos, valor) {
+    toast('📄 Pagamento com boleto em breve!', 'warning');
+}
+
+// ============ REGISTRO DE PAGAMENTO ============
+
+async function criarRegistroPagamento(planoId, numDispositivos, valor, metodo) {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return null;
+    }
+    
+    try {
+        var pagamentoData = {
+            user_id: currentUser.id,
+            valor: valor,
+            metodo_pagamento: metodo,
+            status: 'pendente'
+        };
+        
+        var result = await supabaseClient
+            .from('pagamentos')
+            .insert(pagamentoData)
+            .select()
+            .single();
+        
+        if (result.error) {
+            console.error('Erro ao criar pagamento:', result.error);
+            toast('Erro ao iniciar pagamento', 'error');
+            return null;
+        }
+        
+        return result.data;
+    } catch(e) {
+        console.error('Erro no pagamento:', e);
+        toast('Erro de conexão', 'error');
+        return null;
+    }
+}
+
+async function verificarStatusPagamento(pagamentoId) {
+    toast('Verificando pagamento...', 'warning');
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">✅ Confirmar Pagamento</div>';
+    html += '<div class="modal-sub">Insira o código da transação</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">';
+    html += 'Após pagar, você receberá um código de confirmação. Insira-o abaixo:';
+    html += '</div>';
+    html += '<input type="text" class="form-input" id="codigo-transacao" placeholder="Código da transação">';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="confirmarPagamentoManual(\'' + pagamentoId + '\')">✅ Confirmar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+async function confirmarPagamentoManual(pagamentoId) {
+    var codigo = document.getElementById('codigo-transacao').value.trim();
+    if (!codigo) {
+        toast('Digite o código da transação', 'warning');
+        return;
+    }
+    
+    toast('Pagamento em análise. Aguarde aprovação.', 'warning');
     fecharModal();
+}
+
+// ============ UPGRADE DE DISPOSITIVOS ============
+
+function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
+    var dataFim = new Date(assinaturaAtual.data_fim);
+    var hoje = new Date();
+    
+    var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
+    if (mesesRestantes <= 0) mesesRestantes = 1;
+    
+    var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
+    if (dispositivosExtras <= 0) dispositivosExtras = 1;
+    
+    var valorPorMes = 5.00;
+    var valorTotal = dispositivosExtras * valorPorMes * mesesRestantes;
+    
+    return {
+        dispositivosExtras: dispositivosExtras,
+        mesesRestantes: mesesRestantes,
+        valorPorMes: valorPorMes,
+        valorTotal: valorTotal,
+        novaDataFim: dataFim.toISOString()
+    };
+}
+
+async function fazerUpgradeDispositivos() {
+    if (!currentUser) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) {
+        toast('Nenhuma assinatura ativa encontrada', 'error');
+        mostrarPlanos();
+        return;
+    }
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⬆️ Upgrade de Dispositivos</div>';
+    html += '<div class="modal-sub">Adicione mais dispositivos ao seu plano</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Meses restantes: <strong>' + Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24 * 30)) + '</strong></div>';
+    html += '</div>';
+    
+    for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
+        var calculo = calcularUpgradeProporcional(assinatura, i);
+        
+        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="confirmarUpgradeDispositivos(' + i + ', ' + calculo.valorTotal + ')">';
+        html += '<div class="item-info">';
+        html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
+        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s) por ' + calculo.mesesRestantes + ' meses</div>';
+        html += '</div>';
+        html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</div>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
+    if (!currentUser) return;
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    var calculo = calcularUpgradeProporcional(assinatura, novosDispositivos);
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⬆️ Confirmar Upgrade</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:14px;color:var(--text2)">De ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ' dispositivo(s)</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">' + calculo.mesesRestantes + ' meses restantes na assinatura</div>';
+    html += '</div>';
+    
+    html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:12px;color:var(--text2)">Dispositivos extras:</span>';
+    html += '<strong>' + calculo.dispositivosExtras + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:12px;color:var(--text2)">Valor por mês:</span>';
+    html += '<strong>R$ ' + calculo.valorPorMes.toFixed(2).replace('.', ',') + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:12px;color:var(--text2)">Meses restantes:</span>';
+    html += '<strong>' + calculo.mesesRestantes + '</strong>';
+    html += '</div>';
+    html += '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:space-between">';
+    html += '<span style="font-size:16px;font-weight:700">Total:</span>';
+    html += '<strong style="color:var(--accent);font-size:20px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</strong>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<div style="font-size:11px;color:var(--text2);text-align:center">';
+    html += '💡 Os dispositivos extras ficarão ativos até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ')">✅ Confirmar e Pagar</button>';
+    html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+async function processarUpgradeDispositivos(novosDispositivos, valor) {
+    if (!currentUser) return;
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    try {
+        // Criar registro de pagamento
+        var pagamentoResult = await supabaseClient
+            .from('pagamentos')
+            .insert({
+                user_id: currentUser.id,
+                assinatura_id: assinatura.id,
+                valor: valor,
+                metodo_pagamento: 'upgrade_dispositivos',
+                status: 'pendente'
+            })
+            .select()
+            .single();
+        
+        if (pagamentoResult.error) {
+            toast('Erro ao processar', 'error');
+            return;
+        }
+        
+        // Mostrar tela de pagamento
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">💠 Pagamento PIX - Upgrade</div>';
+        
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+        html += '<div style="font-size:24px;font-weight:700;color:var(--accent);margin-bottom:8px">R$ ' + valor.toFixed(2).replace('.', ',') + '</div>';
+        html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Upgrade de dispositivos</div>';
+        
+        html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
+        html += '<div style="width:200px;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999">QR Code</div>';
+        html += '</div>';
+        
+        html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
+        html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Código PIX:</div>';
+        html += '<div id="pix-code" style="font-size:10px;word-break:break-all;color:var(--text);font-family:monospace">00020126580014BR.GOV.BCB.PIX0136' + pagamentoResult.data.id + '520400005303986540' + valor.toFixed(2) + '5802BR5913KAYLA APP6009SAO PAULO62070503***6304ABCD</div>';
+        html += '</div>';
+        
+        html += '<button class="btn btn-sm btn-outline" onclick="copiarPix()" style="width:100%;margin:0">📋 Copiar Código PIX</button>';
+        html += '</div>';
+        
+        html += '<button class="btn btn-primary" onclick="confirmarUpgradePago(\'' + pagamentoResult.data.id + '\', ' + novosDispositivos + ')">✅ Já Paguei</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+        
+        document.getElementById('modal-body').innerHTML = html;
+        
+    } catch(e) {
+        console.error('Erro no upgrade:', e);
+        toast('Erro ao processar upgrade', 'error');
+    }
+}
+
+async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
+    if (!currentUser) return;
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    try {
+        // Atualizar assinatura com novos dispositivos
+        await supabaseClient
+            .from('assinaturas')
+            .update({
+                dispositivos_max: novosDispositivos,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', assinatura.id);
+        
+        // Atualizar pagamento
+        await supabaseClient
+            .from('pagamentos')
+            .update({
+                status: 'aprovado',
+                data_pagamento: new Date().toISOString()
+            })
+            .eq('id', pagamentoId);
+        
+        // Atualizar localStorage
+        localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + novosDispositivos);
+        
+        toast('✅ Upgrade realizado! Dispositivos adicionados.', 'success');
+        fecharModal();
+        atualizarBadgePlano();
+        
+    } catch(e) {
+        console.error('Erro ao confirmar upgrade:', e);
+        toast('Erro ao processar', 'error');
+    }
+}
+
+// ============ GERENCIAR DISPOSITIVOS ============
+
+async function gerenciarDispositivos() {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) {
+        toast('Nenhuma assinatura ativa', 'error');
+        return;
+    }
+    
+    try {
+        var result = await supabaseClient
+            .from('dispositivos')
+            .select('*')
+            .eq('assinatura_id', assinatura.id)
+            .order('ultimo_acesso', { ascending: false });
+        
+        var dispositivos = result.data || [];
+        
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">📱 Dispositivos</div>';
+        html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        
+        if (dispositivos.length === 0) {
+            html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center">';
+            html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
+            html += '<div style="color:var(--text2)">Nenhum dispositivo registrado</div>';
+            html += '</div>';
+        } else {
+            html += '<div class="item-list">';
+            dispositivos.forEach(function(device) {
+                var tipoIcon = device.device_type === 'mobile' ? '📱' : (device.device_type === 'tablet' ? '📱' : '💻');
+                var ultimoAcesso = new Date(device.ultimo_acesso).toLocaleString('pt-BR');
+                
+                html += '<div class="item-card" style="margin-bottom:8px">';
+                html += '<div class="item-info">';
+                html += '<div class="item-name">' + tipoIcon + ' ' + (device.device_name || 'Dispositivo') + '</div>';
+                html += '<div class="item-detail">Último acesso: ' + ultimoAcesso + '</div>';
+                html += '</div>';
+                html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\')">🗑️</button>';
+                html += '</div>';
+            });
+            html += '</div>';
+        }
+        
+        if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivo</button>';
+        } else {
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Fazer Upgrade</button>';
+        }
+        
+        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+        
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
+        
+    } catch(e) {
+        console.error('Erro ao buscar dispositivos:', e);
+        toast('Erro ao carregar dispositivos', 'error');
+    }
+}
+
+async function removerDispositivo(deviceId) {
+    confirmar('Remover Dispositivo', 'Deseja realmente remover este dispositivo? Ele perderá acesso ao plano PRO.', async function(confirmed) {
+        if (!confirmed) return;
+        
+        if (!currentUser || !supabaseClient) return;
+        
+        try {
+            var assinatura = await getAssinaturaAtiva();
+            if (!assinatura) return;
+            
+            // Remover dispositivo
+            await supabaseClient
+                .from('dispositivos')
+                .delete()
+                .eq('id', deviceId);
+            
+            // Atualizar contador
+            await supabaseClient
+                .from('assinaturas')
+                .update({ 
+                    dispositivos_usados: Math.max(0, assinatura.dispositivos_usados - 1)
+                })
+                .eq('id', assinatura.id);
+            
+            toast('✅ Dispositivo removido', 'success');
+            gerenciarDispositivos();
+            
+        } catch(e) {
+            console.error('Erro ao remover dispositivo:', e);
+            toast('Erro ao remover', 'error');
+        }
+    });
 }
 
 console.log('✅ Payments.js carregado');
