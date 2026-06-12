@@ -44,7 +44,6 @@ body {
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-/* Background subtle decoration */
 body::before {
   content: '';
   position: fixed;
@@ -71,7 +70,6 @@ body::after {
   opacity: 0.5;
 }
 
-/* Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
   50% { transform: translateY(-15px) rotate(1deg); }
@@ -94,7 +92,6 @@ body::after {
 }
 .reveal.visible { opacity: 1; transform: translateY(0); }
 
-/* Header */
 header {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
@@ -126,7 +123,6 @@ header {
 }
 .btn-header:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); background: #1e293b; }
 
-/* Hero */
 .hero {
   padding: 100px 0 80px;
   text-align: center;
@@ -213,7 +209,6 @@ header {
   text-transform: uppercase;
 }
 
-/* Hero 3D Visual */
 .hero-3d {
   margin-top: 80px;
   perspective: 1500px;
@@ -340,7 +335,6 @@ header {
 .fc-value { font-size: 15px; font-weight: 800; color: var(--text-primary); }
 .fc-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; }
 
-/* Sections */
 section { position: relative; z-index: 1; }
 
 .section-title {
@@ -363,7 +357,6 @@ section { position: relative; z-index: 1; }
   line-height: 1.6;
 }
 
-/* Features */
 .features { padding: 100px 0; }
 
 .features-grid {
@@ -422,7 +415,6 @@ section { position: relative; z-index: 1; }
   font-size: 15px;
 }
 
-/* Screenshots (CSS Mockups) */
 .screenshots {
   padding: 100px 0;
   background: var(--surface);
@@ -519,7 +511,6 @@ section { position: relative; z-index: 1; }
   background: var(--surface);
 }
 
-/* Offline */
 .offline { padding: 100px 0; text-align: center; }
 
 .offline-content { max-width: 800px; margin: 0 auto; }
@@ -613,7 +604,6 @@ section { position: relative; z-index: 1; }
 .step-content h4 { font-size: 17px; font-weight: 700; margin-bottom: 6px; color: var(--text-primary); }
 .step-content p { color: var(--text-secondary); font-size: 15px; line-height: 1.7; }
 
-/* QR Code */
 .qrcode-section {
   padding: 100px 0;
   background: var(--surface);
@@ -639,28 +629,33 @@ section { position: relative; z-index: 1; }
 
 .qrcode-container {
   background: #fff;
-  padding: 20px;
+  padding: 24px;
   border-radius: 16px;
   display: inline-block;
   position: relative;
   border: 1px solid var(--border);
 }
 
-.qrcode-container img { width: 180px; height: 180px; display: block; border-radius: 8px; }
+.qrcode-container img { 
+  width: 200px; 
+  height: 200px; 
+  display: block; 
+  border-radius: 8px; 
+}
 
 .qrcode-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--text-primary);
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  background: var(--accent);
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: #fff;
   border: 3px solid #fff;
@@ -674,7 +669,6 @@ section { position: relative; z-index: 1; }
   font-weight: 500;
 }
 
-/* Download */
 .download { padding: 100px 0; text-align: center; }
 
 .download-card {
@@ -750,7 +744,6 @@ section { position: relative; z-index: 1; }
   position: relative;
 }
 
-/* Footer */
 footer {
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -767,14 +760,13 @@ footer a:hover { color: var(--accent); }
 
 .footer-links { margin-top: 12px; display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
 
-/* Responsive */
 @media (max-width: 768px) {
   .hero h1 { font-size: 38px; }
   .hero p { font-size: 17px; }
   .section-title { font-size: 32px; }
   .features-grid { grid-template-columns: 1fr; }
   .screenshots-grid { grid-template-columns: 1fr; }
-  .qrcode-container img { width: 150px; height: 150px; }
+  .qrcode-container img { width: 180px; height: 180px; }
   .offline h2 { font-size: 32px; }
   .offline-steps { padding: 24px; }
   .offline-steps::before { left: 21px; }
@@ -1084,7 +1076,7 @@ footer a:hover { color: var(--accent); }
     <p class="section-subtitle reveal">Escaneie o QR Code abaixo para abrir o app diretamente no seu smartphone</p>
     <div class="qrcode-wrapper reveal">
       <div class="qrcode-container">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://app.kayla.app.br&color=7c5cfc&bgcolor=ffffff&margin=10" alt="QR Code Kayla">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://app.kayla.app.br&color=000000&bgcolor=ffffff&margin=15&ecc=H" alt="QR Code Kayla">
         <div class="qrcode-overlay">K</div>
       </div>
       <div class="qrcode-text">📱 Aponte a câmera do seu celular</div>
@@ -1117,7 +1109,6 @@ footer a:hover { color: var(--accent); }
 </footer>
 
 <script>
-// Scroll reveal animation
 const observer = new IntersectionObserver((entries) => {
   entries.forEach((entry) => {
     if (entry.isIntersecting) {
@@ -1129,7 +1120,6 @@ const observer = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// 3D Tilt effect for feature cards
 document.querySelectorAll('.tilt-3d').forEach(card => {
   card.addEventListener('mousemove', (e) => {
     const rect = card.getBoundingClientRect();
@@ -1147,7 +1137,6 @@ document.querySelectorAll('.tilt-3d').forEach(card => {
   });
 });
 
-// Header shadow on scroll
 const header = document.querySelector('header');
 window.addEventListener('scroll', () => {
   if (window.pageYOffset > 50) {
