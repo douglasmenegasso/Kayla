@@ -150,6 +150,13 @@ function renderizarConfig() {
         html += '<div class="form-group"><label class="form-label">Dispositivos</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">' + devices + ' ativos</div></div>';
         html += '<div class="form-group"><label class="form-label">Validade</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">' + expDate + '</div></div>';
         html += '<button class="btn btn-primary" onclick="gerenciarDispositivos()">📱 Gerenciar Dispositivos</button>';
+    
+    // ⬇️ ADICIONE ESTES BOTÕES ⬇️
+        html += '<button class="btn btn-primary" onclick="mostrarInfoAssinatura()" style="margin-top:8px">📋 Minha Assinatura</button>';
+        html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px">📱 Gerenciar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px">⬆️ Adicionar Dispositivos</button>';
+}
+        
     } else {
         html += '<button class="btn btn-primary" onclick="mostrarPlanos()">🚀 Assinar Plano Pro</button>';
         html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Já tem uma key?</label>';
