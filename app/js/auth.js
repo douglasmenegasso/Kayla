@@ -344,6 +344,8 @@ async function sincronizarDados() {
     toast('✅ Dados sincronizados!', 'success');
 }
 
+// ============ RECUPERAÇÃO DE SENHA ============
+
 function recuperarSenha() {
     var email = document.getElementById('email').value.trim();
     
@@ -353,7 +355,6 @@ function recuperarSenha() {
         return;
     }
     
-    // Validar e-mail
     var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         toast('E-mail inválido', 'error');
@@ -367,7 +368,7 @@ function recuperarSenha() {
             try {
                 if (supabaseClient) {
                     var result = await supabaseClient.auth.resetPasswordForEmail(email, {
-                        redirectTo: window.location.origin + '/app/#reset-password'
+                        redirectTo: window.location.origin + '/app/reset-password.html'
                     });
                     
                     if (result.error) {
@@ -377,7 +378,6 @@ function recuperarSenha() {
                         fecharModal();
                     }
                 } else {
-                    // Modo offline - apenas simular
                     toast('⚠️ Modo offline\n\nEm produção, o e-mail seria enviado para: ' + email, 'warning');
                     console.log('Recuperação de senha solicitada para:', email);
                     console.log('Email de suporte: suporte@kayla.app.br');
@@ -389,5 +389,133 @@ function recuperarSenha() {
         })();
     });
 }
+
+// ============ RESET DE SENHA (PÁGINA DEDICADA) ============
+
+function verificarResetSenha() {
+    var hash = window.location.hash;
+    
+    if (hash.includes('access_token') && hash.includes('type=recovery')) {
+        console.log('[AUTH] Token de recuperação detectado');
+        
+        // Extrair token da URL
+        var params = new URLSearchParams(hash.substring(1));
+        var accessToken = params.get('access_token');
+        var refreshToken = params.get('refresh_token');
+        
+        if (accessToken && supabaseClient) {
+            // Configurar sessão com o token
+            supabaseClient.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            }).then(function(result) {
+                if (result.error) {
+                    console.error('[AUTH] Erro ao configurar sessão:', result.error);
+                    toast('❌ Link inválido ou expirado', 'error');
+                    setTimeout(function() {
+                        window.location.href = '/app/';
+                    }, 3000);
+                } else {
+                    console.log('[AUTH] Sessão configurada, mostrando formulário de reset');
+                    mostrarFormularioResetSenha();
+                }
+            });
+        }
+    }
+}
+
+function mostrarFormularioResetSenha() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🔐 Redefinir Senha</div>';
+    html += '<div class="modal-sub">Digite sua nova senha</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Nova Senha</label>';
+    html += '<input class="form-input" id="nova-senha" type="password" placeholder="Mínimo 6 caracteres">';
+    html += '</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Confirmar Nova Senha</label>';
+    html += '<input class="form-input" id="confirmar-senha" type="password" placeholder="Repita a nova senha">';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="processarResetSenha()">✅ Redefinir Senha</button>';
+    html += '<button class="btn btn-outline" onclick="cancelarResetSenha()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function processarResetSenha() {
+    var novaSenha = document.getElementById('nova-senha').value;
+    var confirmarSenha = document.getElementById('confirmar-senha').value;
+    
+    if (!novaSenha || !confirmarSenha) {
+        toast('Preencha todos os campos', 'error');
+        return;
+    }
+    
+    if (novaSenha.length < 6) {
+        toast('A senha deve ter pelo menos 6 caracteres', 'error');
+        return;
+    }
+    
+    if (novaSenha !== confirmarSenha) {
+        toast('As senhas não coincidem', 'error');
+        return;
+    }
+    
+    var btn = event.target;
+    var textoOriginal = btn.innerText;
+    btn.innerText = 'Processando...';
+    btn.disabled = true;
+    
+    try {
+        if (supabaseClient) {
+            var result = await supabaseClient.auth.updateUser({
+                password: novaSenha
+            });
+            
+            if (result.error) {
+                toast('Erro: ' + result.error.message, 'error');
+                btn.innerText = textoOriginal;
+                btn.disabled = false;
+                return;
+            }
+            
+            toast('✅ Senha redefinida com sucesso!', 'success');
+            
+            // Limpar hash da URL
+            window.history.replaceState(null, null, window.location.pathname);
+            
+            // Redirecionar para login após 2 segundos
+            setTimeout(function() {
+                fecharModal();
+                window.location.href = '/app/';
+            }, 2000);
+            
+        } else {
+            toast('Serviço indisponível', 'error');
+            btn.innerText = textoOriginal;
+            btn.disabled = false;
+        }
+    } catch(e) {
+        console.error('[AUTH] Erro ao redefinir senha:', e);
+        toast('Erro de conexão: ' + e.message, 'error');
+        btn.innerText = textoOriginal;
+        btn.disabled = false;
+    }
+}
+
+function cancelarResetSenha() {
+    window.location.href = '/app/';
+}
+
+// Verificar reset de senha ao carregar
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        verificarResetSenha();
+    }, 500);
+});
 
 console.log('✅ Auth.js carregado');
