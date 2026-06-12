@@ -185,6 +185,7 @@ async function fazerLogin() {
             // Login online sucesso
             if (result.data && result.data.user) {
                 await loginSucesso(result.data.user, senha, lembrarMe);
+                await verificarAcessoApp();
             } else {
                 toast('Erro ao fazer login', 'error');
             }
