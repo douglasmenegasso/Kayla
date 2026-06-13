@@ -5,7 +5,464 @@ function mostrarTelaSelecao() {
     document.getElementById('app').style.display = 'none';
 }
 
-function abrirLogin() {
+function abrirLogin() {<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kayla App">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#7c5cfc">
+<meta name="msapplication-navbutton-color" content="#7c5cfc">
+// <meta name="apple-mobile-web-app-status-bar-style" content="#7c5cfc">
+<meta name="google" content="notranslate">
+<title>Kayla - Venda Consignada</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon-dark.png">
+<link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root { --bg: #0f0f13; --bg2: #1a1a24; --bg3: #252530; --text: #fff; --text2: #a0a0b0; --text3: #606070; --accent: #7c5cfc; --accent2: #9b82fc; --border: #2a2a35; --success: #00c853; --error: #ff1744; --warning: #ffab00; --radius: 12px; --radius-sm: 8px; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+#login-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+.login-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 30px 20px; width: 100%; max-width: 360px; text-align: center; }
+.login-logo { 
+    width: 80px; 
+    height: 80px; 
+    border-radius: 20px; 
+    margin-bottom: 20px; 
+    object-fit: cover; 
+}
+.login-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.login-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; border: none; width: 100%; margin-bottom: 12px; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-red { background: var(--error); color: #fff; }
+.btn-green { background: var(--success); color: #fff; }
+.btn-warning { background: var(--warning); color: #000; }
+.btn-sm { padding: 10px 16px; font-size: 13px; width: auto; }
+#app { display: none; flex-direction: column; height: 100vh; position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+.header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 12px; flex-shrink: 0; }
+.header-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ADICIONADO: Relógio e Botão ? */
+.header-right { display: flex; align-items: flex-end; gap: 8px; }
+.header-right-top { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.app-relogio { text-align: right; font-size: 10px; color: var(--text2); line-height: 1.2; font-family: 'Courier New', monospace; }
+.app-relogio small { font-size: 9px; color: var(--text3); }
+.btn-info { background: var(--bg3); border: 1px solid var(--accent); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; color: var(--accent); font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+.btn-info:active { background: var(--accent); color: #fff; transform: scale(0.95); }
+.header-badges { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+
+/* Ajuste para Android Navigation Bar */
+@media (max-width: 768px) {
+    body {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .nav {
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+    
+    .header {
+        padding: 8px 10px;
+    }
+    
+    .header-title {
+        font-size: 13px;
+    }
+    
+    .header-sub {
+        font-size: 10px;
+    }
+    
+    #app-relogio {
+        font-size: 9px;
+    }
+}
+.content { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 90px; }
+.nav { background: var(--bg2); border-top: 1px solid var(--border); display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; justify-content: space-around; padding-bottom: env(safe-area-inset-bottom); }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 2px; cursor: pointer; border: none; background: transparent; color: var(--text2); font-size: 11px; }
+.nav-btn.active { color: var(--accent); }
+.nav-btn .icon { font-size: 20px; margin-bottom: 2px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 14px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.form-group { margin-bottom: 14px; text-align: left; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; }
+.form-input, .form-select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; color: var(--text); font-size: 15px; outline: none; }
+.form-input:focus, .form-select:focus { border-color: var(--accent); }
+.form-select { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0a0b0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 18px; padding-right: 40px; }
+.checkbox-group { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.checkbox-group input { width: 18px; height: 18px; }
+.item-list { display: flex; flex-direction: column; gap: 8px; }
+.item-card { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.item-card:active { background: var(--bg2); }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-detail { font-size: 13px; color: var(--text3); }
+#reader { width: 100%; border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 12px; }
+#modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 2500; display: none; align-items: flex-end; justify-content: center; }
+#modal-overlay.show { display: flex; }
+.modal-content { background: var(--bg2); border-radius: 20px 20px 0 0; padding: 24px 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-title { font-size: 20px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+.modal-sub { font-size: 13px; color: var(--text2); text-align: center; margin-bottom: 20px; }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+#toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 3000; width: 90%; max-width: 300px; }
+.toast { padding: 12px 20px; border-radius: var(--radius-sm); margin-bottom: 8px; text-align: center; animation: fadeIn 0.3s; }
+.toast.success { background: var(--success); color: #fff; }
+.toast.error { background: var(--error); color: #fff; }
+.toast.warning { background: var(--warning); color: #000; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+.badge-free { background: var(--text3); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.badge-pro { background: var(--accent); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.badge-online { background: var(--success); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.badge-offline { background: var(--text3); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.order-item { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px; }
+.order-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.order-item-name { font-weight: 600; font-size: 15px; flex: 1; margin-right: 8px; }
+.order-item-price { color: var(--accent); font-weight: 700; white-space: nowrap; }
+.order-item-controls { display: flex; align-items: center; gap: 8px; }
+.qty-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.qty-btn:active { background: var(--accent); }
+.qty-value { min-width: 40px; text-align: center; font-weight: 700; font-size: 16px; }
+.order-item-remove { color: var(--error); font-size: 12px; margin-left: 8px; cursor: pointer; text-decoration: underline; }
+.order-total { background: var(--bg3); border-radius: var(--radius-sm); padding: 16px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 700; }
+.order-total span:last-child { color: var(--accent); font-size: 22px; }
+.client-selected { background: var(--success); color: #fff; padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 12px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+.client-selected span { font-weight: 600; }
+.empty-state { text-align: center; color: var(--text3); padding: 30px 20px; }
+.limit-warning { background: var(--warning); color: #000; padding: 12px; border-radius: var(--radius-sm); margin: 12px 0; text-align: center; font-weight: 600; }
+#exit-toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px; border-radius: var(--radius-sm); font-size: 14px; z-index: 3500; display: none; }
+/* Modal de Confirmação Personalizado */
+.confirm-modal {
+    display: none;
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-modal.show {
+    display: flex;
+}
+
+.confirm-modal-content {
+    background: var(--bg2);
+    border-radius: 16px;
+    padding: 32px 24px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.confirm-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.confirm-title {
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+}
+
+.confirm-message {
+    color: var(--text2);
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 0 0 24px 0;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-confirm {
+    flex: 1;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-confirm:active {
+    transform: scale(0.95);
+}
+
+.btn-cancel {
+    background: var(--bg3);
+    color: var(--text2);
+}
+
+.btn-cancel:hover {
+    background: var(--bg);
+}
+
+.btn-ok {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btn-ok:hover {
+    background: var(--accent2);
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+    <div class="login-card">
+        <img src="assets/icons/icon-192-dark.png" class="login-logo" alt="Kayla">
+        <div class="login-title">Kayla</div>
+        <div class="login-sub">Sistema de Venda Consignada</div>
+        
+        <div style="background:var(--bg3);padding:24px;margin:20px 0;border-radius:12px;text-align:center">
+            <div style="font-size:48px;margin-bottom:12px">📦</div>
+            <div style="font-size:16px;font-weight:600;margin-bottom:8px">Gerencie seus pedidos</div>
+            <div style="font-size:13px;color:var(--text2)">Controle de clientes, produtos e consignações</div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="abrirLogin()">🔐 Entrar</button>
+        <button class="btn btn-outline" onclick="abrirCadastro()">📝 Criar Conta</button>
+        
+        <div id="login-version" style="font-size:11px;color:var(--text3);margin-top:20px">v5.3.1</div>
+    </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+    <div class="header">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div style="flex:1;min-width:0">
+                <div class="header-title">⚡ Kayla - Venda Consignada</div>
+                <div class="header-sub" id="header-sub">Nova Venda</div>
+            </div>
+            <!-- ADICIONADO: Relógio, Badges e Botão ? -->
+            <div class="header-right">
+                <div class="header-right-top">
+                    <div id="app-relogio" class="app-relogio">
+                        <div>--:--:--</div>
+                        <small>--/--/----</small>
+                    </div>
+                    <div class="header-badges">
+                        <span id="connection-badge" class="badge-offline">OFFLINE</span>
+                        <span id="plan-badge" class="badge-free">GRÁTIS</span>
+                    </div>
+                </div>
+                <button onclick="mostrarHistoricoVersoes()" class="btn-info" title="Informações do App">?</button>
+            </div>
+        </div>
+    </div>
+    <div class="content" id="content"></div>
+    <div class="nav">
+        <button class="nav-btn active" onclick="mudarAba('scan')"><span class="icon">⚡</span>Vender</button>
+        <button class="nav-btn" onclick="mudarAba('clients')"><span class="icon">👥</span>Clientes</button>
+        <button class="nav-btn" onclick="mudarAba('products')"><span class="icon">🏷️</span>Produtos</button>
+        <button class="nav-btn" onclick="mudarAba('orders')"><span class="icon">📦</span>Pedidos</button>
+        <button class="nav-btn" onclick="mudarAba('history')"><span class="icon">📊</span>Histórico</button>
+        <button class="nav-btn" onclick="mudarAba('settings')"><span class="icon">⚙️</span>Config</button>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="fecharModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação Personalizado -->
+<div id="confirm-modal" class="confirm-modal">
+    <div class="confirm-modal-content">
+        <div class="confirm-icon">⚠️</div>
+        <h3 id="confirm-title" class="confirm-title">Confirmação</h3>
+        <p id="confirm-message" class="confirm-message">Tem certeza?</p>
+        <div class="confirm-buttons">
+            <button id="confirm-btn-cancel" class="btn-confirm btn-cancel">Cancelar</button>
+            <button id="confirm-btn-ok" class="btn-confirm btn-ok">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+<div id="exit-toast">Toque novamente para sair</div>
+
+<!-- SCRIPTS MODULARES -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/register.js"></script>
+<script src="js/clients.js"></script>
+<script src="js/products.js"></script>
+<script src="js/sales.js"></script>
+<script src="js/orders.js"></script>
+<script src="js/payments.js"></script>
+<script src="js/devices.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/subscription.js"></script>
+<script src="js/payment.js"></script>
+<script src="js/main.js"></script>
+
+<!-- Banner de Instalação PWA -->
+<div id="install-banner" style="display:none;position:fixed;bottom:70px;left:10px;right:10px;background:var(--bg2);border:2px solid var(--accent);border-radius:12px;padding:16px;z-index:4000;box-shadow:0 4px 20px rgba(124,92,252,0.3)">
+    <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:32px">📱</div>
+        <div style="flex:1">
+            <div style="font-weight:700;color:var(--accent);margin-bottom:4px">Instalar Kayla App</div>
+            <div style="font-size:12px;color:var(--text2)">Acesso rápido na tela inicial</div>
+        </div>
+        <div style="display:flex;gap:8px">
+            <button id="btn-install" class="btn btn-sm btn-primary" style="margin:0;width:auto;padding:8px 16px">Instalar</button>
+            <button id="btn-dismiss-install" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px">✕</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Instruções -->
+<div id="install-instructions-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:5000;align-items:center;justify-content:center;padding:20px">
+    <div style="background:var(--bg2);border-radius:16px;max-width:400px;width:100%;padding:24px;max-height:90vh;overflow-y:auto">
+        <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:48px;margin-bottom:12px">📲</div>
+            <div style="font-size:20px;font-weight:700;color:var(--accent)">Como Instalar</div>
+        </div>
+        
+        <div id="android-steps" style="display:none">
+            <div style="margin-bottom:16px">
+                <div style="font-weight:600;margin-bottom:8px">📱 Android:</div>
+                <ol style="padding-left:20px;font-size:13px;color:var(--text2);line-height:1.8">
+                    <li>Toque no menu (⋮) no canto superior direito</li>
+                    <li>Selecione "Adicionar à tela inicial"</li>
+                    <li>Confirme o nome "Kayla App"</li>
+                    <li>O atalho será criado na tela inicial</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div id="ios-steps" style="display:none">
+            <div style="margin-bottom:16px">
+                <div style="font-weight:600;margin-bottom:8px">🍎 iPhone/iPad:</div>
+                <ol style="padding-left:20px;font-size:13px;color:var(--text2);line-height:1.8">
+                    <li>Toque no botão Compartilhar (📤)</li>
+                    <li>Role para baixo e toque em "Adicionar à Tela de Início"</li>
+                    <li>Confirme o nome "Kayla App"</li>
+                    <li>Toque em "Adicionar"</li>
+                </ol>
+            </div>
+        </div>
+        
+        <button onclick="document.getElementById('install-instructions-modal').style.display='none'" class="btn btn-primary" style="width:100%">Entendi</button>
+    </div>
+</div>
+
+<script>
+// ============ PWA INSTALL ============
+var deferredPrompt;
+var installBanner = document.getElementById('install-banner');
+var installButton = document.getElementById('btn-install');
+var dismissButton = document.getElementById('btn-dismiss-install');
+
+// Detectar OS
+function getOS() {
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    if (/android/i.test(userAgent)) return 'android';
+    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) return 'ios';
+    return 'other';
+}
+
+// Evento antes de instalar
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    if (!localStorage.getItem('kayla_install_dismissed')) {
+        setTimeout(function() {
+            installBanner.style.display = 'block';
+        }, 3000);
+    }
+});
+
+// Botão instalar
+if (installButton) {
+    installButton.addEventListener('click', function() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(choiceResult) {
+                if (choiceResult.outcome === 'accepted') {
+                    toast('✅ App instalado!', 'success');
+                }
+                deferredPrompt = null;
+                installBanner.style.display = 'none';
+            });
+        } else {
+            // Mostrar instruções
+            var os = getOS();
+            document.getElementById('android-steps').style.display = os === 'android' ? 'block' : 'none';
+            document.getElementById('ios-steps').style.display = os === 'ios' ? 'block' : 'none';
+            document.getElementById('install-instructions-modal').style.display = 'flex';
+        }
+    });
+}
+
+// Botão dismiss
+if (dismissButton) {
+    dismissButton.addEventListener('click', function() {
+        installBanner.style.display = 'none';
+        localStorage.setItem('kayla_install_dismissed', 'true');
+    });
+}
+
+// App instalado - esconder banner
+window.addEventListener('appinstalled', function() {
+    installBanner.style.display = 'none';
+    toast('✅ Kayla instalado com sucesso!', 'success');
+});
+
+// Detectar se já está instalado
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    console.log('[PWA] App já está instalado');
+}
+</script>
+   
+</body>
+</html>
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🔐 Login</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
