@@ -201,7 +201,7 @@ function confirmarPlano(planoId, numDispositivos) {
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
     html += '<button class="btn btn-primary" onclick="pagarComPix(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💠 Pagar com PIX</button>';
     html += '<button class="btn btn-outline" onclick="pagarComCartao(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Cartão de Crédito</button>';
-    html += '<button class="btn btn-outline" onclick="pagarComBoleto(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">📄 Boleto Bancário</button>';
+    html += '<button class="btn btn-outline" onclick="pagarComDebito(\'' + planoId + '\', ' + numDispositivos + ', ' + valor + ')">💳 Débito</button>';
     html += '</div>';
     
     html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
@@ -271,8 +271,8 @@ function pagarComCartao(planoId, numDispositivos, valor) {
     toast('💳 Pagamento com cartão em breve!', 'warning');
 }
 
-function pagarComBoleto(planoId, numDispositivos, valor) {
-    toast('📄 Pagamento com boleto em breve!', 'warning');
+function pagarComDebito(planoId, numDispositivos, valor) {
+    toast('💳 Pagamento com débito em breve!', 'warning');
 }
 
 // ============ REGISTRO DE PAGAMENTO ============
