@@ -231,10 +231,11 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             plano_id: planoId
         });
         
-        var response = await fetch('/app/api/criar-pagamento.php', {
+        var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
@@ -469,10 +470,11 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
     if (!assinatura) return;
     
     try {
-        var response = await fetch('/app/api/criar-pagamento.php', {
+        var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - Upgrade de Dispositivos',
