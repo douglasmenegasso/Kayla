@@ -64,9 +64,11 @@ async function ativarPro() {
     }
     
     var btn = window.event ? window.event.target : null;
-    var texto = btn.innerText;
-    btn.innerText = 'Validando...';
-    btn.disabled = true;
+    var texto = btn ? btn.innerText : 'Validando...';
+    if (btn) {
+        btn.innerText = 'Validando...';
+        btn.disabled = true;
+    }
     
     var resultado = await validarKeyBackend(chave);
     
@@ -85,8 +87,10 @@ async function ativarPro() {
         toast('❌ ' + resultado.message, 'error');
     }
     
-    btn.innerText = texto;
-    btn.disabled = false;
+    if (btn) {
+        btn.innerText = texto;
+        btn.disabled = false;
+    }
 }
 
 // ============ TELA DE PLANOS ============
@@ -96,7 +100,6 @@ function mostrarPlanos() {
     html += '<div class="modal-title">🚀 Escolha seu Plano</div>';
     html += '<div class="modal-sub">Selecione o plano ideal para você</div>';
     
-    // Plano Mensal
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent)" onclick="selecionarPlano(\'mensal\')">';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
     html += '<div style="font-weight:700;font-size:16px">📅 Mensal</div>';
@@ -112,7 +115,6 @@ function mostrarPlanos() {
     html += '<li>✅ Suporte prioritário</li>';
     html += '</ul></div>';
     
-    // Plano Anual
     html += '<div class="card" style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent);position:relative" onclick="selecionarPlano(\'anual\')">';
     html += '<div style="position:absolute;top:-10px;right:16px;background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700">ECONOMIA 17%</div>';
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
@@ -128,7 +130,6 @@ function mostrarPlanos() {
     html += '<li>✅ Recursos exclusivos</li>';
     html += '</ul></div>';
     
-    // Info sobre dispositivos
     html += '<div class="card" style="background:var(--bg3);padding:12px;margin-bottom:12px">';
     html += '<div style="font-size:12px;color:var(--text2);text-align:center">';
     html += '💡 <strong>Dispositivos adicionais:</strong> R$ 5,00/mês cada<br>';
@@ -140,7 +141,10 @@ function mostrarPlanos() {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-// ============ SELEÇÃO DE DISPOSITIVOS ============
+// Handler global
+window.confirmarPlanoHandler = function(planoId, numDispositivos) {
+    confirmarPlano(planoId, numDispositivos);
+};
 
 function selecionarPlano(planoId) {
     var plano = PLANOS[planoId];
@@ -154,7 +158,6 @@ function selecionarPlano(planoId) {
     html += 'Selecione o número de dispositivos que terão acesso ao plano PRO';
     html += '</div>';
     
-    // Opções de dispositivos
     for (var i = 1; i <= 5; i++) {
         var dispositivosExtras = Math.max(0, i - plano.dispositivosInclusos);
         var precoTotal = planoId === 'anual' 
@@ -162,14 +165,9 @@ function selecionarPlano(planoId) {
             : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
         
         var destaque = i === 1 ? 'border:2px solid var(--accent);' : '';
-        var descricaoExtra = '';
-        
-        if (i === 1) {
-            descricaoExtra = '<div class="item-detail">Incluso no plano</div>';
-        } else {
-            var valorExtra = (dispositivosExtras * plano.precoPorDevice);
-            descricaoExtra = '<div class="item-detail">+R$ ' + valorExtra.toFixed(2).replace('.', ',') + '/mês extra</div>';
-        }
+        var descricaoExtra = i === 1 
+            ? '<div class="item-detail">Incluso no plano</div>'
+            : '<div class="item-detail">+R$ ' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + '/mês extra</div>';
         
         html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="window.confirmarPlanoHandler(\'' + planoId + '\', ' + i + ')">';
         html += '<div class="item-info">';
@@ -181,18 +179,10 @@ function selecionarPlano(planoId) {
     }
     
     html += '</div>';
-    
     html += '<button class="btn btn-outline" onclick="mostrarPlanos()">← Voltar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
 }
-
-// Handler global para confirmar plano
-window.confirmarPlanoHandler = function(planoId, numDispositivos) {
-    confirmarPlano(planoId, numDispositivos);
-};
-
-// ============ CONFIRMAÇÃO E PAGAMENTO ============
 
 function confirmarPlano(planoId, numDispositivos) {
     var plano = PLANOS[planoId];
@@ -214,9 +204,7 @@ function confirmarPlano(planoId, numDispositivos) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
-    html += '<button class="btn btn-primary" onclick="pagarComPix(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💠 Pagar com PIX</button>';
-    html += '<button class="btn btn-outline" onclick="pagarComCartao(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Cartão de Crédito</button>';
-    html += '<button class="btn btn-outline" onclick="pagarComDebito(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Débito</button>';
+    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Pagar Agora</button>';
     html += '</div>';
     
     html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
@@ -224,9 +212,9 @@ function confirmarPlano(planoId, numDispositivos) {
     document.getElementById('modal-body').innerHTML = html;
 }
 
-// ============ FORMAS DE PAGAMENTO - MERCADO PAGO ============
+// ============ PAGAMENTO MERCADO PAGO ============
 
-async function pagarComPix(planoId, numDispositivos, valor) {
+async function pagarComMercadoPago(planoId, numDispositivos, valor) {
     if (!currentUser) {
         toast('Faça login primeiro', 'error');
         return;
@@ -235,8 +223,15 @@ async function pagarComPix(planoId, numDispositivos, valor) {
     toast('Processando...', 'warning');
     
     try {
-        // Chamar nosso backend PHP
-        var response = await fetch('/app/api/criar-preferencia.php', {
+        console.log('[MP] Criando pagamento...', {
+            titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
+            valor: valor,
+            email: currentUser.email,
+            user_id: currentUser.id,
+            plano_id: planoId
+        });
+        
+        var response = await fetch('/app/api/criar-pagamento.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -253,10 +248,9 @@ async function pagarComPix(planoId, numDispositivos, valor) {
         
         var preference = await response.json();
         
-        console.log('[MP] Resposta do backend:', preference);
+        console.log('[MP] Resposta:', preference);
         
-        if (preference.id) {
-            // Salvar informações do pagamento
+        if (preference.id && preference.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: preference.id,
                 plano_id: planoId,
@@ -264,8 +258,7 @@ async function pagarComPix(planoId, numDispositivos, valor) {
                 valor: valor
             }));
             
-            // Redirecionar para o Mercado Pago
-            console.log('[MP] Redirecionando para:', preference.init_point);
+            console.log('[MP] Redirecionando:', preference.init_point);
             window.location.href = preference.init_point;
         } else {
             console.error('[MP] Erro:', preference);
@@ -277,43 +270,21 @@ async function pagarComPix(planoId, numDispositivos, valor) {
         toast('Erro de conexão: ' + error.message, 'error');
     }
 }
-        
-        // Criar preferência via API do Mercado Pago
-        var response = await fetch('https://api.mercadopago.com/checkout/preferences', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + MP_CONFIG.accessToken
-            },
-            body: JSON.stringify(preferenceData)
-        });
-        
-        var preference = await response.json();
-        
-        if (preference.id) {
-            // Redirecionar para checkout do Mercado Pago
-            window.location.href = preference.init_point;
-        } else {
-            toast('Erro ao criar pagamento', 'error');
-        }
-        
-    } catch(error) {
-        console.error('Erro no pagamento PIX:', error);
-        toast('Erro de conexão', 'error');
-    }
+
+// Alias para compatibilidade
+function pagarComPix(planoId, numDispositivos, valor) {
+    pagarComMercadoPago(planoId, numDispositivos, valor);
 }
 
-async function pagarComCartao(planoId, numDispositivos, valor) {
-    // Mesma lógica do PIX, mas com payment_method_id = 'visa' (exemplo)
-    pagarComPix(planoId, numDispositivos, valor);
+function pagarComCartao(planoId, numDispositivos, valor) {
+    pagarComMercadoPago(planoId, numDispositivos, valor);
 }
 
 function pagarComDebito(planoId, numDispositivos, valor) {
-    // Mesma lógica do PIX, mas com payment_method_id = debit
-    pagarComPix(planoId, numDispositivos, valor);
+    pagarComMercadoPago(planoId, numDispositivos, valor);
 }
 
-// ============ REGISTRO DE PAGAMENTO ============
+// ============ RESTO DAS FUNÇÕES (Upgrade, Dispositivos, etc) ============
 
 async function criarRegistroPagamento(planoId, numDispositivos, valor, metodo) {
     if (!currentUser || !supabaseClient) {
@@ -380,8 +351,6 @@ async function confirmarPagamentoManual(pagamentoId) {
     fecharModal();
 }
 
-// ============ UPGRADE DE DISPOSITIVOS ============
-
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
     var hoje = new Date();
@@ -440,7 +409,6 @@ async function fazerUpgradeDispositivos() {
     }
     
     html += '</div>';
-    
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
@@ -501,40 +469,25 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
     if (!assinatura) return;
     
     try {
-        // Criar preferência de pagamento
-        var preferenceData = {
-            items: [{
-                title: 'Kayla PRO - Upgrade de Dispositivos',
-                quantity: 1,
-                unit_price: parseFloat(valor)
-            }],
-            back_urls: {
-                success: window.location.origin + '/app/upgrade-sucesso.html',
-                failure: window.location.origin + '/app/upgrade-falha.html',
-                pending: window.location.origin + '/app/upgrade-pendente.html'
+        var response = await fetch('/app/api/criar-pagamento.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            auto_return: 'approved',
-            notification_url: MP_CONFIG.webhooksUrl,
-            metadata: {
+            body: JSON.stringify({
+                titulo: 'Kayla PRO - Upgrade de Dispositivos',
+                valor: valor,
+                email: currentUser.email,
                 user_id: currentUser.id,
                 assinatura_id: assinatura.id,
                 novos_dispositivos: novosDispositivos,
                 tipo: 'upgrade'
-            }
-        };
-        
-        var response = await fetch('https://api.mercadopago.com/checkout/preferences', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + MP_CONFIG.accessToken
-            },
-            body: JSON.stringify(preferenceData)
+            })
         });
         
         var preference = await response.json();
         
-        if (preference.id) {
+        if (preference.id && preference.init_point) {
             window.location.href = preference.init_point;
         } else {
             toast('Erro ao criar pagamento', 'error');
@@ -553,7 +506,6 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
     if (!assinatura) return;
     
     try {
-        // Atualizar assinatura com novos dispositivos
         await supabaseClient
             .from('assinaturas')
             .update({
@@ -562,7 +514,6 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
             })
             .eq('id', assinatura.id);
         
-        // Atualizar pagamento
         await supabaseClient
             .from('pagamentos')
             .update({
@@ -571,7 +522,6 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
             })
             .eq('id', pagamentoId);
         
-        // Atualizar localStorage
         localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + novosDispositivos);
         
         toast('✅ Upgrade realizado! Dispositivos adicionados.', 'success');
@@ -583,8 +533,6 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
         toast('Erro ao processar', 'error');
     }
 }
-
-// ============ GERENCIAR DISPOSITIVOS ============
 
 async function gerenciarDispositivos() {
     if (!currentUser || !supabaseClient) {
@@ -660,13 +608,11 @@ async function removerDispositivo(deviceId) {
             var assinatura = await getAssinaturaAtiva();
             if (!assinatura) return;
             
-            // Remover dispositivo
             await supabaseClient
                 .from('dispositivos')
                 .delete()
                 .eq('id', deviceId);
             
-            // Atualizar contador
             await supabaseClient
                 .from('assinaturas')
                 .update({ 
