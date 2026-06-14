@@ -227,29 +227,56 @@ function confirmarPlano(planoId, numDispositivos) {
 // ============ FORMAS DE PAGAMENTO - MERCADO PAGO ============
 
 async function pagarComPix(planoId, numDispositivos, valor) {
+    if (!currentUser) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
     toast('Processando...', 'warning');
     
     try {
-        // Criar preferência de pagamento no Mercado Pago
-        var preferenceData = {
-            items: [{
-                title: 'Kayla PRO - ' + PLANOS[planoId].nome,
-                quantity: 1,
-                unit_price: parseFloat(valor)
-            }],
-            back_urls: {
-                success: window.location.origin + '/app/pagamento-sucesso.html',
-                failure: window.location.origin + '/app/pagamento-falha.html',
-                pending: window.location.origin + '/app/pagamento-pendente.html'
+        // Chamar nosso backend PHP
+        var response = await fetch('/app/api/criar-preferencia.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            auto_return: 'approved',
-            notification_url: MP_CONFIG.webhooksUrl,
-            metadata: {
-                user_id: currentUser ? currentUser.id : null,
+            body: JSON.stringify({
+                titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
+                valor: valor,
+                email: currentUser.email,
+                user_id: currentUser.id,
                 plano_id: planoId,
                 num_dispositivos: numDispositivos
-            }
-        };
+            })
+        });
+        
+        var preference = await response.json();
+        
+        console.log('[MP] Resposta do backend:', preference);
+        
+        if (preference.id) {
+            // Salvar informações do pagamento
+            localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                preference_id: preference.id,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos,
+                valor: valor
+            }));
+            
+            // Redirecionar para o Mercado Pago
+            console.log('[MP] Redirecionando para:', preference.init_point);
+            window.location.href = preference.init_point;
+        } else {
+            console.error('[MP] Erro:', preference);
+            toast('Erro: ' + (preference.message || 'Tente novamente'), 'error');
+        }
+        
+    } catch(error) {
+        console.error('[MP] Erro:', error);
+        toast('Erro de conexão: ' + error.message, 'error');
+    }
+}
         
         // Criar preferência via API do Mercado Pago
         var response = await fetch('https://api.mercadopago.com/checkout/preferences', {
