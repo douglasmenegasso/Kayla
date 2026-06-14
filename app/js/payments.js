@@ -1,5 +1,12 @@
 // ============ PAGAMENTOS E ATIVAÇÃO ============
 
+// Configurações do Mercado Pago
+const MP_CONFIG = {
+    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
+    webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
+};
+
 // Configurações de planos
 const PLANOS = {
     mensal: {
@@ -135,8 +142,6 @@ function mostrarPlanos() {
 
 // ============ SELEÇÃO DE DISPOSITIVOS ============
 
-// ============ SELEÇÃO DE DISPOSITIVOS ============
-
 function selecionarPlano(planoId) {
     var plano = PLANOS[planoId];
     
@@ -166,7 +171,6 @@ function selecionarPlano(planoId) {
             descricaoExtra = '<div class="item-detail">+R$ ' + valorExtra.toFixed(2).replace('.', ',') + '/mês extra</div>';
         }
         
-        // CORRIGIDO: Usar função inline correta
         html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="window.confirmarPlanoHandler(\'' + planoId + '\', ' + i + ')">';
         html += '<div class="item-info">';
         html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
@@ -220,70 +224,66 @@ function confirmarPlano(planoId, numDispositivos) {
     document.getElementById('modal-body').innerHTML = html;
 }
 
-// ============ FORMAS DE PAGAMENTO ============
+// ============ FORMAS DE PAGAMENTO - MERCADO PAGO ============
 
 async function pagarComPix(planoId, numDispositivos, valor) {
     toast('Processando...', 'warning');
     
-    // Criar registro de pagamento
-    var pagamento = await criarRegistroPagamento(planoId, numDispositivos, valor, 'pix');
-    if (!pagamento) return;
-    
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">💠 Pagamento PIX</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
-    html += '<div style="font-size:48px;margin-bottom:12px">💠</div>';
-    html += '<div style="font-size:24px;font-weight:700;color:var(--accent);margin-bottom:8px">R$ ' + valor.toFixed(2).replace('.', ',') + '</div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Escaneie o QR Code ou copie o código PIX</div>';
-    
-    // QR Code (placeholder - integrar com API real)
-    html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
-    html += '<div style="width:200px;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999">QR Code</div>';
-    html += '</div>';
-    
-    html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
-    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Código PIX Copia e Cola:</div>';
-    html += '<div id="pix-code" style="font-size:10px;word-break:break-all;color:var(--text);font-family:monospace">00020126580014BR.GOV.BCB.PIX0136' + pagamento.id + '520400005303986540' + valor.toFixed(2) + '5802BR5913KAYLA APP6009SAO PAULO62070503***6304ABCD</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-sm btn-outline" onclick="copiarPix()" style="width:100%;margin:0">📋 Copiar Código PIX</button>';
-    html += '</div>';
-    
-    html += '<div class="card" style="background:var(--warning);color:#000;padding:12px;border-radius:8px;margin-bottom:16px;text-align:center">';
-    html += '<div style="font-weight:600">⏱️ Após o pagamento:</div>';
-    html += '<div style="font-size:12px;margin-top:4px">Aprovação em até 5 minutos</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="verificarStatusPagamento(\'' + pagamento.id + '\')">✅ Já Paguei - Verificar</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-}
-
-function copiarPix() {
-    var pixCode = document.getElementById('pix-code').innerText;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(pixCode).then(function() {
-            toast('✅ Código PIX copiado!', 'success');
+    try {
+        // Criar preferência de pagamento no Mercado Pago
+        var preferenceData = {
+            items: [{
+                title: 'Kayla PRO - ' + PLANOS[planoId].nome,
+                quantity: 1,
+                unit_price: parseFloat(valor)
+            }],
+            back_urls: {
+                success: window.location.origin + '/app/pagamento-sucesso.html',
+                failure: window.location.origin + '/app/pagamento-falha.html',
+                pending: window.location.origin + '/app/pagamento-pendente.html'
+            },
+            auto_return: 'approved',
+            notification_url: MP_CONFIG.webhooksUrl,
+            metadata: {
+                user_id: currentUser ? currentUser.id : null,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos
+            }
+        };
+        
+        // Criar preferência via API do Mercado Pago
+        var response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + MP_CONFIG.accessToken
+            },
+            body: JSON.stringify(preferenceData)
         });
-    } else {
-        var textarea = document.createElement('textarea');
-        textarea.value = pixCode;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        toast('✅ Código PIX copiado!', 'success');
+        
+        var preference = await response.json();
+        
+        if (preference.id) {
+            // Redirecionar para checkout do Mercado Pago
+            window.location.href = preference.init_point;
+        } else {
+            toast('Erro ao criar pagamento', 'error');
+        }
+        
+    } catch(error) {
+        console.error('Erro no pagamento PIX:', error);
+        toast('Erro de conexão', 'error');
     }
 }
 
-function pagarComCartao(planoId, numDispositivos, valor) {
-    toast('💳 Pagamento com cartão em breve!', 'warning');
+async function pagarComCartao(planoId, numDispositivos, valor) {
+    // Mesma lógica do PIX, mas com payment_method_id = 'visa' (exemplo)
+    pagarComPix(planoId, numDispositivos, valor);
 }
 
 function pagarComDebito(planoId, numDispositivos, valor) {
-    toast('💳 Pagamento com débito em breve!', 'warning');
+    // Mesma lógica do PIX, mas com payment_method_id = debit
+    pagarComPix(planoId, numDispositivos, valor);
 }
 
 // ============ REGISTRO DE PAGAMENTO ============
@@ -474,48 +474,44 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
     if (!assinatura) return;
     
     try {
-        // Criar registro de pagamento
-        var pagamentoResult = await supabaseClient
-            .from('pagamentos')
-            .insert({
+        // Criar preferência de pagamento
+        var preferenceData = {
+            items: [{
+                title: 'Kayla PRO - Upgrade de Dispositivos',
+                quantity: 1,
+                unit_price: parseFloat(valor)
+            }],
+            back_urls: {
+                success: window.location.origin + '/app/upgrade-sucesso.html',
+                failure: window.location.origin + '/app/upgrade-falha.html',
+                pending: window.location.origin + '/app/upgrade-pendente.html'
+            },
+            auto_return: 'approved',
+            notification_url: MP_CONFIG.webhooksUrl,
+            metadata: {
                 user_id: currentUser.id,
                 assinatura_id: assinatura.id,
-                valor: valor,
-                metodo_pagamento: 'upgrade_dispositivos',
-                status: 'pendente'
-            })
-            .select()
-            .single();
+                novos_dispositivos: novosDispositivos,
+                tipo: 'upgrade'
+            }
+        };
         
-        if (pagamentoResult.error) {
-            toast('Erro ao processar', 'error');
-            return;
+        var response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + MP_CONFIG.accessToken
+            },
+            body: JSON.stringify(preferenceData)
+        });
+        
+        var preference = await response.json();
+        
+        if (preference.id) {
+            window.location.href = preference.init_point;
+        } else {
+            toast('Erro ao criar pagamento', 'error');
         }
-        
-        // Mostrar tela de pagamento
-        var html = '<div class="modal-handle"></div>';
-        html += '<div class="modal-title">💠 Pagamento PIX - Upgrade</div>';
-        
-        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
-        html += '<div style="font-size:24px;font-weight:700;color:var(--accent);margin-bottom:8px">R$ ' + valor.toFixed(2).replace('.', ',') + '</div>';
-        html += '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Upgrade de dispositivos</div>';
-        
-        html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
-        html += '<div style="width:200px;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999">QR Code</div>';
-        html += '</div>';
-        
-        html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
-        html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Código PIX:</div>';
-        html += '<div id="pix-code" style="font-size:10px;word-break:break-all;color:var(--text);font-family:monospace">00020126580014BR.GOV.BCB.PIX0136' + pagamentoResult.data.id + '520400005303986540' + valor.toFixed(2) + '5802BR5913KAYLA APP6009SAO PAULO62070503***6304ABCD</div>';
-        html += '</div>';
-        
-        html += '<button class="btn btn-sm btn-outline" onclick="copiarPix()" style="width:100%;margin:0">📋 Copiar Código PIX</button>';
-        html += '</div>';
-        
-        html += '<button class="btn btn-primary" onclick="confirmarUpgradePago(\'' + pagamentoResult.data.id + '\', ' + novosDispositivos + ')">✅ Já Paguei</button>';
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-        
-        document.getElementById('modal-body').innerHTML = html;
         
     } catch(e) {
         console.error('Erro no upgrade:', e);
