@@ -135,6 +135,8 @@ function mostrarPlanos() {
 
 // ============ SELEÇÃO DE DISPOSITIVOS ============
 
+// ============ SELEÇÃO DE DISPOSITIVOS ============
+
 function selecionarPlano(planoId) {
     var plano = PLANOS[planoId];
     
@@ -155,17 +157,21 @@ function selecionarPlano(planoId) {
             : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
         
         var destaque = i === 1 ? 'border:2px solid var(--accent);' : '';
+        var descricaoExtra = '';
         
-        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="confirmarPlano(\'' + planoId + '\', ' + i + ')">';
+        if (i === 1) {
+            descricaoExtra = '<div class="item-detail">Incluso no plano</div>';
+        } else {
+            var valorExtra = (dispositivosExtras * plano.precoPorDevice);
+            descricaoExtra = '<div class="item-detail">+R$ ' + valorExtra.toFixed(2).replace('.', ',') + '/mês extra</div>';
+        }
+        
+        // CORRIGIDO: Usar função inline correta
+        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="window.confirmarPlanoHandler(\'' + planoId + '\', ' + i + ')">';
         html += '<div class="item-info">';
         html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
-        html += '<div class="item-detail">';
-        if (i === 1) {
-            html += 'Incluso no plano';
-        } else {
-            html += '+R$ ' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + '/mês extra';
-        }
-        html += '</div></div>';
+        html += descricaoExtra;
+        html += '</div>';
         html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + precoTotal.toFixed(2).replace('.', ',') + '</div>';
         html += '</div>';
     }
@@ -176,6 +182,11 @@ function selecionarPlano(planoId) {
     
     document.getElementById('modal-body').innerHTML = html;
 }
+
+// Handler global para confirmar plano
+window.confirmarPlanoHandler = function(planoId, numDispositivos) {
+    confirmarPlano(planoId, numDispositivos);
+};
 
 // ============ CONFIRMAÇÃO E PAGAMENTO ============
 
