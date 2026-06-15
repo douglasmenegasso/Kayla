@@ -223,13 +223,33 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
     toast('Processando...', 'warning');
     
     try {
-        console.log('[MP] Criando pagamento...', {
-            titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
-            valor: valor,
-            email: currentUser.email,
-            user_id: currentUser.id,
-            plano_id: planoId
-        });
+        // PASSO 1: Registrar pagamento no banco ANTES de chamar MP
+        console.log('[MP] Registrando pagamento no banco...');
+        
+        var registroPagamento = await supabaseClient
+            .from('pagamentos')
+            .insert({
+                user_id: currentUser.id,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos,
+                valor: valor,
+                metodo_pagamento: 'mercado_pago',
+                status: 'pendente'
+            })
+            .select()
+            .single();
+        
+        if (registroPagamento.error) {
+            console.error('[MP] Erro ao registrar pagamento:', registroPagamento.error);
+            toast('Erro ao iniciar pagamento', 'error');
+            return;
+        }
+        
+        var pagamentoId = registroPagamento.data.id;
+        console.log('[MP] Pagamento registrado:', pagamentoId);
+        
+        // PASSO 2: Chamar Edge Function do MP
+        console.log('[MP] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
@@ -243,7 +263,8 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
                 email: currentUser.email,
                 user_id: currentUser.id,
                 plano_id: planoId,
-                num_dispositivos: numDispositivos
+                num_dispositivos: numDispositivos,
+                pagamento_id: pagamentoId  // ENVIAR ID DO PAGAMENTO
             })
         });
         
@@ -252,8 +273,18 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
         console.log('[MP] Resposta:', preference);
         
         if (preference.id && preference.init_point) {
+            // Atualizar pagamento com o ID do Mercado Pago
+            await supabaseClient
+                .from('pagamentos')
+                .update({
+                    pagamento_gateway_id: preference.id,
+                    preference_id: preference.id
+                })
+                .eq('id', pagamentoId);
+            
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: preference.id,
+                pagamento_id: pagamentoId,
                 plano_id: planoId,
                 num_dispositivos: numDispositivos,
                 valor: valor
@@ -263,6 +294,13 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             window.location.href = preference.init_point;
         } else {
             console.error('[MP] Erro:', preference);
+            
+            // Cancelar registro do pagamento se deu erro
+            await supabaseClient
+                .from('pagamentos')
+                .update({ status: 'cancelado' })
+                .eq('id', pagamentoId);
+            
             toast('Erro: ' + (preference.message || 'Tente novamente'), 'error');
         }
         
