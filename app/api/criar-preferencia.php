@@ -45,24 +45,38 @@ $preference = [
     ]
 ];
 
-// Chamar API do Mercado Pago
-$ch = curl_init("https://api.mercadopago.com/checkout/preferences");
+// Chamar API do Mercado Pago - endpoint corrigido
+$ch = curl_init("https://api.mercadopago.com/checkout/preferences?access_token=" . $accessToken);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($preference));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "Content-Type: application/json",
-    "Authorization: Bearer " . $accessToken
+    "Content-Type: application/json"
 ]);
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
 curl_close($ch);
 
-if ($httpCode === 201) {
+// Log para debug
+error_log('[MP] Criando preferência: ' . json_encode($preference));
+error_log('[MP] Resposta HTTP: ' . $httpCode);
+error_log('[MP] Resposta: ' . $response);
+error_log('[MP] Curl Error: ' . $curlError);
+
+if ($httpCode === 201 && $response) {
     echo $response;
 } else {
     http_response_code($httpCode);
-    echo $response;
+    // Retorna o erro detalhado do Mercado Pago
+    $errorData = json_decode($response, true);
+    echo json_encode([
+        'error' => 'Erro ao criar preferência',
+        'http_code' => $httpCode,
+        'curl_error' => $curlError,
+        'mp_error' => $errorData,
+        'response' => $response
+    ]);
 }
 ?>
