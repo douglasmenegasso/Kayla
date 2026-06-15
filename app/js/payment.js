@@ -2,8 +2,8 @@
 
 // Configurações do Mercado Pago
 window.MP_CONFIG = {
-    publicKey: 'APP_USR-8c696b99-ceda-4911-9088-9e9e71e7800a',
-    accessToken: 'APP_USR-7606631810481437-061422-b6d47920d9c3f7831f1c14a66f177123-3468883309',
+    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
     webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
 };
 
