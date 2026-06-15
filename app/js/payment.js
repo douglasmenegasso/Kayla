@@ -1,39 +1,35 @@
 // ============ PAGAMENTOS E ATIVAÇÃO ============
 
-// Configurações do Mercado Pago (só declara se não existir)
-if (typeof MP_CONFIG === 'undefined') {
-    const MP_CONFIG = {
-        publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
-        accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
-        webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
-    };
-}
+// Configurações do Mercado Pago
+window.MP_CONFIG = {
+    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
+    webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
+};
 
-// Configurações de planos (só declara se não existir)
-if (typeof PLANOS === 'undefined') {
-    const PLANOS = {
-        mensal: {
-            id: 'mensal',
-            nome: 'Plano Mensal',
-            precoBase: 19.90,
-            precoPorDevice: 5.00,
-            dispositivosInclusos: 1,
-            dispositivosMax: 5,
-            duracaoDias: 30,
-            tipo: 'mensal'
-        },
-        anual: {
-            id: 'anual',
-            nome: 'Plano Anual',
-            precoBase: 199.90,
-            precoPorDevice: 5.00,
-            dispositivosInclusos: 1,
-            dispositivosMax: 5,
-            duracaoDias: 365,
-            tipo: 'anual'
-        }
-    };
-}
+// Configurações de planos
+window.PLANOS = {
+    mensal: {
+        id: 'mensal',
+        nome: 'Plano Mensal',
+        precoBase: 19.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 30,
+        tipo: 'mensal'
+    },
+    anual: {
+        id: 'anual',
+        nome: 'Plano Anual',
+        precoBase: 199.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 365,
+        tipo: 'anual'
+    }
+};
 
 // ============ VALIDAÇÃO E ATIVAÇÃO ============
 
