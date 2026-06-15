@@ -223,14 +223,48 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
     toast('Processando...', 'warning');
     
     try {
-        // Registrar pagamento no banco
+        // PASSO 1: Buscar o ID real (UUID) do plano
+        console.log('[MP] Buscando ID do plano...');
+        
+        var planoResult = await supabaseClient
+            .from('planos')
+            .select('id')
+            .eq('id', planoId)
+            .single();
+        
+        // Se não encontrou pelo ID, tenta buscar pelo tipo
+        var planoUUID = planoId;
+        if (planoResult.error || !planoResult.data) {
+            console.log('[MP] Plano não encontrado pelo ID, tentando buscar...');
+            
+            // Buscar plano mensal ou anual
+            var buscaPlano = await supabaseClient
+                .from('planos')
+                .select('id')
+                .eq('tipo', planoId)  // 'mensal' ou 'anual'
+                .limit(1)
+                .single();
+            
+            if (buscaPlano.data) {
+                planoUUID = buscaPlano.data.id;
+                console.log('[MP] Plano encontrado:', planoUUID);
+            } else {
+                console.error('[MP] Plano não encontrado:', planoId);
+                toast('Plano não encontrado', 'error');
+                return;
+            }
+        } else {
+            planoUUID = planoResult.data.id;
+        }
+        
+        // PASSO 2: Registrar pagamento no banco
         console.log('[MP] Registrando pagamento no banco...');
         
         var registroPagamento = await supabaseClient
             .from('pagamentos')
             .insert({
                 user_id: currentUser.id,
-                plano_id: planoId,
+                plano_id: planoUUID,  // AGORA USA O UUID CORRETO
                 valor: valor,
                 metodo_pagamento: 'mercado_pago',
                 status: 'pendente'
@@ -247,7 +281,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
         var pagamentoId = registroPagamento.data.id;
         console.log('[MP] Pagamento registrado:', pagamentoId);
         
-        // Chamar Edge Function do MP
+        // PASSO 3: Chamar Edge Function do MP
         console.log('[MP] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
@@ -261,7 +295,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
                 valor: valor,
                 email: currentUser.email,
                 user_id: currentUser.id,
-                plano_id: planoId,
+                plano_id: planoUUID,  // UUID correto
                 num_dispositivos: numDispositivos,
                 pagamento_id: pagamentoId
             })
@@ -284,7 +318,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: preference.id,
                 pagamento_id: pagamentoId,
-                plano_id: planoId,
+                plano_id: planoId,  // Mantém o ID original (mensal/anual)
                 num_dispositivos: numDispositivos,
                 valor: valor
             }));
