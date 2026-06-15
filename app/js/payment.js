@@ -223,7 +223,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
     toast('Processando...', 'warning');
     
     try {
-        // PASSO 1: Registrar pagamento no banco ANTES de chamar MP
+        // Registrar pagamento no banco
         console.log('[MP] Registrando pagamento no banco...');
         
         var registroPagamento = await supabaseClient
@@ -233,10 +233,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
                 plano_id: planoId,
                 valor: valor,
                 metodo_pagamento: 'mercado_pago',
-                status: 'pendente',
-                metadata: {
-                    num_dispositivos: numDispositivos
-                }
+                status: 'pendente'
             })
             .select()
             .single();
@@ -250,7 +247,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
         var pagamentoId = registroPagamento.data.id;
         console.log('[MP] Pagamento registrado:', pagamentoId);
         
-        // PASSO 2: Chamar Edge Function do MP
+        // Chamar Edge Function do MP
         console.log('[MP] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
