@@ -541,6 +541,38 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
     if (!assinatura) return;
     
     try {
+        // PASSO 1: Registrar pagamento no banco como "upgrade"
+        console.log('[Upgrade] Registrando pagamento no banco...');
+        
+        var registroPagamento = await supabaseClient
+            .from('pagamentos')
+            .insert({
+                user_id: currentUser.id,
+                plano_id: assinatura.plano_id,
+                valor: valor,
+                metodo_pagamento: 'mercado_pago',
+                status: 'pendente',
+                metadata: {
+                    tipo: 'upgrade',
+                    assinatura_id: assinatura.id,
+                    novos_dispositivos: novosDispositivos
+                }
+            })
+            .select()
+            .single();
+        
+        if (registroPagamento.error) {
+            console.error('[Upgrade] Erro ao registrar:', registroPagamento.error);
+            toast('Erro ao iniciar upgrade', 'error');
+            return;
+        }
+        
+        var pagamentoId = registroPagamento.data.id;
+        console.log('[Upgrade] Pagamento registrado:', pagamentoId);
+        
+        // PASSO 2: Chamar Edge Function do MP
+        console.log('[Upgrade] Criando preferência...');
+        
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -552,22 +584,41 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
                 valor: valor,
                 email: currentUser.email,
                 user_id: currentUser.id,
-                assinatura_id: assinatura.id,
-                novos_dispositivos: novosDispositivos,
-                tipo: 'upgrade'
+                plano_id: assinatura.plano_id,
+                num_dispositivos: novosDispositivos,
+                pagamento_id: pagamentoId,
+                tipo: 'upgrade',
+                assinatura_id: assinatura.id
             })
         });
         
         var preference = await response.json();
         
         if (preference.id && preference.init_point) {
+            // Atualizar pagamento com o ID do Mercado Pago
+            await supabaseClient
+                .from('pagamentos')
+                .update({
+                    pagamento_gateway_id: preference.id,
+                    preference_id: preference.id
+                })
+                .eq('id', pagamentoId);
+            
+            console.log('[Upgrade] Redirecionando:', preference.init_point);
             window.location.href = preference.init_point;
         } else {
+            console.error('[Upgrade] Erro:', preference);
+            
+            await supabaseClient
+                .from('pagamentos')
+                .update({ status: 'cancelado' })
+                .eq('id', pagamentoId);
+            
             toast('Erro ao criar pagamento', 'error');
         }
         
     } catch(e) {
-        console.error('Erro no upgrade:', e);
+        console.error('[Upgrade] Erro:', e);
         toast('Erro ao processar upgrade', 'error');
     }
 }
