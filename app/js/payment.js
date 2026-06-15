@@ -4,7 +4,7 @@
 window.MP_CONFIG = {
     publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
     accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
-    webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
+    webhooksUrl: 'https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/webhook-mp'
 };
 
 // Configurações de planos
@@ -231,10 +231,12 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             .insert({
                 user_id: currentUser.id,
                 plano_id: planoId,
-                num_dispositivos: numDispositivos,
                 valor: valor,
                 metodo_pagamento: 'mercado_pago',
-                status: 'pendente'
+                status: 'pendente',
+                metadata: {
+                    num_dispositivos: numDispositivos
+                }
             })
             .select()
             .single();
@@ -264,7 +266,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
                 user_id: currentUser.id,
                 plano_id: planoId,
                 num_dispositivos: numDispositivos,
-                pagamento_id: pagamentoId  // ENVIAR ID DO PAGAMENTO
+                pagamento_id: pagamentoId
             })
         });
         
