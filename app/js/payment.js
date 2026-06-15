@@ -3,7 +3,8 @@
 // Configurações do Mercado Pago
 window.MP_CONFIG = {
     publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
-    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
+    // NOTA: accessToken NUNCA deve estar no frontend!
+    // Ele deve ficar apenas no backend (PHP/Node/etc)
     webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
 };
 
@@ -204,17 +205,18 @@ function confirmarPlano(planoId, numDispositivos) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
-    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Pagar Agora</button>';
-    html += '</div>';
-    
+    html += '<button class="btn btn-primary" style="margin-bottom:8px" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ', \'credit_card\')">💳 Cartão de Crédito</button>';
+    html += '<button class="btn btn-primary" style="margin-bottom:8px" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ', \'debit_card\')">💳 Cartão de Débito</button>';
+    html += '<button class="btn btn-primary" style="margin-bottom:8px" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ', \'pix\')">💠 PIX</button>';
     html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
+    html += '</div>';
     
     document.getElementById('modal-body').innerHTML = html;
 }
 
 // ============ PAGAMENTO MERCADO PAGO ============
 
-async function pagarComMercadoPago(planoId, numDispositivos, valor) {
+async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagamento) {
     if (!currentUser) {
         toast('Faça login primeiro', 'error');
         return;
@@ -231,11 +233,10 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             plano_id: planoId
         });
         
-        var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
+        var response = await fetch('api/criar-pagamento.php', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
