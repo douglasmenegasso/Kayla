@@ -9,29 +9,31 @@ if (typeof MP_CONFIG === 'undefined') {
     };
 }
 
-// Configurações de planos
-const PLANOS = {
-    mensal: {
-        id: 'mensal',
-        nome: 'Plano Mensal',
-        precoBase: 19.90,
-        precoPorDevice: 5.00,
-        dispositivosInclusos: 1,
-        dispositivosMax: 5,
-        duracaoDias: 30,
-        tipo: 'mensal'
-    },
-    anual: {
-        id: 'anual',
-        nome: 'Plano Anual',
-        precoBase: 199.90,
-        precoPorDevice: 5.00,
-        dispositivosInclusos: 1,
-        dispositivosMax: 5,
-        duracaoDias: 365,
-        tipo: 'anual'
-    }
-};
+// Configurações de planos (só declara se não existir)
+if (typeof PLANOS === 'undefined') {
+    const PLANOS = {
+        mensal: {
+            id: 'mensal',
+            nome: 'Plano Mensal',
+            precoBase: 19.90,
+            precoPorDevice: 5.00,
+            dispositivosInclusos: 1,
+            dispositivosMax: 5,
+            duracaoDias: 30,
+            tipo: 'mensal'
+        },
+        anual: {
+            id: 'anual',
+            nome: 'Plano Anual',
+            precoBase: 199.90,
+            precoPorDevice: 5.00,
+            dispositivosInclusos: 1,
+            dispositivosMax: 5,
+            duracaoDias: 365,
+            tipo: 'anual'
+        }
+    };
+}
 
 // ============ VALIDAÇÃO E ATIVAÇÃO ============
 
