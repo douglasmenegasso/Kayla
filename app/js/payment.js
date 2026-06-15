@@ -1,11 +1,13 @@
 // ============ PAGAMENTOS E ATIVAÇÃO ============
 
-// Configurações do Mercado Pago
-const MP_CONFIG = {
-    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
-    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
-    webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
-};
+// Configurações do Mercado Pago (só declara se não existir)
+if (typeof MP_CONFIG === 'undefined') {
+    const MP_CONFIG = {
+        publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+        accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
+        webhooksUrl: 'https://kayla.app.br/webhook/mercado-pago'
+    };
+}
 
 // Configurações de planos
 const PLANOS = {
