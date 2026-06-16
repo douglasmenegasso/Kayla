@@ -466,9 +466,23 @@ async function fazerUpgradeDispositivos() {
     }
     
     var assinatura = await getAssinaturaAtiva();
+    
+    // VERIFICAR SE TEM ASSINATURA ATIVA
     if (!assinatura) {
-        toast('Nenhuma assinatura ativa encontrada', 'error');
+        toast('❌ Você precisa ativar sua assinatura primeiro. Use a key recebida no email.', 'error');
         mostrarPlanos();
+        return;
+    }
+    
+    // VERIFICAR SE DISPOSITIVO ESTÁ REGISTRADO
+    var { data: dispositivos, error: erroDevices } = await supabaseClient
+        .from('dispositivos')
+        .select('id')
+        .eq('assinatura_id', assinatura.id)
+        .eq('user_id', currentUser.id);
+    
+    if (!dispositivos || dispositivos.length === 0) {
+        toast('⚠️ Ative sua assinatura no app primeiro para registrar este dispositivo.', 'warning');
         return;
     }
     
