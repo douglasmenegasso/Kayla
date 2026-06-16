@@ -424,14 +424,14 @@ async function confirmarPagamentoManual(pagamentoId) {
 }
 
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
-    var dataFim = new Date(assinaturaAtual.data_fim);
+    var dataFim = new Date(assinaturaAtual.data_fim);  // Mantém a data atual!
     var hoje = new Date();
     
     var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
     if (mesesRestantes <= 0) mesesRestantes = 1;
     
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
-    if (dispositivosExtras <= 0) dispositivosExtras = 1;
+    if (dispositivosExtras <= 0) dispositivosExtras = 0;  // Sem cobrança se não houver upgrade
     
     var valorPorMes = 5.00;
     var valorTotal = dispositivosExtras * valorPorMes * mesesRestantes;
@@ -441,7 +441,7 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
         mesesRestantes: mesesRestantes,
         valorPorMes: valorPorMes,
         valorTotal: valorTotal,
-        novaDataFim: dataFim.toISOString()
+        novaDataFim: dataFim.toISOString()  // Mantém a data original!
     };
 }
 
