@@ -23,7 +23,7 @@ window.PLANOS = {
         id: 'anual',
         nome: 'Plano Anual',
         precoBase: 199.90,
-        precoPorDevice: 5.00,
+        precoPorDevice: 60.00,  // R$ 5,00 × 12 meses = R$ 60,00 por ano
         dispositivosInclusos: 1,
         dispositivosMax: 5,
         duracaoDias: 365,
@@ -132,7 +132,9 @@ function mostrarPlanos() {
     
     html += '<div class="card" style="background:var(--bg3);padding:12px;margin-bottom:12px">';
     html += '<div style="font-size:12px;color:var(--text2);text-align:center">';
-    html += '💡 <strong>Dispositivos adicionais:</strong> R$ 5,00/mês cada<br>';
+    html += '💡 <strong>Dispositivos adicionais:</strong><br>';
+    html += 'Mensal: R$ 5,00/dispositivo<br>';
+    html += 'Anual: R$ 60,00/dispositivo<br>';
     html += 'Máximo de 5 dispositivos por conta';
     html += '</div></div>';
     
@@ -160,14 +162,12 @@ function selecionarPlano(planoId) {
     
     for (var i = 1; i <= 5; i++) {
         var dispositivosExtras = Math.max(0, i - plano.dispositivosInclusos);
-        var precoTotal = planoId === 'anual' 
-            ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
-            : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+        var precoTotal = plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
         
         var destaque = i === 1 ? 'border:2px solid var(--accent);' : '';
         var descricaoExtra = i === 1 
             ? '<div class="item-detail">Incluso no plano</div>'
-            : '<div class="item-detail">+R$ ' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + '/mês extra</div>';
+            : '<div class="item-detail">+' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + ' (' + (planoId === 'anual' ? '1 ano' : '1 mês') + ')</div>';
         
         html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="window.confirmarPlanoHandler(\'' + planoId + '\', ' + i + ')">';
         html += '<div class="item-info">';
@@ -187,9 +187,7 @@ function selecionarPlano(planoId) {
 function confirmarPlano(planoId, numDispositivos) {
     var plano = PLANOS[planoId];
     var dispositivosExtras = Math.max(0, numDispositivos - plano.dispositivosInclusos);
-    var precoTotal = planoId === 'anual' 
-        ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
-        : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+    var precoTotal = plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">💳 Pagamento</div>';
@@ -424,24 +422,40 @@ async function confirmarPagamentoManual(pagamentoId) {
 }
 
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
-    var dataFim = new Date(assinaturaAtual.data_fim);  // Mantém a data atual!
-    var hoje = new Date();
+    var dataFim = new Date(assinaturaAtual.data_fim);
     
-    var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
-    if (mesesRestantes <= 0) mesesRestantes = 1;
+    // Buscar tipo de plano para determinar valor por dispositivo
+    var tipoPlano = 'mensal';
+    if (assinaturaAtual.plano_id) {
+        // Se for UUID, busca no banco (assíncrono)
+        // Por enquanto, assume mensal se data_fim < 60 dias, senão anual
+        var diasRestantes = Math.ceil((dataFim - new Date()) / (1000 * 60 * 60 * 24));
+        tipoPlano = diasRestantes > 60 ? 'anual' : 'mensal';
+    }
     
+    // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
-    if (dispositivosExtras <= 0) dispositivosExtras = 0;  // Sem cobrança se não houver upgrade
     
-    var valorPorMes = 5.00;
-    var valorTotal = dispositivosExtras * valorPorMes * mesesRestantes;
+    if (dispositivosExtras <= 0) {
+        return {
+            dispositivosExtras: 0,
+            mesesRestantes: 1,
+            valorPorMes: 0,
+            valorTotal: 0,
+            novaDataFim: dataFim.toISOString()
+        };
+    }
+    
+    // Cobra por dispositivo extra baseado no tipo de plano
+    var valorPorDispositivo = tipoPlano === 'anual' ? 60.00 : 5.00;
+    var valorTotal = dispositivosExtras * valorPorDispositivo;
     
     return {
         dispositivosExtras: dispositivosExtras,
-        mesesRestantes: mesesRestantes,
-        valorPorMes: valorPorMes,
+        mesesRestantes: 1,
+        valorPorMes: valorPorDispositivo,
         valorTotal: valorTotal,
-        novaDataFim: dataFim.toISOString()  // Mantém a data original!
+        novaDataFim: dataFim.toISOString()
     };
 }
 
@@ -465,7 +479,7 @@ async function fazerUpgradeDispositivos() {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Meses restantes: <strong>' + Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24 * 30)) + '</strong></div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
     html += '</div>';
     
     for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
@@ -474,7 +488,7 @@ async function fazerUpgradeDispositivos() {
         html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="confirmarUpgradeDispositivos(' + i + ', ' + calculo.valorTotal + ')">';
         html += '<div class="item-info">';
         html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
-        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s) por ' + calculo.mesesRestantes + ' meses</div>';
+        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s)</div>';
         html += '</div>';
         html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</div>';
         html += '</div>';
@@ -501,7 +515,7 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">De ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ' dispositivo(s)</div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">' + calculo.mesesRestantes + ' meses restantes na assinatura</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
     html += '</div>';
     
     html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
@@ -510,12 +524,8 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '<strong>' + calculo.dispositivosExtras + '</strong>';
     html += '</div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-    html += '<span style="font-size:12px;color:var(--text2)">Valor por mês:</span>';
+    html += '<span style="font-size:12px;color:var(--text2)">Valor por dispositivo:</span>';
     html += '<strong>R$ ' + calculo.valorPorMes.toFixed(2).replace('.', ',') + '</strong>';
-    html += '</div>';
-    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-    html += '<span style="font-size:12px;color:var(--text2)">Meses restantes:</span>';
-    html += '<strong>' + calculo.mesesRestantes + '</strong>';
     html += '</div>';
     html += '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:space-between">';
     html += '<span style="font-size:16px;font-weight:700">Total:</span>';
