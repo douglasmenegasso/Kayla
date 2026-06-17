@@ -155,6 +155,14 @@ function renderizarConfig() {
         html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px">📱 Gerenciar Dispositivos</button>';
         html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px">⬆️ Adicionar Dispositivos</button>';
         
+        // Backup (APENAS PRO)
+        html += '<div class="form-group" style="margin-top:16px">';
+        html += '<label class="form-label">💾 Backup e Restauração <span class="badge-pro" style="font-size:10px">PRO</span></label>';
+        html += '<button class="btn btn-primary" onclick="exportarBackup()" style="margin-top:8px;width:100%">📥 Exportar Backup</button>';
+        html += '<button class="btn btn-outline" onclick="importarBackup()" style="margin-top:8px;width:100%">📤 Importar Backup</button>';
+        html += '<div style="font-size:11px;color:var(--text2);margin-top:8px;text-align:center">💡 Exporte seus dados para um arquivo JSON e importe em outro dispositivo</div>';
+        html += '</div>';
+        
     } else {
         html += '<button class="btn btn-primary" onclick="mostrarPlanos()">🚀 Assinar Plano Pro</button>';
         html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Já tem uma key?</label>';
@@ -178,6 +186,19 @@ function renderizarConfig() {
     if (!isPro) {
         html += '<div style="font-size:11px;color:var(--warning);margin-top:8px">🔒 Disponível apenas no plano PRO</div>';
     }
+    html += '</div>';
+    
+    // Suporte WhatsApp (PARA TODOS)
+    html += '<div class="form-group" style="margin-top:16px">';
+    html += '<div class="card" style="background:linear-gradient(135deg,#25D366 0%,#128C7E 100%);padding:16px;margin-bottom:12px;cursor:pointer;border:none" onclick="abrirSuporteWhatsApp()">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between">';
+    html += '<div style="color:#fff;font-weight:600;display:flex;align-items:center;gap:8px">';
+    html += '<span style="font-size:24px">💬</span> Suporte WhatsApp';
+    html += '</div>';
+    html += '<div style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:12px;color:#fff;font-size:11px;font-weight:600">Online</div>';
+    html += '</div>';
+    html += '<div style="color:rgba(255,255,255,0.9);font-size:12px;margin-top:8px">Fale diretamente conosco pelo WhatsApp</div>';
+    html += '</div>';
     html += '</div>';
     
     html += '<div class="form-group" style="margin-top:16px"><label class="form-label">Versão</label><div style="background:var(--bg3);padding:12px;border-radius:8px">v' + appVersion + '</div></div>';
