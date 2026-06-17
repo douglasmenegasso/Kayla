@@ -202,7 +202,38 @@ function confirmarPlano(planoId, numDispositivos) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
-    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Pagar Agora</button>';
+    
+    // PIX
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:2px solid var(--success)" onclick="selecionarMetodoPagamento(\'pix\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">📱</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">PIX</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação instantânea</div>';
+    html += '</div>';
+    html += '<div style="background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">RECOMENDADO</div>';
+    html += '</div></div>';
+    
+    // Cartão de Crédito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'cartao\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Crédito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Parcele em até 12x</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    // Débito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'debito\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Débito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação imediata</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
     html += '</div>';
     
     html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
