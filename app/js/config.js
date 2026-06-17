@@ -84,7 +84,7 @@ var supabaseClient = null;
 var SUPABASE_EDGE_URL = SUPABASE_URL + '/functions/v1';
 
 // ============ CONFIGURAÇÕES DE SUPORTE ============
-var WHATSAPP_SUPORTE = '5511999999999'; // Configure seu número aqui (DDI+DDD)
+var WHATSAPP_SUPORTE = '5541996427444'; // Configure seu número aqui (DDI+DDD)
 
 // ============ VARIÁVEIS GLOBAIS DE ESTADO ============
 var currentUser = null;
