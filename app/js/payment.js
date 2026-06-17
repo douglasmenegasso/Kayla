@@ -24,6 +24,29 @@ serve(async (req) => {
       assinatura_id  // para upgrades
     } = await req.json()
     
+    // Log dos dados recebidos para debug
+    console.log('[MP] Dados recebidos:', { 
+      titulo, 
+      valor, 
+      email, 
+      user_id, 
+      plano_id, 
+      num_dispositivos, 
+      pagamento_id,
+      metodo_pagamento,
+      tipo,
+      assinatura_id
+    })
+    
+    // Validação básica de parâmetros obrigatórios
+    if (!valor || parseFloat(valor) <= 0) {
+      throw new Error('Valor inválido ou não informado')
+    }
+    
+    if (!email) {
+      console.warn('[MP] Email não informado, usando padrão')
+    }
+    
     const accessToken = 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369'
 
     // Determinar tipo de pagamento para o Mercado Pago
@@ -123,7 +146,7 @@ serve(async (req) => {
       processing_modes: ['aggregator']
     }
 
-    console.log('[MP] Criando preferência:', JSON.stringify(preference, null, 2))
+    console.log('[MP] Criando preferência no Mercado Pago...')
 
     const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -136,18 +159,32 @@ serve(async (req) => {
 
     const data = await response.json()
 
-    console.log('[MP] Resposta:', JSON.stringify(data, null, 2))
+    console.log('[MP] Resposta completa:', JSON.stringify(data, null, 2))
 
     if (!response.ok) {
+      console.error('[MP] Erro na resposta do Mercado Pago:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data
+      })
       throw new Error(data.message || 'Erro ao criar preferência')
     }
+
+    console.log('[MP] Preferência criada com sucesso:', {
+      id: data.id,
+      init_point: data.init_point,
+      sandbox_init_point: data.sandbox_init_point
+    })
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error('[MP] Erro:', error)
+    console.error('[MP] Erro ao processar pagamento:', {
+      message: error.message,
+      stack: error.stack
+    })
     return new Response(JSON.stringify({ 
       error: error.message
     }), {
