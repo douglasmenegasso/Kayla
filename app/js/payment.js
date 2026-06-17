@@ -93,7 +93,7 @@ async function ativarPro() {
     }
 }
 
-// ============ FUNÇÃO AUXILIAR (ADICIONADA - ESTAVA FALTANDO) ============
+// ============ FUNÇÃO AUXILIAR ============
 
 async function getAssinaturaAtiva() {
     if (!currentUser || !supabaseClient) {
@@ -232,7 +232,38 @@ function confirmarPlano(planoId, numDispositivos) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
-    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">💳 Pagar Agora</button>';
+    
+    // PIX
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:2px solid var(--success)" onclick="selecionarMetodoPagamento(\'pix\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">📱</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">PIX</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação instantânea</div>';
+    html += '</div>';
+    html += '<div style="background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">RECOMENDADO</div>';
+    html += '</div></div>';
+    
+    // Cartão de Crédito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'cartao\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Crédito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Parcele em até 12x</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    // Débito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'debito\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Débito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação imediata</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
     html += '</div>';
     
     html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
@@ -240,9 +271,50 @@ function confirmarPlano(planoId, numDispositivos) {
     document.getElementById('modal-body').innerHTML = html;
 }
 
+// ============ SELEÇÃO DE MÉTODO DE PAGAMENTO ============
+
+function selecionarMetodoPagamento(metodo, planoId, numDispositivos, valor) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">💳 Confirmar Pagamento</div>';
+    
+    var metodoNome = metodo === 'pix' ? 'PIX' : (metodo === 'cartao' ? 'Cartão de Crédito' : 'Cartão de Débito');
+    var metodoIcon = metodo === 'pix' ? '📱' : '💳';
+    var metodoCor = metodo === 'pix' ? 'var(--success)' : 'var(--accent)';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+    html += '<div style="font-size:48px;margin-bottom:12px">' + metodoIcon + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + metodoCor + '">' + metodoNome + '</div>';
+    html += '<div style="font-size:14px;color:var(--text2);margin-top:8px">Você será redirecionado para o Mercado Pago</div>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">';
+    if (metodo === 'pix') {
+        html += '✅ <strong>Aprovação instantânea</strong><br>';
+        html += '✅ <strong>Escaneie o QR Code</strong> ou copie o código<br>';
+        html += '✅ <strong>Disponível 24 horas</strong>';
+    } else if (metodo === 'cartao') {
+        html += '✅ <strong>Parcele em até 12x</strong><br>';
+        html += '✅ <strong>Aceita todos os cartões</strong><br>';
+        html += '✅ <strong>Aprovação em segundos</strong>';
+    } else {
+        html += '✅ <strong>Aprovação imediata</strong><br>';
+        html += '✅ <strong>Débito direto da conta</strong><br>';
+        html += '✅ <strong>Seguro e prático</strong>';
+    }
+    html += '</div></div>';
+    
+    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + valor + ', \'' + metodo + '\')" style="width:100%">🚀 Continuar para Pagamento</button>';
+    html += '<button class="btn btn-outline" onclick="confirmarPlano(\'' + planoId + '\', ' + numDispositivos + ')" style="margin-top:8px;width:100%">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
 // ============ PAGAMENTO MERCADO PAGO ============
 
-async function pagarComMercadoPago(planoId, numDispositivos, valor) {
+async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagamento) {
+    metodoPagamento = metodoPagamento || 'pix';
+    
     if (!currentUser) {
         toast('Faça login primeiro', 'error');
         return;
@@ -292,9 +364,9 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             .from('pagamentos')
             .insert({
                 user_id: currentUser.id,
-                plano_id: planoUUID,  // AGORA USA O UUID CORRETO
+                plano_id: planoUUID,
                 valor: valor,
-                metodo_pagamento: 'mercado_pago',
+                metodo_pagamento: metodoPagamento,
                 status: 'pendente'
             })
             .select()
@@ -323,9 +395,10 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
                 valor: valor,
                 email: currentUser.email,
                 user_id: currentUser.id,
-                plano_id: planoUUID,  // UUID correto
+                plano_id: planoUUID,
                 num_dispositivos: numDispositivos,
-                pagamento_id: pagamentoId
+                pagamento_id: pagamentoId,
+                metodo_pagamento: metodoPagamento
             })
         });
         
@@ -346,9 +419,10 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: preference.id,
                 pagamento_id: pagamentoId,
-                plano_id: planoId,  // Mantém o ID original (mensal/anual)
+                plano_id: planoId,
                 num_dispositivos: numDispositivos,
-                valor: valor
+                valor: valor,
+                metodo: metodoPagamento
             }));
             
             console.log('[MP] Redirecionando:', preference.init_point);
@@ -373,15 +447,15 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor) {
 
 // Alias para compatibilidade
 function pagarComPix(planoId, numDispositivos, valor) {
-    pagarComMercadoPago(planoId, numDispositivos, valor);
+    selecionarMetodoPagamento('pix', planoId, numDispositivos, valor);
 }
 
 function pagarComCartao(planoId, numDispositivos, valor) {
-    pagarComMercadoPago(planoId, numDispositivos, valor);
+    selecionarMetodoPagamento('cartao', planoId, numDispositivos, valor);
 }
 
 function pagarComDebito(planoId, numDispositivos, valor) {
-    pagarComMercadoPago(planoId, numDispositivos, valor);
+    selecionarMetodoPagamento('debito', planoId, numDispositivos, valor);
 }
 
 // ============ RESTO DAS FUNÇÕES (Upgrade, Dispositivos, etc) ============
@@ -452,14 +526,14 @@ async function confirmarPagamentoManual(pagamentoId) {
 }
 
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
-    var dataFim = new Date(assinaturaAtual.data_fim);  // Mantém a data atual!
+    var dataFim = new Date(assinaturaAtual.data_fim);
     var hoje = new Date();
     
     var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
     if (mesesRestantes <= 0) mesesRestantes = 1;
     
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
-    if (dispositivosExtras <= 0) dispositivosExtras = 0;  // Sem cobrança se não houver upgrade
+    if (dispositivosExtras <= 0) dispositivosExtras = 0;
     
     var valorPorMes = 5.00;
     var valorTotal = dispositivosExtras * valorPorMes * mesesRestantes;
@@ -469,7 +543,7 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
         mesesRestantes: mesesRestantes,
         valorPorMes: valorPorMes,
         valorTotal: valorTotal,
-        novaDataFim: dataFim.toISOString()  // Mantém a data original!
+        novaDataFim: dataFim.toISOString()
     };
 }
 
