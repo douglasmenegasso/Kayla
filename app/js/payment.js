@@ -428,25 +428,43 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
     
-    // QR Code
-    if (dados.qr_code_base64) {
+    // Verificar se tem QR Code base64
+    if (dados.qr_code_base64 && dados.qr_code_base64.length > 100) {
         html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
         html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--success);margin-bottom:16px">✅ QR Code gerado com sucesso!</div>';
+    } else {
+        // Se não tem base64, mostrar mensagem e botão para abrir no MP
+        html += '<div style="background:var(--bg2);padding:20px;border-radius:8px;margin-bottom:16px">';
+        html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
+        html += '<div style="font-size:14px;color:var(--text2);margin-bottom:12px">';
+        html += 'O QR Code será gerado no app do seu banco<br>';
+        html += 'ou você pode abrir no Mercado Pago';
+        html += '</div>';
         html += '</div>';
     }
     
     // Código Copia e Cola
-    html += '<div style="margin-bottom:16px">';
-    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
-    html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2)">' + dados.qr_code + '</textarea>';
-    html += '</div>';
+    if (dados.qr_code) {
+        html += '<div style="margin-bottom:16px">';
+        html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
+        html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace">' + dados.qr_code + '</textarea>';
+        html += '</div>';
+        
+        // Botão Copiar
+        html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
+    }
     
-    // Botão Copiar
-    html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
-    
-    // Link de pagamento
+    // Link de pagamento (sempre mostrar)
     if (dados.ticket_url) {
-        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px">🔗 Abrir no App do Banco</a>';
+        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🔗 Abrir QR Code no App do Banco</a>';
+    }
+    
+    // Se tiver payment_url (fallback)
+    if (dados.payment_url || dados.init_point) {
+        var url = dados.payment_url || dados.init_point;
+        html += '<a href="' + url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🌐 Ver no Mercado Pago</a>';
     }
     
     html += '</div>';
