@@ -534,6 +534,9 @@ async function fazerUpgradeDispositivos() {
         return;
     }
     
+    // Formatar data de validade
+    var dataValidade = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
+    
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">⬆️ Upgrade de Dispositivos</div>';
     html += '<div class="modal-sub">Adicione mais dispositivos ao seu plano</div>';
@@ -541,7 +544,20 @@ async function fazerUpgradeDispositivos() {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + dataValidade + '</strong></div>';
+    html += '</div>';
+    
+    // ⭐ NOVO: Banner informativo sobre a validade dos dispositivos extras
+    html += '<div style="background:linear-gradient(135deg, rgba(124, 92, 252, 0.15) 0%, rgba(74, 222, 128, 0.15) 100%);padding:14px;border-radius:8px;border-left:4px solid var(--accent);margin-bottom:16px">';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px">';
+    html += '<span style="font-size:20px">💡</span>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px">Mesma validade do plano atual</div>';
+    html += '<div style="font-size:12px;color:var(--text2);line-height:1.4">';
+    html += 'Os novos dispositivos adicionados terão a <strong>mesma data de validade</strong> do seu plano original (<strong>' + dataValidade + '</strong>). Ao renovar o plano, todos os dispositivos serão renovados juntos.';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     
     for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
@@ -570,14 +586,30 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     if (!assinatura) return;
     
     var calculo = calcularUpgradeProporcional(assinatura, novosDispositivos);
+    var dataValidade = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">⬆️ Confirmar Upgrade</div>';
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:14px;color:var(--text2)">De ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ' dispositivo(s)</div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
+    html += '<div style="font-size:14px;color:var(--text2)">De <strong>' + assinatura.dispositivos_max + '</strong> para <strong>' + novosDispositivos + '</strong> dispositivo(s)</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + dataValidade + '</strong></div>';
+    html += '</div>';
+    
+    // ⭐ NOVO: Banner informativo destacado sobre validade
+    html += '<div style="background:linear-gradient(135deg, rgba(124, 92, 252, 0.2) 0%, rgba(74, 222, 128, 0.2) 100%);padding:14px;border-radius:8px;border:2px solid var(--accent);margin-bottom:16px">';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px">';
+    html += '<span style="font-size:24px">📅</span>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">Mesma validade do plano atual</div>';
+    html += '<div style="font-size:12px;color:var(--text2);line-height:1.5">';
+    html += '✅ Os novos dispositivos ficam ativos até <strong>' + dataValidade + '</strong><br>';
+    html += '✅ Ao renovar seu plano, <strong>todos os dispositivos serão renovados juntos</strong><br>';
+    html += '✅ Sem cobrança adicional por tempo restante';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
     html += '</div>';
     
     html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
@@ -595,13 +627,10 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '</div>';
     html += '</div>';
     
-    html += '<div style="font-size:11px;color:var(--text2);text-align:center">';
-    html += '💡 Os dispositivos extras ficarão ativos até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
-    html += '</div>';
     html += '</div>';
     
     html += '<button class="btn btn-primary" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ')">✅ Confirmar e Pagar</button>';
-    html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()">← Voltar</button>';
+    html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px">← Voltar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
 }
@@ -647,7 +676,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - Upgrade de Dispositivos',
