@@ -323,33 +323,25 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     toast('Processando...', 'warning');
     
     try {
-        // PASSO 1: Buscar o ID real (UUID) do plano
-        console.log('[MP] Buscando ID do plano...');
-        
+        // Buscar ID do plano
         var planoResult = await supabaseClient
             .from('planos')
             .select('id')
             .eq('id', planoId)
             .single();
         
-        // Se não encontrou pelo ID, tenta buscar pelo tipo
         var planoUUID = planoId;
         if (planoResult.error || !planoResult.data) {
-            console.log('[MP] Plano não encontrado pelo ID, tentando buscar...');
-            
-            // Buscar plano mensal ou anual
             var buscaPlano = await supabaseClient
                 .from('planos')
                 .select('id')
-                .eq('tipo', planoId)  // 'mensal' ou 'anual'
+                .eq('tipo', planoId)
                 .limit(1)
                 .single();
             
             if (buscaPlano.data) {
                 planoUUID = buscaPlano.data.id;
-                console.log('[MP] Plano encontrado:', planoUUID);
             } else {
-                console.error('[MP] Plano não encontrado:', planoId);
                 toast('Plano não encontrado', 'error');
                 return;
             }
@@ -357,9 +349,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             planoUUID = planoResult.data.id;
         }
         
-        // PASSO 2: Registrar pagamento no banco
-        console.log('[MP] Registrando pagamento no banco...');
-        
+        // Registrar pagamento
         var registroPagamento = await supabaseClient
             .from('pagamentos')
             .insert({
@@ -373,17 +363,13 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             .single();
         
         if (registroPagamento.error) {
-            console.error('[MP] Erro ao registrar pagamento:', registroPagamento.error);
             toast('Erro ao iniciar pagamento', 'error');
             return;
         }
         
         var pagamentoId = registroPagamento.data.id;
-        console.log('[MP] Pagamento registrado:', pagamentoId);
         
-        // PASSO 3: Chamar Edge Function do MP
-        console.log('[MP] Criando preferência...');
-        
+        // Chamar Edge Function
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -402,22 +388,20 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             })
         });
         
-        var preference = await response.json();
+        var resultado = await response.json();
         
-        console.log('[MP] Resposta:', preference);
+        console.log('[MP] Resultado:', resultado);
         
-        if (preference.id && preference.init_point) {
-            // Atualizar pagamento com o ID do Mercado Pago
-            await supabaseClient
-                .from('pagamentos')
-                .update({
-                    pagamento_gateway_id: preference.id,
-                    preference_id: preference.id
-                })
-                .eq('id', pagamentoId);
-            
+        // Se for PIX, mostrar QR Code na tela
+        if (resultado.payment_method === 'pix' && resultado.qr_code) {
+            mostrarQRCodePIX(resultado, pagamentoId);
+            return;
+        }
+        
+        // Se for Cartão/Débito, redirecionar para MP
+        if (resultado.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
-                preference_id: preference.id,
+                preference_id: resultado.id,
                 pagamento_id: pagamentoId,
                 plano_id: planoId,
                 num_dispositivos: numDispositivos,
@@ -425,18 +409,9 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
                 metodo: metodoPagamento
             }));
             
-            console.log('[MP] Redirecionando:', preference.init_point);
-            window.location.href = preference.init_point;
+            window.location.href = resultado.init_point;
         } else {
-            console.error('[MP] Erro:', preference);
-            
-            // Cancelar registro do pagamento se deu erro
-            await supabaseClient
-                .from('pagamentos')
-                .update({ status: 'cancelado' })
-                .eq('id', pagamentoId);
-            
-            toast('Erro: ' + (preference.message || 'Tente novamente'), 'error');
+            toast('Erro: ' + (resultado.error || 'Tente novamente'), 'error');
         }
         
     } catch(error) {
@@ -445,17 +420,75 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     }
 }
 
-// Alias para compatibilidade
-function pagarComPix(planoId, numDispositivos, valor) {
-    selecionarMetodoPagamento('pix', planoId, numDispositivos, valor);
+// Nova função para mostrar QR Code do PIX
+function mostrarQRCodePIX(dados, pagamentoId) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Pagamento PIX</div>';
+    html += '<div class="modal-sub">Escaneie o QR Code ou copie o código</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+    
+    // QR Code
+    if (dados.qr_code_base64) {
+        html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
+        html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
+        html += '</div>';
+    }
+    
+    // Código Copia e Cola
+    html += '<div style="margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
+    html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2)">' + dados.qr_code + '</textarea>';
+    html += '</div>';
+    
+    // Botão Copiar
+    html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
+    
+    // Link de pagamento
+    if (dados.ticket_url) {
+        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px">🔗 Abrir no App do Banco</a>';
+    }
+    
+    html += '</div>';
+    
+    // Instruções
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
+    html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li style="margin-bottom:8px">Abra o app do seu banco</li>';
+    html += '<li style="margin-bottom:8px">Escolha pagar com PIX</li>';
+    html += '<li style="margin-bottom:8px">Escaneie o QR Code ou copie o código</li>';
+    html += '<li style="margin-bottom:8px">Confirme o pagamento</li>';
+    html += '<li>Aprovação é instantânea!</li>';
+    html += '</ol>';
+    html += '</div>';
+    
+    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
+    html += '⏱️ Este QR Code expira em 24 horas';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
 }
 
-function pagarComCartao(planoId, numDispositivos, valor) {
-    selecionarMetodoPagamento('cartao', planoId, numDispositivos, valor);
-}
-
-function pagarComDebito(planoId, numDispositivos, valor) {
-    selecionarMetodoPagamento('debito', planoId, numDispositivos, valor);
+// Função para copiar código PIX
+function copiarCodigoPIX() {
+    var codigo = document.getElementById('pix-codigo');
+    codigo.select();
+    codigo.setSelectionRange(0, 99999);
+    
+    try {
+        document.execCommand('copy');
+        toast('✅ Código PIX copiado!', 'success');
+    } catch(err) {
+        // Fallback para navegadores modernos
+        navigator.clipboard.writeText(codigo.value).then(function() {
+            toast('✅ Código PIX copiado!', 'success');
+        }).catch(function() {
+            toast('❌ Erro ao copiar. Selecione manualmente.', 'error');
+        });
+    }
 }
 
 // ============ RESTO DAS FUNÇÕES (Upgrade, Dispositivos, etc) ============
