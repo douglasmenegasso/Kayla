@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download - Kayla</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .btn-download {
+            background: #7c5cfc;
+            color: #fff;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            margin: 10px;
+            transition: background 0.3s;
+        }
+        .btn-download:hover {
+            background: #6d4aeb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Download Kayla</h1>
+        <p>Baixe o aplicativo Kayla para Android</p>
+        <a href="/app/assets/apk/kayla.apk" class="btn-download" onclick="registrarDownload()">⬇️ Baixar APK</a>
+    </div>
+
+    <script>
+        async function registrarDownload() {
+            try {
+                await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/registrar-download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_name: 'kayla.apk',
+                        device_info: navigator.userAgent
+                    })
+                });
+            } catch (error) {
+                console.error('Erro:', error);
+            }
+        }
+    </script>
+</body>
+</html>
