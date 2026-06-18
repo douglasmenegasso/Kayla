@@ -421,43 +421,48 @@
         }
 
         async function carregarUsuarios() {
-            try {
-                console.log('Carregando usuários...');
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/auth/users?select=email,created_at&order=created_at.desc&limit=10`, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Prefer': 'return=representation'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('Usuários carregados:', data);
-                
-                if (!data || data.length === 0) {
-                    document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#a0a0b0">Nenhum usuário cadastrado</td></tr>';
-                    return;
-                }
-                
-                const html = data.map(user => `
-                    <tr>
-                        <td>${user.email}</td>
-                        <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
-                        <td><span class="badge badge-success">Ativo</span></td>
-                    </tr>
-                `).join('');
-                
-                document.getElementById('usuariosTable').innerHTML = html;
-            } catch (error) {
-                console.error('Erro ao carregar usuários:', error);
-                document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#f87171">Erro ao carregar: ' + error.message + '</td></tr>';
-            }
+    try {
+        console.log('Carregando usuários via função...');
+        
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_dashboard_users`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({})
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erro na resposta:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+        
+        const data = await response.json();
+        console.log('Usuários carregados:', data);
+        
+        if (!data || data.length === 0) {
+            document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#a0a0b0">Nenhum usuário cadastrado</td></tr>';
+            return;
+        }
+        
+        const html = data.map(user => `
+            <tr>
+                <td>${user.email || 'N/A'}</td>
+                <td>${user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                <td><span class="badge badge-success">Ativo</span></td>
+            </tr>
+        `).join('');
+        
+        document.getElementById('usuariosTable').innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+        document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#f87171">Erro: ' + error.message + '</td></tr>';
+    }
+}
         async function carregarPagamentos() {
             try {
                 console.log('Carregando pagamentos...');
