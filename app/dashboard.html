@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Kayla Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(124, 92, 252, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-bottom: 2px solid #7c5cfc;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #a0a0b0;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(124, 92, 252, 0.1) 0%, rgba(124, 92, 252, 0.05) 100%);
+            border: 1px solid rgba(124, 92, 252, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            color: #a0a0b0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #7c5cfc;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .change {
+            font-size: 12px;
+            color: #4ade80;
+        }
+
+        .stat-card.negative .change {
+            color: #f87171;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #7c5cfc;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background: rgba(124, 92, 252, 0.1);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .badge-warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge-danger {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+
+        .badge-pro {
+            background: rgba(124, 92, 252, 0.2);
+            color: #7c5cfc;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #a0a0b0;
+        }
+
+        .refresh-btn {
+            background: #7c5cfc;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #6d4aeb;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-card .value {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Dashboard Kayla</h1>
+        <p>Painel Administrativo - Métricas e Financeiro</p>
+    </div>
+
+    <div class="container">
+        <button class="refresh-btn" onclick="atualizarDashboard()">🔄 Atualizar Dados</button>
+
+        <!-- Cards de Estatísticas -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">Carregando estatísticas...</div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3 style="margin-bottom: 15px;">📈 Visitas por Período</h3>
+                <canvas id="visitasChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 style="margin-bottom: 15px;">💰 Receita por Plano</h3>
+                <canvas id="receitaChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Usuários Recentes -->
+        <div class="section">
+            <h2>👥 Usuários Recentes</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Data de Cadastro</th>
+                            <th>Plano</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuariosTable">
+                        <tr><td colspan="4" class="loading">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Assinaturas Ativas -->
+        <div class="section">
+            <h2>💎 Assinaturas Ativas</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuário</th>
+                            <th>Plano</th>
+                            <th>Dispositivos</th>
+                            <th>Validade</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="assinaturasTable">
+                        <tr><td colspan="5" class="loading">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Financeiro -->
+        <div class="section">
+            <h2>💵 Transações Financeiras</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Usuário</th>
+                            <th>Plano</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financeiroTable">
+                        <tr><td colspan="5" class="loading">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configurações do Supabase
+        const SUPABASE_URL = 'https://xwwklngrkvdwgiinycvt.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S';
+        
+        let visitasChart, receitaChart;
+
+        // Inicializar dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            atualizarDashboard();
+            // Atualizar a cada 30 segundos
+            setInterval(atualizarDashboard, 30000);
+        });
+
+        async function atualizarDashboard() {
+            await carregarEstatisticas();
+            await carregarUsuarios();
+            await carregarAssinaturas();
+            await carregarFinanceiro();
+            await carregarGraficos();
+        }
+
+        async function carregarEstatisticas() {
+            try {
+                const { data, error } = await supabaseClient
+                    .rpc('dashboard_stats');
+                
+                if (error) throw error;
+
+                const stats = data[0] || {};
+                
+                const html = `
+                    <div class="stat-card">
+                        <h3>🌐 Visitas Site</h3>
+                        <div class="value">${stats.total_visitas_site || 0}</div>
+                        <div class="change">Total acumulado</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>📱 Visitas App</h3>
+                        <div class="value">${stats.total_visitas_app || 0}</div>
+                        <div class="change">Total acumulado</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>⬇️ Downloads APK</h3>
+                        <div class="value">${stats.total_downloads || 0}</div>
+                        <div class="change">Total acumulado</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>👥 Total Usuários</h3>
+                        <div class="value">${stats.total_usuarios || 0}</div>
+                        <div class="change">Cadastrados</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💎 Assinaturas Ativas</h3>
+                        <div class="value">${stats.total_assinaturas_ativas || 0}</div>
+                        <div class="change">Mensal: ${stats.assinaturas_mensais || 0} | Anual: ${stats.assinaturas_anuais || 0}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>💰 Receita Total</h3>
+                        <div class="value">R$ ${(stats.receita_total || 0).toFixed(2).replace('.', ',')}</div>
+                        <div class="change">Mensal: R$ ${(stats.receita_mensal || 0).toFixed(2).replace('.', ',')} | Anual: R$ ${(stats.receita_anual || 0).toFixed(2).replace('.', ',')}</div>
+                    </div>
+                `;
+                
+                document.getElementById('statsGrid').innerHTML = html;
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        async function carregarGraficos() {
+            // Gráfico de Visitas
+            const visitasCtx = document.getElementById('visitasChart').getContext('2d');
+            
+            if (visitasChart) visitasChart.destroy();
+            
+            visitasChart = new Chart(visitasCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Site', 'App', 'Download'],
+                    datasets: [{
+                        label: 'Visitas',
+                        data: [0, 0, 0],
+                        borderColor: '#7c5cfc',
+                        backgroundColor: 'rgba(124, 92, 252, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de Receita
+            const receitaCtx = document.getElementById('receitaChart').getContext('2d');
+            
+            if (receitaChart) receitaChart.destroy();
+            
+            receitaChart = new Chart(receitaCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Plano Mensal', 'Plano Anual'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: ['#7c5cfc', '#4ade80'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Atualizar dados dos gráficos
+            const { data: stats } = await supabaseClient.rpc('dashboard_stats');
+            const s = stats[0] || {};
+            
+            visitasChart.data.datasets[0].data = [
+                s.total_visitas_site || 0,
+                s.total_visitas_app || 0,
+                s.total_visitas_download || 0
+            ];
+            visitasChart.update();
+            
+            receitaChart.data.datasets[0].data = [
+                s.receita_mensal || 0,
+                s.receita_anual || 0
+            ];
+            receitaChart.update();
+        }
+
+        async function carregarUsuarios() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('auth.users')
+                    .select('email, created_at, id')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+
+                const html = data.map(user => `
+                    <tr>
+                        <td>${user.email}</td>
+                        <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td><span class="badge badge-pro">Verificando...</span></td>
+                        <td><span class="badge badge-success">Ativo</span></td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('usuariosTable').innerHTML = html;
+            } catch (error) {
+                console.error('Erro ao carregar usuários:', error);
+            }
+        }
+
+        async function carregarAssinaturas() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('assinaturas')
+                    .select(`
+                        *,
+                        planos (tipo),
+                        auth.users (email)
+                    `)
+                    .eq('status', 'ativa')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+
+                const html = data.map(ass => `
+                    <tr>
+                        <td>${ass.auth?.users?.email || 'N/A'}</td>
+                        <td><span class="badge badge-${ass.planos?.tipo === 'mensal' ? 'pro' : 'warning'}">${ass.planos?.tipo || 'N/A'}</span></td>
+                        <td>${ass.dispositivos_usados || 0}/${ass.dispositivos_max || 0}</td>
+                        <td>${ass.data_fim ? new Date(ass.data_fim).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                        <td><span class="badge badge-success">Ativa</span></td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('assinaturasTable').innerHTML = html;
+            } catch (error) {
+                console.error('Erro ao carregar assinaturas:', error);
+            }
+        }
+
+        async function carregarFinanceiro() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('financial_stats')
+                    .select(`
+                        *,
+                        auth.users (email),
+                        planos (tipo)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) throw error;
+
+                const html = data.map(fin => `
+                    <tr>
+                        <td>${new Date(fin.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td>${fin.auth?.users?.email || 'N/A'}</td>
+                        <td><span class="badge badge-${fin.plano === 'mensal' ? 'pro' : 'warning'}">${fin.plano}</span></td>
+                        <td>R$ ${fin.valor.toFixed(2).replace('.', ',')}</td>
+                        <td><span class="badge badge-${fin.status === 'aprovado' ? 'success' : fin.status === 'pendente' ? 'warning' : 'danger'}">${fin.status}</span></td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('financeiroTable').innerHTML = html;
+            } catch (error) {
+                console.error('Erro ao carregar financeiro:', error);
+            }
+        }
+
+        // Inicializar Supabase Client
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    </script>
+</body>
+</html>
