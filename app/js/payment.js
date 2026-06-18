@@ -578,21 +578,27 @@ async function confirmarPagamentoManual(pagamentoId) {
 
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
-    var hoje = new Date();
     
-    var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
-    if (mesesRestantes <= 0) mesesRestantes = 1;
-    
+    // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
-    if (dispositivosExtras <= 0) dispositivosExtras = 0;
     
-    var valorPorMes = 5.00;
-    var valorTotal = dispositivosExtras * valorPorMes * mesesRestantes;
+    if (dispositivosExtras <= 0) {
+        return {
+            dispositivosExtras: 0,
+            valorPorDispositivo: 0,
+            valorTotal: 0,
+            novaDataFim: dataFim.toISOString()
+        };
+    }
+    
+    // Cobra R$ 5,00 POR DISPOSITIVO EXTRA (sempre!)
+    // NÃO multiplica pelos meses restantes
+    var valorPorDispositivo = 5.00;
+    var valorTotal = dispositivosExtras * valorPorDispositivo;
     
     return {
         dispositivosExtras: dispositivosExtras,
-        mesesRestantes: mesesRestantes,
-        valorPorMes: valorPorMes,
+        valorPorDispositivo: valorPorDispositivo,
         valorTotal: valorTotal,
         novaDataFim: dataFim.toISOString()
     };
