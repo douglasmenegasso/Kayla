@@ -1147,6 +1147,27 @@ window.addEventListener('scroll', () => {
 });
 </script>
 
+<script>
+// Registrar visita
+async function registrarVisita(page) {
+    try {
+        await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/registrar-visita', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page: page })
+        });
+        console.log('Visita registrada:', page);
+    } catch (error) {
+        console.error('Erro ao registrar visita:', error);
+    }
+}
+
+window.addEventListener('load', () => {
+    registrarVisita('site');
+    console.log('Visita da landing page registrada');
+});
+</script>
+  
 </body>
 </html>
 
