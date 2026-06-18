@@ -200,10 +200,12 @@
         <div class="container">
             <button class="refresh-btn" onclick="atualizarDashboard()">🔄 Atualizar Dados</button>
 
+            <!-- Cards de Estatísticas -->
             <div class="stats-grid" id="statsGrid">
                 <div style="text-align:center;padding:40px;color:#a0a0b0">Carregando...</div>
             </div>
 
+            <!-- Gráficos -->
             <div class="charts-grid">
                 <div class="chart-container">
                     <h3 style="margin-bottom:15px">📈 Visitas</h3>
@@ -215,6 +217,7 @@
                 </div>
             </div>
 
+            <!-- Usuários Recentes -->
             <div class="section">
                 <h2>👥 Usuários Recentes</h2>
                 <div class="table-container">
@@ -233,6 +236,7 @@
                 </div>
             </div>
 
+            <!-- Últimos Pagamentos -->
             <div class="section">
                 <h2>💵 Últimos Pagamentos</h2>
                 <div class="table-container">
@@ -240,13 +244,14 @@
                         <thead>
                             <tr>
                                 <th>Data</th>
+                                <th>Usuário</th>
                                 <th>Valor</th>
                                 <th>Método</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="pagamentosTable">
-                            <tr><td colspan="4" style="text-align:center;padding:40px;color:#a0a0b0">Carregando...</td></tr>
+                            <tr><td colspan="5" style="text-align:center;padding:40px;color:#a0a0b0">Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -257,11 +262,10 @@
     <script>
         const SUPABASE_URL = 'https://xwwklngrkvdwgiinycvt.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S';
-        const ADMIN_PASSWORD = 'kayla2026admin'; // ⚠️ MUDE ESTA SENHA!
+        const ADMIN_PASSWORD = 'kayla2026admin';
         
         let visitasChart, receitaChart;
 
-        // Verificar se já está logado
         window.addEventListener('DOMContentLoaded', () => {
             if (sessionStorage.getItem('admin_logged') === 'true') {
                 mostrarDashboard();
@@ -291,6 +295,7 @@
         }
 
         async function atualizarDashboard() {
+            console.log('Atualizando dashboard...');
             await carregarEstatisticas();
             await carregarUsuarios();
             await carregarPagamentos();
@@ -307,36 +312,37 @@
                 });
                 
                 const data = await response.json();
+                console.log('Estatísticas:', data);
                 const stats = data[0] || {};
                 
                 const html = `
                     <div class="stat-card">
-                        <h3>🌐 Visitas Site</h3>
+                        <h3>🌐 VISITAS SITE</h3>
                         <div class="value">${stats.total_visitas_site || 0}</div>
                         <div class="change">Total acumulado</div>
                     </div>
                     <div class="stat-card">
-                        <h3>📱 Visitas App</h3>
+                        <h3>📱 VISITAS APP</h3>
                         <div class="value">${stats.total_visitas_app || 0}</div>
                         <div class="change">Total acumulado</div>
                     </div>
                     <div class="stat-card">
-                        <h3>⬇️ Downloads</h3>
+                        <h3>⬇️ DOWNLOADS</h3>
                         <div class="value">${stats.total_downloads || 0}</div>
                         <div class="change">Total acumulado</div>
                     </div>
                     <div class="stat-card">
-                        <h3>👥 Usuários</h3>
+                        <h3>👥 USUÁRIOS</h3>
                         <div class="value">${stats.total_usuarios || 0}</div>
                         <div class="change">Cadastrados</div>
                     </div>
                     <div class="stat-card">
-                        <h3>💎 Assinaturas Ativas</h3>
+                        <h3>💎 ASSINATURAS ATIVAS</h3>
                         <div class="value">${stats.total_assinaturas_ativas || 0}</div>
                         <div class="change">Planos ativos</div>
                     </div>
                     <div class="stat-card">
-                        <h3>💰 Receita Total</h3>
+                        <h3>💰 RECEITA TOTAL</h3>
                         <div class="value">R$ ${(stats.receita_total || 0).toFixed(2).replace('.', ',')}</div>
                         <div class="change">PIX: ${stats.pagamentos_pix || 0} | Cartão: ${stats.pagamentos_cartao || 0}</div>
                     </div>
@@ -344,7 +350,7 @@
                 
                 document.getElementById('statsGrid').innerHTML = html;
             } catch (error) {
-                console.error('Erro:', error);
+                console.error('Erro ao carregar estatísticas:', error);
             }
         }
 
@@ -415,15 +421,28 @@
 
         async function carregarUsuarios() {
             try {
+                console.log('Carregando usuários...');
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/auth/users?select=email,created_at&order=created_at.desc&limit=10`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
                     }
                 });
-                const data = await response.json();
                 
-                const html = (data || []).map(user => `
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Usuários carregados:', data);
+                
+                if (!data || data.length === 0) {
+                    document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#a0a0b0">Nenhum usuário cadastrado</td></tr>';
+                    return;
+                }
+                
+                const html = data.map(user => `
                     <tr>
                         <td>${user.email}</td>
                         <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
@@ -431,34 +450,50 @@
                     </tr>
                 `).join('');
                 
-                document.getElementById('usuariosTable').innerHTML = html || '<tr><td colspan="3" style="text-align:center;padding:20px">Nenhum usuário</td></tr>';
+                document.getElementById('usuariosTable').innerHTML = html;
             } catch (error) {
-                console.error('Erro:', error);
+                console.error('Erro ao carregar usuários:', error);
+                document.getElementById('usuariosTable').innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#f87171">Erro ao carregar: ' + error.message + '</td></tr>';
             }
         }
 
         async function carregarPagamentos() {
             try {
+                console.log('Carregando pagamentos...');
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/pagamentos?select=*,user_id&order=created_at.desc&limit=10`, {
                     headers: {
                         'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Prefer': 'return=representation'
                     }
                 });
-                const data = await response.json();
                 
-                const html = (data || []).map(pag => `
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Pagamentos carregados:', data);
+                
+                if (!data || data.length === 0) {
+                    document.getElementById('pagamentosTable').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#a0a0b0">Nenhum pagamento registrado</td></tr>';
+                    return;
+                }
+                
+                const html = data.map(pag => `
                     <tr>
                         <td>${new Date(pag.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td style="font-size:12px">${pag.user_id ? pag.user_id.substring(0, 8) + '...' : 'N/A'}</td>
                         <td>R$ ${parseFloat(pag.valor).toFixed(2).replace('.', ',')}</td>
                         <td><span class="badge badge-pro">${pag.metodo_pagamento || 'N/A'}</span></td>
                         <td><span class="badge badge-${pag.status === 'aprovado' ? 'success' : pag.status === 'pendente' ? 'warning' : 'danger'}">${pag.status}</span></td>
                     </tr>
                 `).join('');
                 
-                document.getElementById('pagamentosTable').innerHTML = html || '<tr><td colspan="4" style="text-align:center;padding:20px">Nenhum pagamento</td></tr>';
+                document.getElementById('pagamentosTable').innerHTML = html;
             } catch (error) {
-                console.error('Erro:', error);
+                console.error('Erro ao carregar pagamentos:', error);
+                document.getElementById('pagamentosTable').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f87171">Erro ao carregar: ' + error.message + '</td></tr>';
             }
         }
     </script>
