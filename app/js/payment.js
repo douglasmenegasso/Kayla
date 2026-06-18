@@ -676,7 +676,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
+                'Authorization': 'Bearer ' + SUPABASE_KEY
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - Upgrade de Dispositivos',
