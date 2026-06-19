@@ -23,7 +23,7 @@ window.PLANOS = {
         id: 'anual',
         nome: 'Plano Anual',
         precoBase: 199.90,
-        precoPorDevice: 5.00,
+        precoPorDevice: 60.00,
         dispositivosInclusos: 1,
         dispositivosMax: 5,
         duracaoDias: 365,
@@ -374,7 +374,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
+                'Authorization': 'Bearer ' + SUPABASE_KEY
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
@@ -420,7 +420,8 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     }
 }
 
-// Nova função para mostrar QR Code do PIX
+// ============ QR CODE PIX ============
+
 function mostrarQRCodePIX(dados, pagamentoId) {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📱 Pagamento PIX</div>';
@@ -490,7 +491,6 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     document.getElementById('modal-body').innerHTML = html;
 }
 
-// Função para copiar código PIX
 function copiarCodigoPIX() {
     var codigo = document.getElementById('pix-codigo');
     codigo.select();
@@ -578,6 +578,11 @@ async function confirmarPagamentoManual(pagamentoId) {
 
 function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
+    var hoje = new Date();
+    
+    // Calcular meses restantes
+    var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
+    if (mesesRestantes <= 0) mesesRestantes = 1;
     
     // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
@@ -585,20 +590,24 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     if (dispositivosExtras <= 0) {
         return {
             dispositivosExtras: 0,
+            valorPorMes: 0,
             valorPorDispositivo: 0,
+            mesesRestantes: mesesRestantes,
             valorTotal: 0,
             novaDataFim: dataFim.toISOString()
         };
     }
     
     // Cobra R$ 5,00 POR DISPOSITIVO EXTRA (sempre!)
-    // NÃO multiplica pelos meses restantes
+    var valorPorMes = 5.00;
     var valorPorDispositivo = 5.00;
-    var valorTotal = dispositivosExtras * valorPorDispositivo;
+    var valorTotal = dispositivosExtras * valorPorMes;
     
     return {
         dispositivosExtras: dispositivosExtras,
+        valorPorMes: valorPorMes,
         valorPorDispositivo: valorPorDispositivo,
+        mesesRestantes: mesesRestantes,
         valorTotal: valorTotal,
         novaDataFim: dataFim.toISOString()
     };
@@ -633,7 +642,7 @@ async function fazerUpgradeDispositivos() {
         html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="confirmarUpgradeDispositivos(' + i + ', ' + calculo.valorTotal + ')">';
         html += '<div class="item-info">';
         html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
-        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s) por ' + calculo.mesesRestantes + ' meses</div>';
+        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s)</div>';
         html += '</div>';
         html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</div>';
         html += '</div>';
@@ -660,7 +669,7 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">De ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ' dispositivo(s)</div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">' + calculo.mesesRestantes + ' meses restantes na assinatura</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
     html += '</div>';
     
     html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
@@ -669,12 +678,8 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '<strong>' + calculo.dispositivosExtras + '</strong>';
     html += '</div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-    html += '<span style="font-size:12px;color:var(--text2)">Valor por mês:</span>';
-    html += '<strong>R$ ' + calculo.valorPorMes.toFixed(2).replace('.', ',') + '</strong>';
-    html += '</div>';
-    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-    html += '<span style="font-size:12px;color:var(--text2)">Meses restantes:</span>';
-    html += '<strong>' + calculo.mesesRestantes + '</strong>';
+    html += '<span style="font-size:12px;color:var(--text2)">Valor por dispositivo:</span>';
+    html += '<strong>R$ ' + calculo.valorPorDispositivo.toFixed(2).replace('.', ',') + '</strong>';
     html += '</div>';
     html += '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:space-between">';
     html += '<span style="font-size:16px;font-weight:700">Total:</span>';
@@ -709,7 +714,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
                 user_id: currentUser.id,
                 plano_id: assinatura.plano_id,
                 valor: valor,
-                metodo_pagamento: 'mercado_pago',
+                metodo_pagamento: 'pix',
                 status: 'pendente',
                 metadata: {
                     tipo: 'upgrade',
@@ -736,7 +741,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4'
+                'Authorization': 'Bearer ' + SUPABASE_KEY
             },
             body: JSON.stringify({
                 titulo: 'Kayla PRO - Upgrade de Dispositivos',
@@ -747,7 +752,8 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
                 num_dispositivos: novosDispositivos,
                 pagamento_id: pagamentoId,
                 tipo: 'upgrade',
-                assinatura_id: assinatura.id
+                assinatura_id: assinatura.id,
+                metodo_pagamento: 'pix'
             })
         });
         
@@ -911,76 +917,6 @@ async function removerDispositivo(deviceId) {
             toast('Erro ao remover', 'error');
         }
     });
-}
-
-// Nova função para mostrar QR Code do PIX
-function mostrarQRCodePIX(dados, pagamentoId) {
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📱 Pagamento PIX</div>';
-    html += '<div class="modal-sub">Escaneie o QR Code ou copie o código</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
-    
-    // QR Code
-    if (dados.qr_code_base64) {
-        html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
-        html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
-        html += '</div>';
-    }
-    
-    // Código Copia e Cola
-    html += '<div style="margin-bottom:16px">';
-    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
-    html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2)">' + dados.qr_code + '</textarea>';
-    html += '</div>';
-    
-    // Botão Copiar
-    html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
-    
-    // Link de pagamento
-    if (dados.ticket_url) {
-        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px">🔗 Abrir no App do Banco</a>';
-    }
-    
-    html += '</div>';
-    
-    // Instruções
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
-    html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
-    html += '<li style="margin-bottom:8px">Abra o app do seu banco</li>';
-    html += '<li style="margin-bottom:8px">Escolha pagar com PIX</li>';
-    html += '<li style="margin-bottom:8px">Escaneie o QR Code ou copie o código</li>';
-    html += '<li style="margin-bottom:8px">Confirme o pagamento</li>';
-    html += '<li>Aprovação é instantânea!</li>';
-    html += '</ol>';
-    html += '</div>';
-    
-    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
-    html += '⏱️ Este QR Code expira em 24 horas';
-    html += '</div>';
-    
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-}
-
-// Função para copiar código PIX
-function copiarCodigoPIX() {
-    var codigo = document.getElementById('pix-codigo');
-    codigo.select();
-    codigo.setSelectionRange(0, 99999);
-    
-    try {
-        document.execCommand('copy');
-        toast('✅ Código PIX copiado!', 'success');
-    } catch(err) {
-        navigator.clipboard.writeText(codigo.value).then(function() {
-            toast('✅ Código PIX copiado!', 'success');
-        }).catch(function() {
-            toast('❌ Erro ao copiar. Selecione manualmente.', 'error');
-        });
-    }
 }
 
 console.log('✅ Payments.js carregado');
