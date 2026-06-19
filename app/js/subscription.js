@@ -1,441 +1,361 @@
-// ============ SISTEMA DE ASSINATURA E DISPOSITIVOS ============
+// ============ GERENCIAMENTO DE DISPOSITIVOS ============
 
-// ============ DISPOSITIVO ============
-
-// Gerar ID único do dispositivo
+// Função para obter ID único do dispositivo
 function getDeviceId() {
+    // Tenta pegar do localStorage primeiro
     var deviceId = localStorage.getItem('kayla_device_id');
+    
     if (!deviceId) {
-        deviceId = 'DEV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        // Gera novo ID único
+        deviceId = 'DEV-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         localStorage.setItem('kayla_device_id', deviceId);
-        console.log('[SUB] Novo Device ID gerado:', deviceId);
     }
+    
     return deviceId;
 }
 
-// Obter nome do dispositivo
+// Função para obter nome do dispositivo
 function getDeviceName() {
-    var ua = navigator.userAgent;
-    var name = 'Dispositivo';
+    var userAgent = navigator.userAgent;
+    var deviceName = 'Dispositivo Desconhecido';
+    
+    // Detectar tipo de dispositivo
+    if (/Android/i.test(userAgent)) {
+        deviceName = 'Android';
+        if (/Mobile/i.test(userAgent)) {
+            deviceName = 'Android Mobile';
+        } else {
+            deviceName = 'Android Tablet';
+        }
+    } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+        if (/iPad/i.test(userAgent)) {
+            deviceName = 'iPad';
+        } else if (/iPhone/i.test(userAgent)) {
+            deviceName = 'iPhone';
+        } else {
+            deviceName = 'iPod';
+        }
+    } else if (/Windows/i.test(userAgent)) {
+        deviceName = 'Windows';
+        if (/Mobile/i.test(userAgent)) {
+            deviceName = 'Windows Mobile';
+        }
+    } else if (/Mac/i.test(userAgent)) {
+        deviceName = 'Mac';
+    } else if (/Linux/i.test(userAgent)) {
+        deviceName = 'Linux';
+    }
     
     // Detectar navegador
-    var browser = 'Desconhecido';
-    if (/Chrome/i.test(ua)) browser = 'Chrome';
-    else if (/Firefox/i.test(ua)) browser = 'Firefox';
-    else if (/Safari/i.test(ua)) browser = 'Safari';
-    else if (/Edge/i.test(ua)) browser = 'Edge';
-    
-    // Detectar SO
-    var os = 'Desconhecido';
-    if (/Android/i.test(ua)) os = 'Android';
-    else if (/iPhone/i.test(ua)) os = 'iPhone';
-    else if (/iPad/i.test(ua)) os = 'iPad';
-    else if (/Windows/i.test(ua)) os = 'Windows';
-    else if (/Mac/i.test(ua)) os = 'Mac';
-    else if (/Linux/i.test(ua)) os = 'Linux';
-    
-    name = browser + ' - ' + os;
-    
-    // Adicionar hostname se disponível
-    if (window.location.hostname) {
-        name += ' (' + window.location.hostname + ')';
+    var browser = '';
+    if (/Chrome/i.test(userAgent) && !/Edge/i.test(userAgent)) {
+        browser = 'Chrome';
+    } else if (/Firefox/i.test(userAgent)) {
+        browser = 'Firefox';
+    } else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) {
+        browser = 'Safari';
+    } else if (/Edge|Edg/i.test(userAgent)) {
+        browser = 'Edge';
     }
     
-    return name;
+    // Adicionar versão do navegador
+    var browserVersion = '';
+    var match = userAgent.match(/(Chrome|Firefox|Safari|Edge|Edg)\/(\d+)/i);
+    if (match) {
+        browserVersion = ' ' + match[2];
+    }
+    
+    return deviceName + ' - ' + browser + browserVersion;
 }
 
-// Obter informações completas do dispositivo
-function getDeviceInfo() {
-    var ua = navigator.userAgent;
-    var deviceType = 'desktop';
+// Função para obter tipo de dispositivo
+function getDeviceType() {
+    var userAgent = navigator.userAgent;
     
-    if (/mobile|android|iphone|ipod/i.test(ua)) deviceType = 'mobile';
-    else if (/tablet|ipad/i.test(ua)) deviceType = 'tablet';
-    
-    return {
-        id: getDeviceId(),
-        name: getDeviceName(),
-        type: deviceType,
-        userAgent: ua,
-        platform: navigator.platform || 'Desconhecido',
-        language: navigator.language || 'pt-BR',
-        screen: window.screen.width + 'x' + window.screen.height
-    };
+    if (/Mobile|Android|iPhone|iPad|iPod/i.test(userAgent)) {
+        return 'mobile';
+    } else if (/Tablet|iPad/i.test(userAgent)) {
+        return 'tablet';
+    } else {
+        return 'desktop';
+    }
 }
 
-// ============ ASSINATURAS ============
+// ============ REGISTRO DE DISPOSITIVO ============
 
-// Buscar assinatura ativa do usuário
-async function getAssinaturaAtiva() {
-    if (!currentUser || !supabaseClient) return null;
-    
-    try {
-        var result = await supabaseClient
-            .from('assinaturas')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('status', 'ativa')
-            .order('data_fim', { ascending: false })
-            .limit(1);
-        
-        if (result.data && result.data.length > 0) {
-            var assinatura = result.data[0];
-            
-            // Verificar se ainda está válida
-            if (new Date(assinatura.data_fim) > new Date()) {
-                return assinatura;
-            } else {
-                // Expirou - atualizar status
-                await supabaseClient
-                    .from('assinaturas')
-                    .update({ 
-                        status: 'expirada',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', assinatura.id);
-                
-                return null;
-            }
-        }
-        
+async function registrarDispositivo(assinaturaId) {
+    if (!currentUser || !supabaseClient) {
+        console.error('[Dispositivo] Usuário não autenticado');
         return null;
-    } catch(e) {
-        console.error('[SUB] Erro ao buscar assinatura:', e);
-        return null;
-    }
-}
-
-// Verificar se assinatura está ativa (com cache local)
-async function verificarAssinaturaAtiva() {
-    if (!currentUser) return false;
-    
-    // Verificar expiração local primeiro (rápido)
-    var expiraLocal = localStorage.getItem('kayla_pro_expires');
-    if (expiraLocal) {
-        var dataExpira = new Date(expiraLocal);
-        if (dataExpira < new Date()) {
-            // Expirou - limpar dados locais
-            console.log('[SUB] Assinatura expirada localmente');
-            LIMITES.proAtivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_devices');
-            atualizarBadgePlano();
-            return false;
-        }
-    }
-    
-    // Verificar no banco (online)
-    if (isOnline && supabaseClient) {
-        try {
-            var assinatura = await getAssinaturaAtiva();
-            
-            if (assinatura) {
-                // Atualizar dados locais
-                LIMITES.proAtivo = true;
-                localStorage.setItem('kayla_pro', 'true');
-                localStorage.setItem('kayla_pro_key', assinatura.key_ativacao);
-                localStorage.setItem('kayla_pro_expires', assinatura.data_fim);
-                localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
-                
-                atualizarBadgePlano();
-                return true;
-            } else {
-                // Não tem assinatura ativa
-                LIMITES.proAtivo = false;
-                localStorage.removeItem('kayla_pro');
-                localStorage.removeItem('kayla_pro_expires');
-                localStorage.removeItem('kayla_pro_key');
-                localStorage.removeItem('kayla_pro_devices');
-                atualizarBadgePlano();
-                return false;
-            }
-        } catch(e) {
-            console.error('[SUB] Erro ao verificar assinatura:', e);
-            // Se der erro, confiar no cache local
-            return LIMITES.proAtivo;
-        }
-    }
-    
-    // Offline - confiar no cache local
-    return LIMITES.proAtivo;
-}
-
-// ============ DISPOSITIVOS ============
-
-// Registrar dispositivo atual
-async function registrarDispositivoAtual() {
-    if (!currentUser || !supabaseClient || !isOnline) {
-        console.log('[SUB] Não é possível registrar dispositivo (offline ou sem login)');
-        return true; // Permite acesso offline
     }
     
     try {
-        var deviceInfo = getDeviceInfo();
-        var assinatura = await getAssinaturaAtiva();
+        var deviceId = getDeviceId();
+        var deviceName = getDeviceName();
+        var deviceType = getDeviceType();
         
-        // Se não tem assinatura, é usuário FREE - não registra
-        if (!assinatura) {
-            console.log('[SUB] Usuário FREE - sem registro de dispositivo');
-            return true;
-        }
-        
-        console.log('[SUB] Registrando dispositivo:', deviceInfo);
+        console.log('[Dispositivo] Registrando:', {
+            id: deviceId,
+            name: deviceName,
+            type: deviceType,
+            assinaturaId: assinaturaId
+        });
         
         // Verificar se dispositivo já está registrado
-        var check = await supabaseClient
+        var { data: dispositivoExistente, error: buscaError } = await supabaseClient
             .from('dispositivos')
-            .select('id')
-            .eq('assinatura_id', assinatura.id)
-            .eq('device_id', deviceInfo.id)
-            .limit(1);
+            .select('id, ativo')
+            .eq('device_id', deviceId)
+            .eq('assinatura_id', assinaturaId)
+            .limit(1)
+            .single();
         
-        if (check.data && check.data.length > 0) {
-            console.log('[SUB] Dispositivo já registrado, atualizando último acesso');
-            // Atualizar último acesso
-            await supabaseClient
-                .from('dispositivos')
-                .update({ 
-                    ultimo_acesso: new Date().toISOString(),
-                    device_name: deviceInfo.name,
-                    user_agent: deviceInfo.userAgent
-                })
-                .eq('id', check.data[0].id);
-            return true;
+        if (buscaError && buscaError.code !== 'PGRST116') {
+            // Erro diferente de "não encontrado"
+            console.error('[Dispositivo] Erro ao buscar:', buscaError);
         }
         
-        // Verificar limite de dispositivos
-        if (assinatura.dispositivos_usados >= assinatura.dispositivos_max) {
-            console.warn('[SUB] Limite de dispositivos atingido!');
-            mostrarModalLimiteDispositivos(assinatura);
+        if (dispositivoExistente) {
+            // Dispositivo já registrado - atualizar último acesso
+            console.log('[Dispositivo] Dispositivo já registrado, atualizando último acesso');
+            
+            var { data: atualizado, error: updateError } = await supabaseClient
+                .from('dispositivos')
+                .update({
+                    ultimo_acesso: new Date().toISOString(),
+                    user_agent: navigator.userAgent,
+                    ativo: true
+                })
+                .eq('id', dispositivoExistente.id)
+                .select()
+                .single();
+            
+            if (updateError) {
+                console.error('[Dispositivo] Erro ao atualizar:', updateError);
+                return null;
+            }
+            
+            console.log('[Dispositivo] Último acesso atualizado');
+            return atualizado;
+        }
+        
+        // Novo dispositivo - registrar
+        console.log('[Dispositivo] Registrando novo dispositivo...');
+        
+        var { data: novoDispositivo, error: insertError } = await supabaseClient
+            .from('dispositivos')
+            .insert({
+                assinatura_id: assinaturaId,
+                user_id: currentUser.id,
+                device_id: deviceId,
+                device_name: deviceName,
+                device_type: deviceType,
+                ip_address: null, // Não temos acesso ao IP no frontend
+                user_agent: navigator.userAgent,
+                primeiro_acesso: new Date().toISOString(),
+                ultimo_acesso: new Date().toISOString(),
+                ativo: true
+            })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.error('[Dispositivo] Erro ao registrar:', insertError);
+            
+            // Verificar se é erro de limite de dispositivos
+            if (insertError.message && insertError.message.includes('limit')) {
+                toast('Limite de dispositivos atingido!', 'error');
+            }
+            
+            return null;
+        }
+        
+        console.log('[Dispositivo] ✅ Dispositivo registrado com sucesso');
+        return novoDispositivo;
+        
+    } catch(e) {
+        console.error('[Dispositivo] Erro:', e);
+        return null;
+    }
+}
+
+// ============ VERIFICAÇÃO DE LIMITES ============
+
+async function verificarLimiteDispositivos(assinaturaId) {
+    if (!currentUser || !supabaseClient) {
+        return { podeAdicionar: false, motivo: 'Usuário não autenticado' };
+    }
+    
+    try {
+        // Buscar assinatura ativa
+        var { data: assinatura, error: assError } = await supabaseClient
+            .from('assinaturas')
+            .select('dispositivos_max, dispositivos_usados')
+            .eq('id', assinaturaId)
+            .single();
+        
+        if (assError || !assinatura) {
+            return { podeAdicionar: false, motivo: 'Assinatura não encontrada' };
+        }
+        
+        // Contar dispositivos ativos
+        var { count: dispositivosAtivos, error: countError } = await supabaseClient
+            .from('dispositivos')
+            .select('id', { count: 'exact', head: true })
+            .eq('assinatura_id', assinaturaId)
+            .eq('ativo', true);
+        
+        if (countError) {
+            console.error('[Dispositivo] Erro ao contar:', countError);
+            return { podeAdicionar: false, motivo: 'Erro ao verificar limite' };
+        }
+        
+        var podeAdicionar = dispositivosAtivos < assinatura.dispositivos_max;
+        var motivo = podeAdicionar 
+            ? null 
+            : 'Você atingiu o limite de ' + assinatura.dispositivos_max + ' dispositivos';
+        
+        return {
+            podeAdicionar: podeAdicionar,
+            dispositivosAtivos: dispositivosAtivos,
+            dispositivosMax: assinatura.dispositivos_max,
+            motivo: motivo
+        };
+        
+    } catch(e) {
+        console.error('[Dispositivo] Erro ao verificar limite:', e);
+        return { podeAdicionar: false, motivo: 'Erro de conexão' };
+    }
+}
+
+// ============ LISTAR DISPOSITIVOS ============
+
+async function listarDispositivos(assinaturaId) {
+    if (!currentUser || !supabaseClient) {
+        return [];
+    }
+    
+    try {
+        var { data: dispositivos, error } = await supabaseClient
+            .from('dispositivos')
+            .select('*')
+            .eq('assinatura_id', assinaturaId)
+            .eq('ativo', true)
+            .order('ultimo_acesso', { ascending: false });
+        
+        if (error) {
+            console.error('[Dispositivo] Erro ao listar:', error);
+            return [];
+        }
+        
+        return dispositivos || [];
+        
+    } catch(e) {
+        console.error('[Dispositivo] Erro:', e);
+        return [];
+    }
+}
+
+// ============ REMOVER DISPOSITIVO ============
+
+async function removerDispositivo(deviceId, assinaturaId) {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return false;
+    }
+    
+    try {
+        var { error } = await supabaseClient
+            .from('dispositivos')
+            .update({ ativo: false })
+            .eq('id', deviceId)
+            .eq('assinatura_id', assinaturaId);
+        
+        if (error) {
+            console.error('[Dispositivo] Erro ao remover:', error);
+            toast('Erro ao remover dispositivo', 'error');
             return false;
         }
         
-        // Registrar novo dispositivo
-        var result = await supabaseClient
-            .from('dispositivos')
-            .insert({
-                assinatura_id: assinatura.id,
-                user_id: currentUser.id,
-                device_id: deviceInfo.id,
-                device_name: deviceInfo.name,
-                device_type: deviceInfo.type,
-                user_agent: deviceInfo.userAgent
-            });
+        // Atualizar contador de dispositivos usados
+        var { data: assinatura, error: assError } = await supabaseClient
+            .from('assinaturas')
+            .select('dispositivos_usados')
+            .eq('id', assinaturaId)
+            .single();
         
-        if (result.error) {
-            console.error('[SUB] Erro ao registrar dispositivo:', result.error);
-            // Se der erro, permite acesso (não bloqueia o usuário)
-            return true;
+        if (!assError && assinatura) {
+            var novosUsados = Math.max(0, assinatura.dispositivos_usados - 1);
+            
+            await supabaseClient
+                .from('assinaturas')
+                .update({ 
+                    dispositivos_usados: novosUsados,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', assinaturaId);
         }
         
-        // Atualizar contador
-        await supabaseClient
-            .from('assinaturas')
-            .update({ 
-                dispositivos_usados: assinatura.dispositivos_usados + 1,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', assinatura.id);
-        
-        // Atualizar localStorage
-        localStorage.setItem('kayla_pro_devices', (assinatura.dispositivos_usados + 1) + '/' + assinatura.dispositivos_max);
-        
-        console.log('[SUB] ✅ Dispositivo registrado com sucesso!');
+        console.log('[Dispositivo] ✅ Dispositivo removido');
         return true;
         
     } catch(e) {
-        console.error('[SUB] Erro ao registrar dispositivo:', e);
-        // Se der erro, permite acesso (não bloqueia o usuário)
-        return true;
+        console.error('[Dispositivo] Erro:', e);
+        toast('Erro ao remover dispositivo', 'error');
+        return false;
     }
 }
 
-// ============ VERIFICAÇÃO DE ACESSO ============
+// ============ LIMPAR DISPOSITIVOS INATIVOS ============
 
-// Verificar acesso ao app (chamado no login)
-async function verificarAcessoApp() {
-    if (!currentUser) return false;
-    
-    console.log('[SUB] Verificando acesso ao app...');
-    
-    // Verificar assinatura
-    var temAssinatura = await verificarAssinaturaAtiva();
-    
-    if (temAssinatura) {
-        // Registrar dispositivo
-        var dispositivoRegistrado = await registrarDispositivoAtual();
-        
-        if (!dispositivoRegistrado) {
-            // Limite atingido - não permite acesso PRO
-            LIMITES.proAtivo = false;
-            localStorage.removeItem('kayla_pro');
-            atualizarBadgePlano();
-            return false;
-        }
-        
-        return true;
+async function limparDispositivosInativos(assinaturaId) {
+    if (!currentUser || !supabaseClient) {
+        return 0;
     }
     
-    // Sem assinatura - modo FREE
-    LIMITES.proAtivo = false;
-    atualizarBadgePlano();
-    return true; // Permite acesso ao app (modo free)
+    try {
+        // Dispositivos inativos há mais de 30 dias
+        var trintaDiasAtras = new Date();
+        trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+        
+        var { data: dispositivosInativos, error } = await supabaseClient
+            .from('dispositivos')
+            .select('id')
+            .eq('assinatura_id', assinaturaId)
+            .eq('ativo', true)
+            .lt('ultimo_acesso', trintaDiasAtras.toISOString());
+        
+        if (error || !dispositivosInativos) {
+            return 0;
+        }
+        
+        // Desativar dispositivos inativos
+        for (var i = 0; i < dispositivosInativos.length; i++) {
+            await supabaseClient
+                .from('dispositivos')
+                .update({ ativo: false })
+                .eq('id', dispositivosInativos[i].id);
+        }
+        
+        console.log('[Dispositivo] ✅', dispositivosInativos.length, 'dispositivos inativos removidos');
+        return dispositivosInativos.length;
+        
+    } catch(e) {
+        console.error('[Dispositivo] Erro ao limpar:', e);
+        return 0;
+    }
 }
 
-// ============ MODAIS ============
+// ============ EXPORTAR FUNÇÕES GLOBAIS ============
 
-// Modal de limite de dispositivos
-function mostrarModalLimiteDispositivos(assinatura) {
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📱 Limite Atingido</div>';
-    html += '<div class="modal-sub">Você atingiu o limite de dispositivos</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px">🔒</div>';
-    html += '<div style="font-size:16px;font-weight:700;color:var(--warning);margin-top:8px">';
-    html += assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso';
-    html += '</div></div>';
-    
-    html += '<div style="font-size:13px;color:var(--text2);text-align:center">';
-    html += 'Para adicionar mais dispositivos, você pode:<br><br>';
-    html += '1️⃣ Remover um dispositivo antigo<br>';
-    html += '2️⃣ Fazer upgrade do plano';
-    html += '</div></div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal(); gerenciarDispositivos()">📱 Gerenciar Dispositivos</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal(); mostrarPlanos()">🚀 Fazer Upgrade</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
+// Tornar funções disponíveis globalmente
+window.getDeviceId = getDeviceId;
+window.getDeviceName = getDeviceName;
+window.getDeviceType = getDeviceType;
+window.registrarDispositivo = registrarDispositivo;
+window.verificarLimiteDispositivos = verificarLimiteDispositivos;
+window.listarDispositivos = listarDispositivos;
+window.removerDispositivo = removerDispositivo;
+window.limparDispositivosInativos = limparDispositivosInativos;
 
-// Modal de informações da assinatura
-async function mostrarInfoAssinatura() {
-    if (!currentUser) {
-        toast('Faça login primeiro', 'error');
-        return;
-    }
-    
-    var assinatura = await getAssinaturaAtiva();
-    
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📋 Minha Assinatura</div>';
-    
-    if (!assinatura) {
-        html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-        html += '<div style="font-size:48px;margin-bottom:12px">🆓</div>';
-        html += '<div style="font-size:16px;font-weight:700;margin-bottom:8px">Plano Gratuito</div>';
-        html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">';
-        html += 'Você está usando o plano gratuito com limitações.';
-        html += '</div>';
-        html += '<div style="font-size:12px;color:var(--text2);text-align:left;margin-bottom:16px">';
-        html += '<strong>Limites:</strong><br>';
-        html += '• ' + LIMITES.freeClientes + ' clientes<br>';
-        html += '• ' + LIMITES.freeProdutos + ' produtos<br>';
-        html += '• 1 dispositivo<br>';
-        html += '• Sem geração de PDF<br>';
-        html += '</div>';
-        html += '</div>';
-        
-        html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()">🚀 Assinar PRO</button>';
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    } else {
-        // Buscar informações do plano
-        var planoNome = 'PRO';
-        var planoTipo = '';
-        try {
-            if (assinatura.plano_id) {
-                var planoResult = await supabaseClient
-                    .from('planos')
-                    .select('*')
-                    .eq('id', assinatura.plano_id)
-                    .single();
-                
-                if (planoResult.data) {
-                    planoNome = planoResult.data.nome;
-                    planoTipo = planoResult.data.tipo;
-                }
-            }
-        } catch(e) {
-            console.error('[SUB] Erro ao buscar plano:', e);
-        }
-        
-        var dataInicio = new Date(assinatura.data_inicio).toLocaleDateString('pt-BR');
-        var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
-        var diasRestantes = Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
-        
-        html += '<div class="card" style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);padding:16px;margin-bottom:16px;text-align:center">';
-        html += '<div style="font-size:48px;margin-bottom:8px">⭐</div>';
-        html += '<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">Plano PRO</div>';
-        html += '<div style="font-size:14px;color:rgba(255,255,255,0.9)">' + planoNome + '</div>';
-        html += '</div>';
-        
-        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Status:</span>';
-        html += '<strong style="color:var(--success)">✅ ATIVA</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Início:</span>';
-        html += '<strong>' + dataInicio + '</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Vencimento:</span>';
-        html += '<strong>' + dataFim + '</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Dias restantes:</span>';
-        html += '<strong style="color:var(--accent)">' + diasRestantes + ' dias</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Dispositivos:</span>';
-        html += '<strong>' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + '</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between">';
-        html += '<span style="color:var(--text2)">Key de ativação:</span>';
-        html += '<strong style="font-family:monospace;font-size:11px">' + assinatura.key_ativacao + '</strong>';
-        html += '</div>';
-        html += '</div>';
-        
-        html += '<button class="btn btn-primary" onclick="fecharModal(); gerenciarDispositivos()">📱 Gerenciar Dispositivos</button>';
-        
-        if (assinatura.dispositivos_max < 5) {
-            html += '<button class="btn btn-outline" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivos</button>';
-        }
-        
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    }
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-// ============ INICIALIZAÇÃO ============
-
-// Verificar assinatura ao carregar (se já logado)
-window.addEventListener('load', function() {
-    setTimeout(async function() {
-        if (currentUser) {
-            console.log('[SUB] Verificando assinatura ao carregar...');
-            await verificarAssinaturaAtiva();
-        }
-    }, 1000);
-});
-
-// Verificar periodicamente (a cada 5 minutos)
-setInterval(async function() {
-    if (currentUser && isOnline) {
-        await verificarAssinaturaAtiva();
-    }
-}, 5 * 60 * 1000);
-
-console.log('✅ Subscription.js carregado');
+console.log('✅ Devices.js carregado');
