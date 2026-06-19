@@ -1,73 +1,18 @@
-// ============ SISTEMA DE ASSINATURA E DISPOSITIVOS ============
+// ============ ASSINATURAS E DISPOSITIVOS ============
 
-// ============ DISPOSITIVO ============
+// Configurações de limites
+window.LIMITES = {
+    proAtivo: false,
+    maxClientes: 50,
+    maxProdutos: 100,
+    maxVendas: 200
+};
 
-// Gerar ID único do dispositivo
-function getDeviceId() {
-    var deviceId = localStorage.getItem('kayla_device_id');
-    if (!deviceId) {
-        deviceId = 'DEV-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-        localStorage.setItem('kayla_device_id', deviceId);
-        console.log('[SUB] Novo Device ID gerado:', deviceId);
+// Verificar status PRO do usuário
+async function verificarStatusPro() {
+    if (!currentUser || !supabaseClient) {
+        return false;
     }
-    return deviceId;
-}
-
-// Obter nome do dispositivo
-function getDeviceName() {
-    var ua = navigator.userAgent;
-    var name = 'Dispositivo';
-    
-    // Detectar navegador
-    var browser = 'Desconhecido';
-    if (/Chrome/i.test(ua)) browser = 'Chrome';
-    else if (/Firefox/i.test(ua)) browser = 'Firefox';
-    else if (/Safari/i.test(ua)) browser = 'Safari';
-    else if (/Edge/i.test(ua)) browser = 'Edge';
-    
-    // Detectar SO
-    var os = 'Desconhecido';
-    if (/Android/i.test(ua)) os = 'Android';
-    else if (/iPhone/i.test(ua)) os = 'iPhone';
-    else if (/iPad/i.test(ua)) os = 'iPad';
-    else if (/Windows/i.test(ua)) os = 'Windows';
-    else if (/Mac/i.test(ua)) os = 'Mac';
-    else if (/Linux/i.test(ua)) os = 'Linux';
-    
-    name = browser + ' - ' + os;
-    
-    // Adicionar hostname se disponível
-    if (window.location.hostname) {
-        name += ' (' + window.location.hostname + ')';
-    }
-    
-    return name;
-}
-
-// Obter informações completas do dispositivo
-function getDeviceInfo() {
-    var ua = navigator.userAgent;
-    var deviceType = 'desktop';
-    
-    if (/mobile|android|iphone|ipod/i.test(ua)) deviceType = 'mobile';
-    else if (/tablet|ipad/i.test(ua)) deviceType = 'tablet';
-    
-    return {
-        id: getDeviceId(),
-        name: getDeviceName(),
-        type: deviceType,
-        userAgent: ua,
-        platform: navigator.platform || 'Desconhecido',
-        language: navigator.language || 'pt-BR',
-        screen: window.screen.width + 'x' + window.screen.height
-    };
-}
-
-// ============ ASSINATURAS ============
-
-// Buscar assinatura ativa do usuário
-async function getAssinaturaAtiva() {
-    if (!currentUser || !supabaseClient) return null;
     
     try {
         var result = await supabaseClient
@@ -75,367 +20,449 @@ async function getAssinaturaAtiva() {
             .select('*')
             .eq('user_id', currentUser.id)
             .eq('status', 'ativa')
-            .order('data_fim', { ascending: false })
-            .limit(1);
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
         
-        if (result.data && result.data.length > 0) {
-            var assinatura = result.data[0];
-            
-            // Verificar se ainda está válida
-            if (new Date(assinatura.data_fim) > new Date()) {
-                return assinatura;
-            } else {
-                // Expirou - atualizar status
-                await supabaseClient
-                    .from('assinaturas')
-                    .update({ 
-                        status: 'expirada',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', assinatura.id);
-                
-                return null;
-            }
-        }
-        
-        return null;
-    } catch(e) {
-        console.error('[SUB] Erro ao buscar assinatura:', e);
-        return null;
-    }
-}
-
-// Verificar se assinatura está ativa (com cache local)
-async function verificarAssinaturaAtiva() {
-    if (!currentUser) return false;
-    
-    // Verificar expiração local primeiro (rápido)
-    var expiraLocal = localStorage.getItem('kayla_pro_expires');
-    if (expiraLocal) {
-        var dataExpira = new Date(expiraLocal);
-        if (dataExpira < new Date()) {
-            // Expirou - limpar dados locais
-            console.log('[SUB] Assinatura expirada localmente');
+        if (result.error || !result.data) {
             LIMITES.proAtivo = false;
             localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_key');
+            localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
-            atualizarBadgePlano();
             return false;
         }
-    }
-    
-    // Verificar no banco (online)
-    if (isOnline && supabaseClient) {
-        try {
-            var assinatura = await getAssinaturaAtiva();
+        
+        var assinatura = result.data;
+        
+        // Verificar se não expirou
+        if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
+            LIMITES.proAtivo = false;
+            localStorage.removeItem('kayla_pro');
+            localStorage.removeItem('kayla_pro_key');
+            localStorage.removeItem('kayla_pro_expires');
+            localStorage.removeItem('kayla_pro_devices');
             
-            if (assinatura) {
-                // Atualizar dados locais
-                LIMITES.proAtivo = true;
-                localStorage.setItem('kayla_pro', 'true');
-                localStorage.setItem('kayla_pro_key', assinatura.key_ativacao);
-                localStorage.setItem('kayla_pro_expires', assinatura.data_fim);
-                localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
-                
-                atualizarBadgePlano();
-                return true;
-            } else {
-                // Não tem assinatura ativa
-                LIMITES.proAtivo = false;
-                localStorage.removeItem('kayla_pro');
-                localStorage.removeItem('kayla_pro_expires');
-                localStorage.removeItem('kayla_pro_key');
-                localStorage.removeItem('kayla_pro_devices');
-                atualizarBadgePlano();
-                return false;
-            }
-        } catch(e) {
-            console.error('[SUB] Erro ao verificar assinatura:', e);
-            // Se der erro, confiar no cache local
-            return LIMITES.proAtivo;
-        }
-    }
-    
-    // Offline - confiar no cache local
-    return LIMITES.proAtivo;
-}
-
-// ============ DISPOSITIVOS ============
-
-// Registrar dispositivo atual
-async function registrarDispositivoAtual() {
-    if (!currentUser || !supabaseClient || !isOnline) {
-        console.log('[SUB] Não é possível registrar dispositivo (offline ou sem login)');
-        return true; // Permite acesso offline
-    }
-    
-    try {
-        var deviceInfo = getDeviceInfo();
-        var assinatura = await getAssinaturaAtiva();
-        
-        // Se não tem assinatura, é usuário FREE - não registra
-        if (!assinatura) {
-            console.log('[SUB] Usuário FREE - sem registro de dispositivo');
-            return true;
-        }
-        
-        console.log('[SUB] Registrando dispositivo:', deviceInfo);
-        
-        // Verificar se dispositivo já está registrado
-        var check = await supabaseClient
-            .from('dispositivos')
-            .select('id')
-            .eq('assinatura_id', assinatura.id)
-            .eq('device_id', deviceInfo.id)
-            .limit(1);
-        
-        if (check.data && check.data.length > 0) {
-            console.log('[SUB] Dispositivo já registrado, atualizando último acesso');
-            // Atualizar último acesso
+            // Atualizar status no banco
             await supabaseClient
-                .from('dispositivos')
-                .update({ 
-                    ultimo_acesso: new Date().toISOString(),
-                    device_name: deviceInfo.name,
-                    user_agent: deviceInfo.userAgent
-                })
-                .eq('id', check.data[0].id);
-            return true;
-        }
-        
-        // Verificar limite de dispositivos
-        if (assinatura.dispositivos_usados >= assinatura.dispositivos_max) {
-            console.warn('[SUB] Limite de dispositivos atingido!');
-            mostrarModalLimiteDispositivos(assinatura);
+                .from('assinaturas')
+                .update({ status: 'expirada' })
+                .eq('id', assinatura.id);
+            
             return false;
         }
         
-        // Registrar novo dispositivo
-        var result = await supabaseClient
-            .from('dispositivos')
-            .insert({
-                assinatura_id: assinatura.id,
-                user_id: currentUser.id,
-                device_id: deviceInfo.id,
-                device_name: deviceInfo.name,
-                device_type: deviceInfo.type,
-                user_agent: deviceInfo.userAgent
-            });
+        // Ativar PRO
+        LIMITES.proAtivo = true;
+        localStorage.setItem('kayla_pro', 'true');
+        localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
+        localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
+        localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
         
-        if (result.error) {
-            console.error('[SUB] Erro ao registrar dispositivo:', result.error);
-            // Se der erro, permite acesso (não bloqueia o usuário)
-            return true;
-        }
-        
-        // Atualizar contador
-        await supabaseClient
-            .from('assinaturas')
-            .update({ 
-                dispositivos_usados: assinatura.dispositivos_usados + 1,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', assinatura.id);
-        
-        // Atualizar localStorage
-        localStorage.setItem('kayla_pro_devices', (assinatura.dispositivos_usados + 1) + '/' + assinatura.dispositivos_max);
-        
-        console.log('[SUB] ✅ Dispositivo registrado com sucesso!');
         return true;
         
     } catch(e) {
-        console.error('[SUB] Erro ao registrar dispositivo:', e);
-        // Se der erro, permite acesso (não bloqueia o usuário)
-        return true;
+        console.error('[Pro] Erro ao verificar status:', e);
+        return false;
     }
 }
 
-// ============ VERIFICAÇÃO DE ACESSO ============
-
-// Verificar acesso ao app (chamado no login)
-async function verificarAcessoApp() {
-    if (!currentUser) return false;
+// Atualizar badge do plano no header
+function atualizarBadgePlano() {
+    var badge = document.getElementById('plan-badge');
+    if (!badge) return;
     
-    console.log('[SUB] Verificando acesso ao app...');
-    
-    // Verificar assinatura
-    var temAssinatura = await verificarAssinaturaAtiva();
-    
-    if (temAssinatura) {
-        // Registrar dispositivo
-        var dispositivoRegistrado = await registrarDispositivoAtual();
-        
-        if (!dispositivoRegistrado) {
-            // Limite atingido - não permite acesso PRO
-            LIMITES.proAtivo = false;
-            localStorage.removeItem('kayla_pro');
-            atualizarBadgePlano();
-            return false;
-        }
-        
-        return true;
+    if (LIMITES.proAtivo) {
+        badge.textContent = 'PRO';
+        badge.className = 'badge-pro';
+    } else {
+        badge.textContent = 'GRÁTIS';
+        badge.className = 'badge-free';
     }
-    
-    // Sem assinatura - modo FREE
-    LIMITES.proAtivo = false;
-    atualizarBadgePlano();
-    return true; // Permite acesso ao app (modo free)
 }
 
-// ============ MODAIS ============
+// Verificar limites do plano gratuito
+function verificarLimite(tipo) {
+    if (LIMITES.proAtivo) {
+        return true; // PRO tem limites ilimitados
+    }
+    
+    var limite = 0;
+    var atual = 0;
+    
+    switch(tipo) {
+        case 'clientes':
+            limite = LIMITES.maxClientes;
+            atual = (window.clientes || []).length;
+            break;
+        case 'produtos':
+            limite = LIMITES.maxProdutos;
+            atual = (window.produtos || []).length;
+            break;
+        case 'vendas':
+            limite = LIMITES.maxVendas;
+            atual = (window.vendas || []).length;
+            break;
+    }
+    
+    if (atual >= limite) {
+        return false;
+    }
+    
+    return true;
+}
 
-// Modal de limite de dispositivos
-function mostrarModalLimiteDispositivos(assinatura) {
+// Mostrar aviso de limite atingido
+function mostrarAvisoLimite(tipo) {
     var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📱 Limite Atingido</div>';
-    html += '<div class="modal-sub">Você atingiu o limite de dispositivos</div>';
+    html += '<div class="modal-title">🔒 Limite Atingido</div>';
+    html += '<div class="modal-sub">Você atingiu o limite de ' + tipo + '</div>';
     
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px">🔒</div>';
-    html += '<div style="font-size:16px;font-weight:700;color:var(--warning);margin-top:8px">';
-    html += assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso';
-    html += '</div></div>';
+    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:48px;margin-bottom:12px">🔒</div>';
+    html += '<div style="font-size:16px;font-weight:600;color:var(--warning);margin-bottom:8px">' + LIMITES[tipo] + ' de ' + LIMITES[tipo] + ' ' + tipo + ' em uso</div>';
+    html += '<div style="font-size:13px;color:var(--text2)">Para adicionar mais ' + tipo + ', você pode:</div>';
+    html += '<div style="margin-top:12px;font-size:12px;color:var(--text2)">';
+    html += '<div style="margin-bottom:8px">1️⃣ Remover um ' + tipo.slice(0, -1) + ' antigo</div>';
+    html += '<div>2️⃣ Fazer upgrade do plano</div>';
+    html += '</div>';
+    html += '</div>';
     
-    html += '<div style="font-size:13px;color:var(--text2);text-align:center">';
-    html += 'Para adicionar mais dispositivos, você pode:<br><br>';
-    html += '1️⃣ Remover um dispositivo antigo<br>';
-    html += '2️⃣ Fazer upgrade do plano';
-    html += '</div></div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal(); gerenciarDispositivos()">📱 Gerenciar Dispositivos</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal(); mostrarPlanos()">🚀 Fazer Upgrade</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    html += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%;margin-bottom:8px"> Gerenciar Dispositivos</button>';
+    html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="width:100%;margin-bottom:8px">🚀 Fazer Upgrade</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-// Modal de informações da assinatura
+// Mostrar informações da assinatura
 async function mostrarInfoAssinatura() {
-    if (!currentUser) {
+    if (!currentUser || !supabaseClient) {
         toast('Faça login primeiro', 'error');
         return;
     }
     
-    var assinatura = await getAssinaturaAtiva();
-    
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📋 Minha Assinatura</div>';
-    
-    if (!assinatura) {
-        html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-        html += '<div style="font-size:48px;margin-bottom:12px">🆓</div>';
-        html += '<div style="font-size:16px;font-weight:700;margin-bottom:8px">Plano Gratuito</div>';
-        html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">';
-        html += 'Você está usando o plano gratuito com limitações.';
-        html += '</div>';
-        html += '<div style="font-size:12px;color:var(--text2);text-align:left;margin-bottom:16px">';
-        html += '<strong>Limites:</strong><br>';
-        html += '• ' + LIMITES.freeClientes + ' clientes<br>';
-        html += '• ' + LIMITES.freeProdutos + ' produtos<br>';
-        html += '• 1 dispositivo<br>';
-        html += '• Sem geração de PDF<br>';
-        html += '</div>';
-        html += '</div>';
+    try {
+        var result = await supabaseClient
+            .from('assinaturas')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('status', 'ativa')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
         
-        html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()">🚀 Assinar PRO</button>';
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-    } else {
-        // Buscar informações do plano
-        var planoNome = 'PRO';
-        var planoTipo = '';
-        try {
-            if (assinatura.plano_id) {
-                var planoResult = await supabaseClient
-                    .from('planos')
-                    .select('*')
-                    .eq('id', assinatura.plano_id)
-                    .single();
-                
-                if (planoResult.data) {
-                    planoNome = planoResult.data.nome;
-                    planoTipo = planoResult.data.tipo;
-                }
-            }
-        } catch(e) {
-            console.error('[SUB] Erro ao buscar plano:', e);
+        if (result.error || !result.data) {
+            toast('Nenhuma assinatura ativa encontrada', 'error');
+            return;
         }
         
-        var dataInicio = new Date(assinatura.data_inicio).toLocaleDateString('pt-BR');
+        var assinatura = result.data;
         var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
         var diasRestantes = Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
         
-        html += '<div class="card" style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);padding:16px;margin-bottom:16px;text-align:center">';
-        html += '<div style="font-size:48px;margin-bottom:8px">⭐</div>';
-        html += '<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:4px">Plano PRO</div>';
-        html += '<div style="font-size:14px;color:rgba(255,255,255,0.9)">' + planoNome + '</div>';
-        html += '</div>';
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title"> Minha Assinatura</div>';
         
         html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
         html += '<span style="color:var(--text2)">Status:</span>';
-        html += '<strong style="color:var(--success)">✅ ATIVA</strong>';
+        html += '<span class="badge-pro">ATIVA</span>';
         html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Início:</span>';
-        html += '<strong>' + dataInicio + '</strong>';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+        html += '<span style="color:var(--text2)">Key:</span>';
+        html += '<strong style="font-family:monospace;font-size:12px">' + (assinatura.key_ativacao || 'N/A') + '</strong>';
         html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Vencimento:</span>';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+        html += '<span style="color:var(--text2)">Dispositivos:</span>';
+        html += '<strong>' + assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max + '</strong>';
+        html += '</div>';
+        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+        html += '<span style="color:var(--text2)">Validade:</span>';
         html += '<strong>' + dataFim + '</strong>';
         html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Dias restantes:</span>';
-        html += '<strong style="color:var(--accent)">' + diasRestantes + ' dias</strong>';
-        html += '</div>';
-        
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
-        html += '<span style="color:var(--text2)">Dispositivos:</span>';
-        html += '<strong>' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + '</strong>';
-        html += '</div>';
-        
         html += '<div style="display:flex;justify-content:space-between">';
-        html += '<span style="color:var(--text2)">Key de ativação:</span>';
-        html += '<strong style="font-family:monospace;font-size:11px">' + assinatura.key_ativacao + '</strong>';
+        html += '<span style="color:var(--text2)">Dias restantes:</span>';
+        html += '<strong style="color:' + (diasRestantes <= 7 ? 'var(--warning)' : 'var(--success)') + '">' + diasRestantes + ' dias</strong>';
         html += '</div>';
         html += '</div>';
         
-        html += '<button class="btn btn-primary" onclick="fecharModal(); gerenciarDispositivos()">📱 Gerenciar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
         
-        if (assinatura.dispositivos_max < 5) {
-            html += '<button class="btn btn-outline" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivos</button>';
-        }
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
         
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    } catch(e) {
+        console.error('[Assinatura] Erro:', e);
+        toast('Erro ao carregar assinatura', 'error');
     }
+}
+
+// Histórico de versões
+function mostrarHistoricoVersoes() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📋 Histórico de Versões</div>';
+    html += '<div class="modal-sub">Kayla App - Sistema de Venda Consignada</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-weight:700;color:var(--accent)">v5.4.0</div>';
+    html += '<span class="badge-pro">ATUAL</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Junho 2026</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ Dashboard administrativo</li>';
+    html += '<li>✅ Rastreamento de visitas</li>';
+    html += '<li>✅ Sistema de emails</li>';
+    html += '<li>✅ Correções de bugs</li>';
+    html += '</ul>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--accent);margin-bottom:8px">v5.3.0</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Maio 2026</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ Sistema de dispositivos</li>';
+    html += '<li>✅ Upgrade de dispositivos</li>';
+    html += '<li>✅ Pagamento via PIX</li>';
+    html += '</ul>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--accent);margin-bottom:8px">v5.2.0</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Abril 2026</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ Sistema de assinaturas</li>';
+    html += '<li>✅ Planos Mensal e Anual</li>';
+    html += '<li>✅ Integração Mercado Pago</li>';
+    html += '</ul>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--text2);margin-bottom:8px">v5.1.0</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Março 2026</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ Sistema de vendas</li>';
+    html += '<li>✅ Gestão de clientes</li>';
+    html += '<li>✅ Gestão de produtos</li>';
+    html += '</ul>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px">';
+    html += '<div style="font-weight:700;color:var(--text2);margin-bottom:8px">v5.0.0</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Fevereiro 2026</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>🚀 Lançamento inicial</li>';
+    html += '<li>✅ Sistema base</li>';
+    html += '<li>✅ Autenticação</li>';
+    html += '</ul>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ============ BACKUP E RESTAURAÇÃO ============
+
+// Exportar backup
+function exportarBackup() {
+    if (!LIMITES.proAtivo) {
+        toast('Recurso disponível apenas no plano PRO', 'error');
+        return;
+    }
+    
+    try {
+        var backup = {
+            versao: '5.4.0',
+            data: new Date().toISOString(),
+            clientes: window.clientes || [],
+            produtos: window.produtos || [],
+            vendas: window.vendas || [],
+            pedidos: window.pedidos || [],
+            config: window.configEmpresa || {}
+        };
+        
+        var json = JSON.stringify(backup, null, 2);
+        var blob = new Blob([json], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'kayla-backup-' + new Date().toISOString().split('T')[0] + '.json';
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        
+        toast('✅ Backup exportado com sucesso!', 'success');
+        
+    } catch(e) {
+        console.error('[Backup] Erro ao exportar:', e);
+        toast('Erro ao exportar backup', 'error');
+    }
+}
+
+// Importar backup
+function importarBackup() {
+    if (!LIMITES.proAtivo) {
+        toast('Recurso disponível apenas no plano PRO', 'error');
+        return;
+    }
+    
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                var backup = JSON.parse(event.target.result);
+                
+                if (!backup.versao || !backup.data) {
+                    toast('Arquivo de backup inválido', 'error');
+                    return;
+                }
+                
+                // Confirmar importação
+                var confirmar = confirm('⚠️ ATENÇÃO!\n\nIsso irá SUBSTITUIR todos os dados atuais.\n\nDeseja continuar?');
+                if (!confirmar) return;
+                
+                // Importar dados
+                if (backup.clientes) window.clientes = backup.clientes;
+                if (backup.produtos) window.produtos = backup.produtos;
+                if (backup.vendas) window.vendas = backup.vendas;
+                if (backup.pedidos) window.pedidos = backup.pedidos;
+                if (backup.config) window.configEmpresa = backup.config;
+                
+                // Salvar no localStorage
+                if (window.clientes) localStorage.setItem('kayla_clientes', JSON.stringify(window.clientes));
+                if (window.produtos) localStorage.setItem('kayla_produtos', JSON.stringify(window.produtos));
+                if (window.vendas) localStorage.setItem('kayla_vendas', JSON.stringify(window.vendas));
+                if (window.pedidos) localStorage.setItem('kayla_pedidos', JSON.stringify(window.pedidos));
+                if (window.configEmpresa) localStorage.setItem('kayla_config_empresa', JSON.stringify(window.configEmpresa));
+                
+                toast('✅ Backup importado com sucesso!', 'success');
+                
+                // Recarregar dados
+                if (typeof renderizarConteudo === 'function') {
+                    renderizarConteudo();
+                }
+                
+            } catch(err) {
+                console.error('[Backup] Erro ao importar:', err);
+                toast('Erro ao importar backup', 'error');
+            }
+        };
+        
+        reader.readAsText(file);
+    };
+    
+    input.click();
+}
+
+// ============ CONFIGURAÇÃO DA EMPRESA ============
+
+function configurarEmpresa() {
+    if (!LIMITES.proAtivo) {
+        toast('Recurso disponível apenas no plano PRO', 'error');
+        return;
+    }
+    
+    var config = window.configEmpresa || {};
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⚙️ Dados da Empresa</div>';
+    html += '<div class="modal-sub">Configure as informações que aparecerão nos recibos</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Nome da Empresa</label>';
+    html += '<input type="text" class="form-input" id="emp-nome" value="' + (config.nome || '') + '" placeholder="Sua Empresa Ltda">';
+    html += '</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">CNPJ</label>';
+    html += '<input type="text" class="form-input" id="emp-cnpj" value="' + (config.cnpj || '') + '" placeholder="00.000.000/0000-00">';
+    html += '</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Telefone</label>';
+    html += '<input type="text" class="form-input" id="emp-telefone" value="' + (config.telefone || '') + '" placeholder="(00) 00000-0000">';
+    html += '</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Endereço</label>';
+    html += '<input type="text" class="form-input" id="emp-endereco" value="' + (config.endereco || '') + '" placeholder="Rua, Número - Cidade/UF">';
+    html += '</div>';
+    
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Email</label>';
+    html += '<input type="email" class="form-input" id="emp-email" value="' + (config.email || '') + '" placeholder="contato@empresa.com">';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="salvarConfigEmpresa()" style="width:100%;margin-bottom:8px"> Salvar Configurações</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+function salvarConfigEmpresa() {
+    var config = {
+        nome: document.getElementById('emp-nome').value.trim(),
+        cnpj: document.getElementById('emp-cnpj').value.trim(),
+        telefone: document.getElementById('emp-telefone').value.trim(),
+        endereco: document.getElementById('emp-endereco').value.trim(),
+        email: document.getElementById('emp-email').value.trim()
+    };
+    
+    window.configEmpresa = config;
+    localStorage.setItem('kayla_config_empresa', JSON.stringify(config));
+    
+    toast('✅ Configurações salvas!', 'success');
+    fecharModal();
+}
+
+// ============ SUPORTE WHATSAPP ============
+
+function abrirSuporteWhatsApp() {
+    var mensagem = 'Olá! Preciso de suporte com o Kayla App.';
+    
+    if (currentUser) {
+        mensagem += '\n\nUsuário: ' + currentUser.email;
+        mensagem += '\nPlano: ' + (LIMITES.proAtivo ? 'PRO' : 'GRÁTIS');
+        mensagem += '\nVersão: 5.4.0';
+    }
+    
+    var url = 'https://wa.me/5500000000000?text=' + encodeURIComponent(mensagem);
+    window.open(url, '_blank');
+}
+
 // ============ INICIALIZAÇÃO ============
 
-// Verificar assinatura ao carregar (se já logado)
-window.addEventListener('load', function() {
-    setTimeout(async function() {
-        if (currentUser) {
-            console.log('[SUB] Verificando assinatura ao carregar...');
-            await verificarAssinaturaAtiva();
+// Carregar configurações da empresa
+function carregarConfigEmpresa() {
+    try {
+        var config = localStorage.getItem('kayla_config_empresa');
+        if (config) {
+            window.configEmpresa = JSON.parse(config);
+        } else {
+            window.configEmpresa = {};
         }
-    }, 1000);
-});
-
-// Verificar periodicamente (a cada 5 minutos)
-setInterval(async function() {
-    if (currentUser && isOnline) {
-        await verificarAssinaturaAtiva();
+    } catch(e) {
+        console.error('[Config] Erro ao carregar:', e);
+        window.configEmpresa = {};
     }
-}, 5 * 60 * 1000);
+}
+
+// Inicializar ao carregar
+if (typeof window !== 'undefined') {
+    carregarConfigEmpresa();
+}
 
 console.log('✅ Subscription.js carregado');
