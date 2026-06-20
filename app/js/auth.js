@@ -179,7 +179,7 @@ async function fazerLogin() {
             // Login online sucesso
             if (result.data && result.data.user) {
                 await loginSucesso(result.data.user, senha, lembrarMe);
-                await verificarAcessoApp();
+                // ⭐ REMOVIDO: await verificarAcessoApp(); (função não existe)
             } else {
                 toast('Erro ao fazer login', 'error');
             }
