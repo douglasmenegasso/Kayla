@@ -259,6 +259,8 @@ async function loginSucesso(user, senha, lembrarMe) {
         carregarDadosLocais();
     }
     
+    await verificarStatusPro();
+    
     fecharModal();
     toast('Bem-vindo!', 'success');
     mostrarApp();
