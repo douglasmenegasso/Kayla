@@ -450,7 +450,7 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     if (dados.qr_code) {
         html += '<div style="margin-bottom:16px">';
         html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
-        html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace">' + dados.qr_code + '</textarea>';
+       html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
         html += '</div>';
         
         // Botão Copiar
