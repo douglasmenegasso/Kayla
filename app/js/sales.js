@@ -1,5 +1,8 @@
 // ============ VENDAS ============
 
+var clienteAtual = null;
+var pedidoItens = [];
+
 function renderizarVenda() {
     var html = '';
     
