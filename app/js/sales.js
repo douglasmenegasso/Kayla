@@ -2,6 +2,7 @@
 
 var clienteAtual = null;
 var pedidoItens = [];
+var html5QrCode = null;
 
 function renderizarVenda() {
     var html = '';
