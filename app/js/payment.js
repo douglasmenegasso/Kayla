@@ -23,7 +23,7 @@ window.PLANOS = {
         id: 'anual',
         nome: 'Plano Anual',
         precoBase: 199.90,
-        precoPorDevice: 60.00,
+        precoPorDevice: 5.00,
         dispositivosInclusos: 1,
         dispositivosMax: 5,
         duracaoDias: 365,
@@ -108,9 +108,10 @@ async function getAssinaturaAtiva() {
             .eq('status', 'ativa')
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
         
-        if (result.error || !result.data) {
+        if (result.error) {
+            console.warn('[getAssinaturaAtiva] Erro:', result.error);
             return null;
         }
         
@@ -323,7 +324,6 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     toast('Processando...', 'warning');
     
     try {
-        // Buscar ID do plano
         var planoResult = await supabaseClient
             .from('planos')
             .select('id')
@@ -349,7 +349,6 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             planoUUID = planoResult.data.id;
         }
         
-        // Registrar pagamento
         var registroPagamento = await supabaseClient
             .from('pagamentos')
             .insert({
@@ -369,7 +368,6 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         var pagamentoId = registroPagamento.data.id;
         
-        // Chamar Edge Function
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -392,13 +390,11 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         console.log('[MP] Resultado:', resultado);
         
-        // Se for PIX, mostrar QR Code na tela
         if (resultado.payment_method === 'pix' && resultado.qr_code) {
             mostrarQRCodePIX(resultado, pagamentoId);
             return;
         }
         
-        // Se for Cartão/Débito, redirecionar para MP
         if (resultado.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: resultado.id,
@@ -429,14 +425,12 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
     
-    // Verificar se tem QR Code base64
     if (dados.qr_code_base64 && dados.qr_code_base64.length > 100) {
         html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
         html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--success);margin-bottom:16px">✅ QR Code gerado com sucesso!</div>';
     } else {
-        // Se não tem base64, mostrar mensagem e botão para abrir no MP
         html += '<div style="background:var(--bg2);padding:20px;border-radius:8px;margin-bottom:16px">';
         html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
         html += '<div style="font-size:14px;color:var(--text2);margin-bottom:12px">';
@@ -446,23 +440,19 @@ function mostrarQRCodePIX(dados, pagamentoId) {
         html += '</div>';
     }
     
-    // Código Copia e Cola
     if (dados.qr_code) {
         html += '<div style="margin-bottom:16px">';
         html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
-       html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
+        html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
         html += '</div>';
         
-        // Botão Copiar
         html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
     }
     
-    // Link de pagamento (sempre mostrar)
     if (dados.ticket_url) {
         html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🔗 Abrir QR Code no App do Banco</a>';
     }
     
-    // Se tiver payment_url (fallback)
     if (dados.payment_url || dados.init_point) {
         var url = dados.payment_url || dados.init_point;
         html += '<a href="' + url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🌐 Ver no Mercado Pago</a>';
@@ -470,7 +460,6 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     
     html += '</div>';
     
-    // Instruções
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
     html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
@@ -500,7 +489,6 @@ function copiarCodigoPIX() {
         document.execCommand('copy');
         toast('✅ Código PIX copiado!', 'success');
     } catch(err) {
-        // Fallback para navegadores modernos
         navigator.clipboard.writeText(codigo.value).then(function() {
             toast('✅ Código PIX copiado!', 'success');
         }).catch(function() {
@@ -580,11 +568,9 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
     var hoje = new Date();
     
-    // Calcular meses restantes
     var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
     if (mesesRestantes <= 0) mesesRestantes = 1;
     
-    // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
     
     if (dispositivosExtras <= 0) {
@@ -598,7 +584,6 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
         };
     }
     
-    // Cobra R$ 5,00 POR DISPOSITIVO EXTRA (sempre!)
     var valorPorMes = 5.00;
     var valorPorDispositivo = 5.00;
     var valorTotal = dispositivosExtras * valorPorMes;
@@ -665,6 +650,7 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">⬆️ Confirmar Upgrade</div>';
+    html += '<div class="modal-sub">Escolha a forma de pagamento</div>';
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
@@ -687,25 +673,51 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '</div>';
     html += '</div>';
     
-    html += '<div style="font-size:11px;color:var(--text2);text-align:center">';
+    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
     html += '💡 Os dispositivos extras ficarão ativos até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
     html += '</div>';
     html += '</div>';
     
-    html += '<button class="btn btn-primary" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ')">✅ Confirmar e Pagar</button>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
+    
+    // PIX
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:2px solid var(--success)" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ', \'pix\')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">📱</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">PIX</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação instantânea</div>';
+    html += '</div>';
+    html += '<div style="background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">RECOMENDADO</div>';
+    html += '</div></div>';
+    
+    // Cartão de Crédito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ', \'cartao\')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Crédito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Parcele em até 12x</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    html += '</div>';
+    
     html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()">← Voltar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
 }
 
-async function processarUpgradeDispositivos(novosDispositivos, valor) {
+async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPagamento) {
     if (!currentUser) return;
+    metodoPagamento = metodoPagamento || 'pix';
     
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) return;
     
     try {
-        // PASSO 1: Registrar pagamento no banco como "upgrade"
         console.log('[Upgrade] Registrando pagamento no banco...');
         
         var registroPagamento = await supabaseClient
@@ -714,7 +726,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
                 user_id: currentUser.id,
                 plano_id: assinatura.plano_id,
                 valor: valor,
-                metodo_pagamento: 'pix',
+                metodo_pagamento: metodoPagamento,
                 status: 'pendente',
                 metadata: {
                     tipo: 'upgrade',
@@ -734,7 +746,6 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
         var pagamentoId = registroPagamento.data.id;
         console.log('[Upgrade] Pagamento registrado:', pagamentoId);
         
-        // PASSO 2: Chamar Edge Function do MP
         console.log('[Upgrade] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
@@ -753,32 +764,34 @@ async function processarUpgradeDispositivos(novosDispositivos, valor) {
                 pagamento_id: pagamentoId,
                 tipo: 'upgrade',
                 assinatura_id: assinatura.id,
-                metodo_pagamento: 'pix'
+                metodo_pagamento: metodoPagamento
             })
         });
         
-        var preference = await response.json();
+        var resultado = await response.json();
         
-        if (preference.id && preference.init_point) {
-            // Atualizar pagamento com o ID do Mercado Pago
-            await supabaseClient
-                .from('pagamentos')
-                .update({
-                    pagamento_gateway_id: preference.id,
-                    preference_id: preference.id
-                })
-                .eq('id', pagamentoId);
+        console.log('[Upgrade] Resultado:', resultado);
+        
+        if (metodoPagamento === 'pix' && resultado.qr_code_base64 && resultado.qr_code) {
+            console.log('[Upgrade] Exibindo PIX na tela.');
+            mostrarQRCodePIX(resultado, pagamentoId);
+            return;
+        }
+        
+        if (resultado.init_point) {
+            localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                preference_id: resultado.id,
+                pagamento_id: pagamentoId,
+                plano_id: assinatura.plano_id,
+                num_dispositivos: novosDispositivos,
+                valor: valor,
+                metodo: metodoPagamento
+            }));
             
-            console.log('[Upgrade] Redirecionando:', preference.init_point);
-            window.location.href = preference.init_point;
+            console.log('[Upgrade] Redirecionando para:', resultado.init_point);
+            window.location.href = resultado.init_point;
         } else {
-            console.error('[Upgrade] Erro:', preference);
-            
-            await supabaseClient
-                .from('pagamentos')
-                .update({ status: 'cancelado' })
-                .eq('id', pagamentoId);
-            
+            console.error('[Upgrade] Erro: Resposta inesperada:', resultado);
             toast('Erro ao criar pagamento', 'error');
         }
         
@@ -824,6 +837,9 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
 }
 
 async function gerenciarDispositivos() {
+    var modalBody = document.getElementById('modal-body');
+    if (modalBody) modalBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Carregando...</div>';
+    
     if (!currentUser || !supabaseClient) {
         toast('Faça login primeiro', 'error');
         return;
@@ -840,13 +856,14 @@ async function gerenciarDispositivos() {
             .from('dispositivos')
             .select('*')
             .eq('assinatura_id', assinatura.id)
+            .eq('ativo', true) 
             .order('ultimo_acesso', { ascending: false });
         
         var dispositivos = result.data || [];
         
         var html = '<div class="modal-handle"></div>';
         html += '<div class="modal-title">📱 Dispositivos</div>';
-        html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        html += '<div class="modal-sub">' + dispositivos.length + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
         
         if (dispositivos.length === 0) {
             html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center">';
@@ -864,13 +881,13 @@ async function gerenciarDispositivos() {
                 html += '<div class="item-name">' + tipoIcon + ' ' + (device.device_name || 'Dispositivo') + '</div>';
                 html += '<div class="item-detail">Último acesso: ' + ultimoAcesso + '</div>';
                 html += '</div>';
-                html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\')">🗑️</button>';
+                html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\', \'' + assinatura.id + '\', this)">🗑️</button>';
                 html += '</div>';
             });
             html += '</div>';
         }
         
-        if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
+        if (dispositivos.length < assinatura.dispositivos_max) {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivo</button>';
         } else {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Fazer Upgrade</button>';
@@ -887,36 +904,93 @@ async function gerenciarDispositivos() {
     }
 }
 
-async function removerDispositivo(deviceId) {
-    confirmar('Remover Dispositivo', 'Deseja realmente remover este dispositivo? Ele perderá acesso ao plano PRO.', async function(confirmed) {
-        if (!confirmed) return;
-        
-        if (!currentUser || !supabaseClient) return;
-        
+async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return false;
+    }
+    
+    if (!assinaturaId) {
         try {
             var assinatura = await getAssinaturaAtiva();
-            if (!assinatura) return;
-            
-            await supabaseClient
-                .from('dispositivos')
-                .delete()
-                .eq('id', deviceId);
+            if (assinatura) {
+                assinaturaId = assinatura.id;
+            } else {
+                toast('Assinatura não encontrada. Recarregue a página.', 'error');
+                return false;
+            }
+        } catch(e) {
+            console.error('[Dispositivo] Erro ao buscar assinatura:', e);
+            toast('Erro ao buscar assinatura', 'error');
+            return false;
+        }
+    }
+    
+    try {
+        var { error } = await supabaseClient
+            .from('dispositivos')
+            .update({ ativo: false }) 
+            .eq('id', deviceId)
+            .eq('assinatura_id', assinaturaId);
+        
+        if (error) {
+            console.error('[Dispositivo] Erro ao remover:', error);
+            toast('Erro ao remover dispositivo: ' + error.message, 'error');
+            return false;
+        }
+        
+        var { data: assinatura, error: assError } = await supabaseClient
+            .from('assinaturas')
+            .select('dispositivos_usados')
+            .eq('id', assinaturaId)
+            .single();
+        
+        if (!assError && assinatura) {
+            var novosUsados = Math.max(0, assinatura.dispositivos_usados - 1);
             
             await supabaseClient
                 .from('assinaturas')
                 .update({ 
-                    dispositivos_usados: Math.max(0, assinatura.dispositivos_usados - 1)
+                    dispositivos_usados: novosUsados,
+                    updated_at: new Date().toISOString()
                 })
-                .eq('id', assinatura.id);
+                .eq('id', assinaturaId);
             
-            toast('✅ Dispositivo removido', 'success');
-            gerenciarDispositivos();
-            
-        } catch(e) {
-            console.error('Erro ao remover dispositivo:', e);
-            toast('Erro ao remover', 'error');
+            var contadorTexto = document.querySelector('#modal-body .modal-sub');
+            if (contadorTexto) {
+                var textoAtual = contadorTexto.innerText;
+                var match = textoAtual.match(/(\d+)\s+de\s+(\d+)/);
+                if (match) {
+                    var max = parseInt(match[2]);
+                    contadorTexto.innerText = novosUsados + ' de ' + max + ' dispositivos em uso';
+                }
+            }
         }
-    });
+        
+        console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
+        
+        if (elementoHtml && elementoHtml.parentElement) {
+            elementoHtml.style.transition = 'all 0.3s ease';
+            elementoHtml.style.opacity = '0';
+            elementoHtml.style.transform = 'scale(0.95)';
+            
+            setTimeout(function() {
+                elementoHtml.remove();
+                toast('✅ Dispositivo removido!', 'success');
+            }, 300);
+        } else {
+            if (typeof gerenciarDispositivos === 'function') {
+                gerenciarDispositivos();
+            }
+        }
+        
+        return true;
+        
+    } catch(e) {
+        console.error('[Dispositivo] Erro:', e);
+        toast('Erro ao remover dispositivo', 'error');
+        return false;
+    }
 }
 
 console.log('✅ Payments.js carregado');
