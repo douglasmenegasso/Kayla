@@ -259,6 +259,7 @@ async function loginSucesso(user, senha, lembrarMe) {
         carregarDadosLocais();
     }
     
+    // ✅ ADICIONE ESTA LINHA AQUI:
     await verificarStatusPro();
     
     fecharModal();
