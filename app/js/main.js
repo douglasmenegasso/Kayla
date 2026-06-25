@@ -1,5 +1,70 @@
 // ============ MAIN - INICIALIZAÇÃO E NAVEGAÇÃO ============
 
+// ============ HISTÓRICO DE VERSÕES (DEFINIÇÃO) ============
+// Isso foi adicionado aqui porque o navegador não estava encontrando essa lista
+var HISTORICO_VERSOES = [
+    { 
+        versao: '5.4.0', 
+        data: '17/06/2026', 
+        mudancas: [
+            '💳 Sistema de Pagamentos com Mercado Pago',
+            '📧 Envio de emails via SendGrid (ativação, upgrade)',
+            '🔑 Sistema de Keys PRO com validação',
+            '📱 Registro automático de dispositivos',
+            '⬆️ Upgrade de dispositivos (calcula corretamente)',
+            '💾 Backup local (exportar/importar) - PRO',
+            '💬 Suporte via WhatsApp',
+            '🔒 Autenticação de domínio (DKIM, SPF, DMARC)',
+            '✅ Correção: upgrade não estende prazo da assinatura'
+        ] 
+    },
+    { 
+        versao: '5.3.1', 
+        data: '10/06/2026', 
+        mudancas: [
+            'Relógio e data no header', 
+            'Botão ? com histórico de versões', 
+            'Versão centralizada'
+        ] 
+    },
+    { 
+        versao: '5.3.0', 
+        data: '09/06/2026', 
+        mudancas: [
+            'Correção login offline', 
+            'Service Worker otimizado', 
+            'Bloqueio PDF para free'
+        ] 
+    },
+    { 
+        versao: '5.2.0', 
+        data: '08/06/2026', 
+        mudancas: [
+            'Landing page kayla.app.br', 
+            'Domínio configurado', 
+            'E-mails Microsoft 365'
+        ] 
+    },
+    { 
+        versao: '5.1.0', 
+        data: '07/06/2026', 
+        mudancas: [
+            'Correção caminhos pasta app/', 
+            'Offline funcionando', 
+            'DNS configurado'
+        ] 
+    },
+    { 
+        versao: '5.0.1', 
+        data: '06/06/2026', 
+        mudancas: [
+            'Movido para pasta app/', 
+            'GitHub Pages configurado', 
+            'PWA funcional'
+        ] 
+    }
+];
+
 // ============ RELÓGIO E DATA ============
 function atualizarRelogio() {
     var agora = new Date();
@@ -22,6 +87,7 @@ setInterval(atualizarRelogio, 1000);
 
 // ============ HISTÓRICO DE VERSÕES ============
 function mostrarHistoricoVersoes() {
+    // CORREÇÃO: Usa a variável 'appVersion' que já existe no config.js, em vez de APP_INFO
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📱 Kayla - Sistema de Vendas</div>';
     html += '<div style="text-align:center;margin-bottom:20px">';
@@ -29,12 +95,13 @@ function mostrarHistoricoVersoes() {
     html += '<div style="font-size:24px;font-weight:700;color:var(--accent)">Kayla</div>';
     html += '<div style="font-size:14px;color:var(--text2)">Sistema de Venda Consignada</div>';
     html += '<div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:8px;display:inline-block">';
-    html += '<div style="font-size:18px;font-weight:700;color:var(--success)">v' + APP_INFO.versao + '</div>';
-    html += '<div style="font-size:11px;color:var(--text2)">Lançamento: ' + APP_INFO.dataLancamento + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:var(--success)">v' + appVersion + '</div>'; // CORRIGIDO AQUI
+    html += '<div style="font-size:11px;color:var(--text2)">Lançamento: 2026-06-17</div>'; // CORRIGIDO AQUI (adicionei a data fixa)
     html += '</div></div>';
     
     html += '<div style="margin-bottom:12px"><strong style="color:var(--accent)">📋 Histórico de Versões:</strong></div>';
     
+    // CORREÇÃO: Usa a variável HISTORICO_VERSOES que já existe no config.js
     HISTORICO_VERSOES.forEach(function(ver, index) {
         html += '<div style="background:var(--bg2);border-radius:8px;padding:12px;margin-bottom:8px';
         if (index === 0) html += ';border:2px solid var(--accent)';
@@ -167,10 +234,20 @@ function renderizarConfig() {
         
         html += '<div class="form-group"><label class="form-label">📅 Validade</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px;text-align:center;font-weight:600;color:var(--accent)">' + expDate + '</div></div>';
         
-        // Botões de gerenciamento PRO
+               // Botões de gerenciamento PRO
         html += '<button class="btn btn-primary" onclick="mostrarInfoAssinatura()" style="margin-top:8px;width:100%">📋 Minha Assinatura</button>';
         html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%"> Gerenciar Dispositivos</button>';
         html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="iniciarCancelamentoDispositivos()" style="margin-top:8px;width:100%">📉 Reduzir Dispositivos</button>';
+        
+        // Cancelar Assinatura
+        html += '<button class="btn btn-red" onclick="cancelarAssinatura()" style="margin-top:8px;width:100%">🚫 Cancelar Assinatura PRO</button>';
+
+        // 🔥 Renovar Assinatura
+        html += '<button class="btn btn-primary" onclick="iniciarRenovacao()" style="margin-top:8px;width:100%">🔄 Renovar Assinatura</button>';
+
+        // Backup (APENAS PRO)
+        html += '<div class="form-group" style="margin-top:16px">';
         
         // Backup (APENAS PRO)
         html += '<div class="form-group" style="margin-top:16px">';
@@ -228,7 +305,11 @@ function renderizarConfig() {
     // Botão de instalação PWA
     html += '<div id="pwa-install-container" style="margin-top:12px"></div>';
     
-    html += '<button class="btn btn-red" onclick="fazerLogout()" style="margin-top:12px;width:100%">🚪 Sair</button></div>';
+    // NOVO BOTÃO: Excluir Conta (LGPD)
+    html += '<button class="btn btn-red" onclick="excluirConta()" style="margin-top:12px;width:100%;border:1px solid var(--error);background:transparent;color:var(--error);font-weight:700">🗑️ Excluir Conta e Todos os Dados</button>';
+    
+    // Botão de Sair
+    html += '<button class="btn btn-red" onclick="fazerLogout()" style="margin-top:8px;width:100%">🚪 Sair</button></div>';
     
     return html;
 }
@@ -239,7 +320,7 @@ window.addEventListener('DOMContentLoaded', function() {
     
     // Registrar Service Worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
+        navigator.serviceWorker.register('/DeepSeek-Kayla/app/sw.js')
             .then(function(registration) {
                 console.log('[SW] Service Worker registrado:', registration.scope);
             })
