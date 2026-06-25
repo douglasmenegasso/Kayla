@@ -23,7 +23,7 @@ window.PLANOS = {
         id: 'anual',
         nome: 'Plano Anual',
         precoBase: 199.90,
-        precoPorDevice: 5.00,
+        precoPorDevice: 5.00, // ✅ CORREÇÃO AQUI: 5.00 (o valor mensal real)
         dispositivosInclusos: 1,
         dispositivosMax: 5,
         duracaoDias: 365,
@@ -108,9 +108,10 @@ async function getAssinaturaAtiva() {
             .eq('status', 'ativa')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(); // ✅ CORREÇÃO AQUI: usa maybeSingle() em vez de single()
         
         if (result.error) {
+            // Se der erro, retorna null (não quebra o app)
             console.warn('[getAssinaturaAtiva] Erro:', result.error);
             return null;
         }
@@ -324,6 +325,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     toast('Processando...', 'warning');
     
     try {
+        // Registrar pagamento no banco
         var planoResult = await supabaseClient
             .from('planos')
             .select('id')
@@ -349,6 +351,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             planoUUID = planoResult.data.id;
         }
         
+        // Registrar pagamento
         var registroPagamento = await supabaseClient
             .from('pagamentos')
             .insert({
@@ -368,6 +371,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         var pagamentoId = registroPagamento.data.id;
         
+        // ✅ CORREÇÃO AQUI: Usar a variável SUPABASE_KEY (do config.js) em vez do token hardcoded
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -390,11 +394,13 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         console.log('[MP] Resultado:', resultado);
         
+        // Se for PIX, mostrar QR Code na tela
         if (resultado.payment_method === 'pix' && resultado.qr_code) {
             mostrarQRCodePIX(resultado, pagamentoId);
             return;
         }
         
+        // Se for Cartão/Débito, redirecionar para MP
         if (resultado.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: resultado.id,
@@ -425,12 +431,14 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
     
+    // Verificar se tem QR Code base64
     if (dados.qr_code_base64 && dados.qr_code_base64.length > 100) {
         html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
         html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--success);margin-bottom:16px">✅ QR Code gerado com sucesso!</div>';
     } else {
+        // Se não tem base64, mostrar mensagem e botão para abrir no MP
         html += '<div style="background:var(--bg2);padding:20px;border-radius:8px;margin-bottom:16px">';
         html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
         html += '<div style="font-size:14px;color:var(--text2);margin-bottom:12px">';
@@ -440,19 +448,23 @@ function mostrarQRCodePIX(dados, pagamentoId) {
         html += '</div>';
     }
     
+    // Código Copia e Cola
     if (dados.qr_code) {
         html += '<div style="margin-bottom:16px">';
         html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
         html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
         html += '</div>';
         
+        // Botão Copiar
         html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
     }
     
+    // Link de pagamento (sempre mostrar)
     if (dados.ticket_url) {
         html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🔗 Abrir QR Code no App do Banco</a>';
     }
     
+    // Se tiver payment_url (fallback)
     if (dados.payment_url || dados.init_point) {
         var url = dados.payment_url || dados.init_point;
         html += '<a href="' + url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🌐 Ver no Mercado Pago</a>';
@@ -460,6 +472,7 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     
     html += '</div>';
     
+    // Instruções
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
     html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
@@ -489,6 +502,7 @@ function copiarCodigoPIX() {
         document.execCommand('copy');
         toast('✅ Código PIX copiado!', 'success');
     } catch(err) {
+        // Fallback para navegadores modernos
         navigator.clipboard.writeText(codigo.value).then(function() {
             toast('✅ Código PIX copiado!', 'success');
         }).catch(function() {
@@ -568,9 +582,11 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
     var hoje = new Date();
     
-    var mesesRestantes = Math.ceil((dataFim - hoje) / (1000 * 60 * 60 * 24 * 30));
-    if (mesesRestantes <= 0) mesesRestantes = 1;
+    // 🔥 CORREÇÃO AQUI: Força 1 mês para o cálculo de crédito/dispositivo extra
+    // Mesmo que a assinatura tenha 2 meses, o sistema cobra apenas o mês atual
+    var mesesRestantes = 1; 
     
+    // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
     
     if (dispositivosExtras <= 0) {
@@ -584,6 +600,7 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
         };
     }
     
+    // Cobra R$ 5,00 POR DISPOSITIVO EXTRA (sempre!)
     var valorPorMes = 5.00;
     var valorPorDispositivo = 5.00;
     var valorTotal = dispositivosExtras * valorPorMes;
@@ -618,7 +635,7 @@ async function fazerUpgradeDispositivos() {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
-    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Meses restantes: <strong>' + Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24 * 30)) + '</strong></div>';
+    // 🔥 Ocultamos os meses restantes para não gerar confusão
     html += '</div>';
     
     for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
@@ -640,6 +657,7 @@ async function fazerUpgradeDispositivos() {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ✅ CORREÇÃO AQUI: Função que pergunta o método de pagamento
 async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     if (!currentUser) return;
     
@@ -678,6 +696,7 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '</div>';
     html += '</div>';
     
+    // ✅ ADICIONADO OS BOTÕES DE ESCOLHA DE PAGAMENTO
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
     
@@ -710,14 +729,16 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ✅ CORREÇÃO AQUI: Processa o upgrade aceitando o método de pagamento
 async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPagamento) {
     if (!currentUser) return;
-    metodoPagamento = metodoPagamento || 'pix';
+    metodoPagamento = metodoPagamento || 'pix'; // Se não vier nada, usa PIX como padrão
     
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) return;
     
     try {
+        // PASSO 1: Registrar pagamento no banco como "upgrade"
         console.log('[Upgrade] Registrando pagamento no banco...');
         
         var registroPagamento = await supabaseClient
@@ -726,7 +747,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 user_id: currentUser.id,
                 plano_id: assinatura.plano_id,
                 valor: valor,
-                metodo_pagamento: metodoPagamento,
+                metodo_pagamento: metodoPagamento, // ✅ Usa o método escolhido
                 status: 'pendente',
                 metadata: {
                     tipo: 'upgrade',
@@ -746,6 +767,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         var pagamentoId = registroPagamento.data.id;
         console.log('[Upgrade] Pagamento registrado:', pagamentoId);
         
+        // PASSO 2: Chamar Edge Function do MP
         console.log('[Upgrade] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
@@ -764,7 +786,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 pagamento_id: pagamentoId,
                 tipo: 'upgrade',
                 assinatura_id: assinatura.id,
-                metodo_pagamento: metodoPagamento
+                metodo_pagamento: metodoPagamento // ✅ Envia o método para o PHP
             })
         });
         
@@ -772,12 +794,14 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         
         console.log('[Upgrade] Resultado:', resultado);
         
+        // Se for PIX, mostrar QR Code na tela
         if (metodoPagamento === 'pix' && resultado.qr_code_base64 && resultado.qr_code) {
             console.log('[Upgrade] Exibindo PIX na tela.');
             mostrarQRCodePIX(resultado, pagamentoId);
             return;
         }
         
+        // Se for Cartão ou tiver init_point, redireciona
         if (resultado.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: resultado.id,
@@ -837,6 +861,7 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
 }
 
 async function gerenciarDispositivos() {
+    // Força o recarregamento do modal
     var modalBody = document.getElementById('modal-body');
     if (modalBody) modalBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Carregando...</div>';
     
@@ -852,6 +877,7 @@ async function gerenciarDispositivos() {
     }
     
     try {
+        // ✅ BUSCA APENAS OS DISPOSITIVOS COM ativo = true
         var result = await supabaseClient
             .from('dispositivos')
             .select('*')
@@ -881,12 +907,14 @@ async function gerenciarDispositivos() {
                 html += '<div class="item-name">' + tipoIcon + ' ' + (device.device_name || 'Dispositivo') + '</div>';
                 html += '<div class="item-detail">Último acesso: ' + ultimoAcesso + '</div>';
                 html += '</div>';
+                // Passa o "this" para a função de remover para sumir da tela na hora
                 html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\', \'' + assinatura.id + '\', this)">🗑️</button>';
                 html += '</div>';
             });
             html += '</div>';
         }
         
+        // Botão de adicionar/upgrade baseado no limite
         if (dispositivos.length < assinatura.dispositivos_max) {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivo</button>';
         } else {
@@ -910,6 +938,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         return false;
     }
     
+    // Verificação extra: se o ID da assinatura não foi passado, tenta buscar
     if (!assinaturaId) {
         try {
             var assinatura = await getAssinaturaAtiva();
@@ -927,6 +956,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
     }
     
     try {
+        // ✅ CORREÇÃO: Envia a atualização com a coluna no nome EXATO do Supabase
         var { error } = await supabaseClient
             .from('dispositivos')
             .update({ ativo: false }) 
@@ -939,6 +969,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
             return false;
         }
         
+        // Atualizar contador de dispositivos usados no banco
         var { data: assinatura, error: assError } = await supabaseClient
             .from('assinaturas')
             .select('dispositivos_usados')
@@ -956,6 +987,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 })
                 .eq('id', assinaturaId);
             
+            // ✅ ATUALIZAR O TEXTO DO CONTADOR NA TELA IMEDIATAMENTE
             var contadorTexto = document.querySelector('#modal-body .modal-sub');
             if (contadorTexto) {
                 var textoAtual = contadorTexto.innerText;
@@ -969,7 +1001,9 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         
         console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         
+        // ✅ REMOVER O ELEMENTO DA TELA IMEDIATAMENTE
         if (elementoHtml && elementoHtml.parentElement) {
+            // Adiciona um pequeno efeito visual de fade out antes de remover
             elementoHtml.style.transition = 'all 0.3s ease';
             elementoHtml.style.opacity = '0';
             elementoHtml.style.transform = 'scale(0.95)';
@@ -979,6 +1013,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 toast('✅ Dispositivo removido!', 'success');
             }, 300);
         } else {
+            // Fallback: recarregar a lista se não encontrar o elemento
             if (typeof gerenciarDispositivos === 'function') {
                 gerenciarDispositivos();
             }
@@ -993,4 +1028,239 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
     }
 }
 
+// ============ NOVAS FUNÇÕES DE DOWNGRADE E RENOVAÇÃO ============
+
+// ============ CANCELAMENTO / DOWNGRADE DE DISPOSITIVOS ============
+
+async function cancelarDispositivos(novosDispositivos) {
+    if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) { toast('Nenhuma assinatura ativa encontrada', 'error'); return; }
+    if (novosDispositivos >= assinatura.dispositivos_max) { toast('Você só pode reduzir o número de dispositivos.', 'warning'); return; }
+    
+    var dispositivosRemovidos = assinatura.dispositivos_max - novosDispositivos;
+    // ✅ CORREÇÃO AQUI: Calcula o crédito com base em apenas 1 mês (não multiplica pelos meses restantes)
+    var valorCredito = dispositivosRemovidos * 5; 
+    valorCredito = Math.round(valorCredito * 100) / 100;
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📉 Reduzir Dispositivos</div>';
+    html += '<div class="modal-sub">Removendo <strong>' + dispositivosRemovidos + '</strong> dispositivo(s) (de ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ')</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;padding-top:0px;border-top:0px;align-items:center">';
+    html += '<div style="display:flex;flex-direction:column;align-items:flex-start">';
+    html += '<span style="font-weight:700;font-size:16px;color:var(--success)">Crédito a receber:</span>';
+    html += '<span style="font-size:11px;color:var(--text2);margin-top:4px">* Crédito referente ao mês atual (R$ 5,00 por dispositivo)</span>';
+    html += '</div>';
+    html += '<strong style="color:var(--success);font-size:20px">R$ ' + valorCredito.toFixed(2).replace('.', ',') + '</strong>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="confirmarCancelamentoDispositivos(' + novosDispositivos + ', ' + valorCredito + ', \'' + assinatura.id + '\')">✅ Confirmar Redução</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function confirmarCancelamentoDispositivos(novosDispositivos, valorCredito, assinaturaId) {
+    if (!currentUser || !supabaseClient) { toast('Erro de autenticação', 'error'); return; }
+    try {
+        await supabaseClient.from('assinaturas').update({ dispositivos_max: novosDispositivos, updated_at: new Date().toISOString() }).eq('id', assinaturaId);
+        if (valorCredito > 0) { await supabaseClient.from('creditos').insert({ user_id: currentUser.id, assinatura_id: assinaturaId, valor: valorCredito, tipo: 'cancelamento_dispositivos', data_criacao: new Date().toISOString(), utilizado: false }); }
+        var devices = localStorage.getItem('kayla_pro_devices') || '0/0'; var usado = devices.split('/')[0] || '0';
+        localStorage.setItem('kayla_pro_devices', usado + '/' + novosDispositivos);
+        fecharModal(); if (typeof mudarAba === 'function') mudarAba('settings');
+        toast('✅ Redução concluída!', 'success');
+    } catch(e) { toast('Erro de conexão', 'error'); }
+}
+
+function iniciarCancelamentoDispositivos() {
+    if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
+    getAssinaturaAtiva().then(function(assinatura) {
+        if (!assinatura || assinatura.dispositivos_max <= 1) { toast('Você já está no mínimo de 1 dispositivo.', 'warning'); return; }
+        
+        var html = '<div class="modal-handle"></div><div class="modal-title">📉 Reduzir Dispositivos</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div><div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+        for (var i = 1; i < assinatura.dispositivos_max; i++) {
+            var qtdRemovida = assinatura.dispositivos_max - i;
+            var economizando = qtdRemovida * 5;
+            html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:1px solid var(--border)" onclick="cancelarDispositivos(' + i + ')">';
+            html += '<div class="item-info"><div class="item-name">' + i + ' dispositivo(s)</div>';
+            html += '<div class="item-detail">Remover <strong>' + qtdRemovida + '</strong> dispositivo(s) • Economia de R$ ' + economizando.toFixed(2).replace('.', ',') + '/mês</div></div>';
+            html += '<div style="font-weight:700;color:var(--accent)">Selecionar →</div></div>';
+        }
+        html += '</div><button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+        document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
+    });
+}
+
+// ============ RENOVAÇÃO INTELIGENTE DE ASSINATURA (Com Desconto de Crédito) ============
+function iniciarRenovacao() {
+    if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
+    getAssinaturaAtiva().then(async function(assinatura) {
+        if (!assinatura) { toast('Nenhuma assinatura ativa para renovar', 'error'); return; }
+        if (Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24)) > 15) { toast('⚠️ Renove apenas quando faltar menos de 15 dias.', 'warning'); return; }
+        
+        // Buscar créditos disponíveis
+        var { data: creditos } = await supabaseClient
+            .from('creditos')
+            .select('valor')
+            .eq('user_id', currentUser.id)
+            .eq('utilizado', false);
+        var saldoCredito = 0;
+        if (creditos && creditos.length > 0) {
+            creditos.forEach(function(cred) { saldoCredito += cred.valor; });
+        }
+
+        var html = '<div class="modal-handle"></div><div class="modal-title">🔄 Renovar Assinatura</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div>';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px"><div style="font-size:13px;color:var(--text2);margin-bottom:12px;text-align:center">Escolha quantos dispositivos deseja renovar:</div>';
+        
+        for (var i = 1; i <= 5; i++) {
+            var precoFinal = 19.90 + ((i - 1) * 5);
+            var precoComDesconto = Math.max(0, precoFinal - saldoCredito);
+            var destaque = i === assinatura.dispositivos_max ? 'border:2px solid var(--accent);' : '';
+            
+            html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="confirmarRenovacao(' + i + ', ' + precoComDesconto + ')">';
+            html += '<div class="item-info"><div class="item-name">' + i + ' dispositivo(s)</div>';
+            if (saldoCredito > 0) {
+                html += '<div class="item-detail" style="color:var(--success)">💰 Desconto de R$ ' + saldoCredito.toFixed(2).replace('.', ',') + ' aplicado!</div>';
+            }
+            html += '</div><div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + precoComDesconto.toFixed(2).replace('.', ',') + '</div></div>';
+        }
+        html += '</div><button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+        document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
+    });
+}
+
+async function confirmarRenovacao(novosDispositivos, valorPagar) {
+    if (!currentUser || !supabaseClient) { toast('Erro de autenticação', 'error'); return; }
+    try {
+        var assinatura = await getAssinaturaAtiva();
+        if (!assinatura) { toast('Assinatura não encontrada', 'error'); return; }
+        
+        // Aplicar créditos e marcar como utilizados
+        await supabaseClient
+            .from('creditos')
+            .update({ utilizado: true })
+            .eq('user_id', currentUser.id)
+            .eq('utilizado', false);
+
+        var novaDataFim = new Date(); novaDataFim.setDate(novaDataFim.getDate() + 30);
+        await supabaseClient.from('assinaturas').update({ 
+            data_fim: novaDataFim.toISOString(), 
+            dispositivos_max: novosDispositivos, 
+            updated_at: new Date().toISOString() 
+        }).eq('id', assinatura.id);
+        
+        localStorage.setItem('kayla_pro_expires', novaDataFim.toISOString());
+        localStorage.setItem('kayla_pro_devices', Math.min(assinatura.dispositivos_usados, novosDispositivos) + '/' + novosDispositivos);
+        fecharModal(); if (typeof mudarAba === 'function') mudarAba('settings');
+        toast('✅ Assinatura renovada com sucesso!', 'success');
+    } catch(e) { toast('Erro ao renovar', 'error'); }
+}
+
+// ============ MOSTRAR INFORMAÇÕES DA ASSINATURA (COM CRÉDITO) ============
+async function mostrarInfoAssinatura() {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    // Buscar a assinatura ATIVA no banco
+    var result = await supabaseClient
+        .from('assinaturas')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('status', 'ativa')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+    
+    if (result.error || !result.data) {
+        if (localStorage.getItem('kayla_pro')) {
+            localStorage.removeItem('kayla_pro');
+            localStorage.removeItem('kayla_pro_key');
+            localStorage.removeItem('kayla_pro_expires');
+            localStorage.removeItem('kayla_pro_devices');
+            LIMITES.proAtivo = false;
+        }
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">📋 Minha Assinatura</div>';
+        html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
+        html += '<div style="font-size:48px;margin-bottom:12px">🆓</div>';
+        html += '<div style="font-size:16px;font-weight:700;margin-bottom:8px">Plano Gratuito</div>';
+        html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">';
+        html += 'Você está usando o plano gratuito com limitações.';
+        html += '</div>';
+        html += '</div>';
+        html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()">🚀 Assinar PRO</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
+        return;
+    }
+    
+    var assinatura = result.data;
+    var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
+    // ✅ CORREÇÃO: usa Math.floor para evitar dias extras (30 em vez de 31)
+    var diasRestantes = Math.floor((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
+
+    // Buscar créditos disponíveis
+    var saldoCredito = 0;
+    try {
+        var { data: creditos, error: credError } = await supabaseClient
+            .from('creditos')
+            .select('valor')
+            .eq('user_id', currentUser.id)
+            .eq('utilizado', false);
+        if (!credError && creditos && creditos.length > 0) {
+            creditos.forEach(function(cred) { saldoCredito += cred.valor; });
+        }
+    } catch(e) { console.warn('Erro ao buscar créditos:', e); }
+    
+    // Atualiza o cache local com os dados reais do banco
+    localStorage.setItem('kayla_pro', 'true');
+    localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
+    localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
+    localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
+    LIMITES.proAtivo = true;
+    atualizarBadgePlano();
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📋 Minha Assinatura</div>';
+
+    // 🔥 CORREÇÃO DA COR: Verde escuro e texto branco
+    if (saldoCredito > 0) {
+        html += '<div style="background:#15803d;color:#fff;padding:12px;border-radius:8px;text-align:center;margin-bottom:12px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">';
+        html += '💰 Você tem <strong>R$ ' + saldoCredito.toFixed(2).replace('.', ',') + '</strong> em crédito disponível para sua próxima renovação!';
+        html += '</div>';
+    }
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Status:</span>';
+    html += '<span class="badge-pro">ATIVA</span>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Key:</span>';
+    html += '<strong style="font-family:monospace;font-size:12px">' + (assinatura.key_ativacao || 'N/A') + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Dispositivos:</span>';
+    html += '<strong>' + assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Validade:</span>';
+    html += '<strong>' + dataFim + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between">';
+    html += '<span style="color:var(--text2)">Dias restantes:</span>';
+    html += '<strong style="color:' + (diasRestantes <= 7 ? 'var(--warning)' : 'var(--success)') + '">' + diasRestantes + ' dias</strong>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
 console.log('✅ Payments.js carregado');
