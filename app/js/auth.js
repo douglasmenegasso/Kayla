@@ -53,9 +53,15 @@ async function verificarSessao() {
                 try {
                     await carregarDados();
                     await verificarStatusPro();
+                    
                     // ✅ CORREÇÃO: Tentar registrar o dispositivo ao reabrir o app também
                     if (LIMITES.proAtivo) {
                         await registrarDispositivoAtual();
+                    }
+                    
+                    // ✅ NOVO: Verificar se voltou de um pagamento
+                    if (typeof verificarRetornoPagamento === 'function') {
+                        verificarRetornoPagamento();
                     }
                 } catch(e) {
                     console.warn('Falha ao sincronizar, usando dados locais');
@@ -287,6 +293,13 @@ async function loginSucesso(user, senha, lembrarMe) {
     mostrarApp();
     atualizarBadgePlano();
     
+    // ✅ NOVO: Verificar se voltou de um pagamento após o login
+    setTimeout(function() {
+        if (typeof verificarRetornoPagamento === 'function') {
+            verificarRetornoPagamento();
+        }
+    }, 1000);
+    
     console.log('[AUTH] Login completo!');
 }
 
@@ -399,4 +412,4 @@ function recuperarSenha() {
     });
 }
 
-console.log('✅ Auth.js carregado (Versão corrigida com registro de dispositivo)');
+console.log('✅ Auth.js carregado (Versão corrigida com verificação de pagamento)');
