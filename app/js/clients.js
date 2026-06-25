@@ -1,11 +1,18 @@
 // ============ CLIENTES ============
 
 function renderizarClientes() {
-    var html = '<div class="card"><div class="card-title">👥 Clientes (' + clientes.length + (LIMITES.proAtivo ? '' : '/' + LIMITES.freeClientes) + ')</div>';
-    if (!LIMITES.proAtivo && clientes.length >= LIMITES.freeClientes) {
-        html += '<div class="limit-warning">⚠️ Limite atingido!</div>';
+    // ✅ CORREÇÃO: Usar LIMITES.maxClientes com valor padrão
+    var limiteClientes = LIMITES.proAtivo ? '∞' : (LIMITES.maxClientes || 3);
+    
+    var html = '<div class="card"><div class="card-title">👥 Clientes (' + clientes.length + '/' + limiteClientes + ')</div>';
+    
+    // Aviso de limite
+    if (!LIMITES.proAtivo && clientes.length >= (LIMITES.maxClientes || 3)) {
+        html += '<div class="limit-warning">⚠️ Limite atingido! Faça upgrade para PRO.</div>';
     }
-    html += '<button class="btn btn-primary" onclick="verificarLimite(\'clientes\') && abrirModalCliente()">+ Novo Cliente</button></div>';
+    
+    // ✅ CORREÇÃO: Botão chama função que verifica e abre modal de planos
+    html += '<button class="btn btn-primary" onclick="adicionarClienteComLimite()">+ Novo Cliente</button></div>';
     
     if (clientes.length === 0) {
         html += '<div class="card"><div class="empty-state">Nenhum cliente</div></div>';
@@ -22,6 +29,23 @@ function renderizarClientes() {
         html += '</div>';
     }
     return html;
+}
+
+// ✅ NOVA FUNÇÃO: Verifica limite e abre modal de planos se necessário
+function adicionarClienteComLimite() {
+    var maxClientes = LIMITES.maxClientes || 3;
+    
+    if (!LIMITES.proAtivo && clientes.length >= maxClientes) {
+        // ✅ Mostra toast e abre modal de assinatura
+        toast('🔒 Limite do plano FREE atingido! (' + maxClientes + ' clientes)', 'error');
+        setTimeout(function() {
+            mostrarPlanos();
+        }, 1000);
+        return;
+    }
+    
+    // Se não atingiu o limite, abre modal normal
+    abrirModalCliente();
 }
 
 function iniciarPedidoCliente(clienteId) {
