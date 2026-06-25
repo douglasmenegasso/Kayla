@@ -563,4 +563,29 @@ async function mostrarInfoAssinatura() {
     }
 }
 
+// ============ MOSTRAR AVISO DE LIMITE (CORRIGIDO) ============
+
+function mostrarAvisoLimite(tipo) {
+    // Fecha qualquer modal que esteja aberto
+    document.getElementById('modal-overlay').classList.remove('show');
+    document.getElementById('modal-body').innerHTML = '';
+
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🔒 Limite Atingido</div>';
+    html += '<div class="modal-sub">Você atingiu o limite de <strong>' + tipo + '</strong> para o plano GRÁTIS.</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:48px;margin-bottom:12px">🚀</div>';
+    html += '<div style="font-size:16px;font-weight:600;color:var(--warning);margin-bottom:8px">Aumente seus limites!</div>';
+    html += '<div style="font-size:13px;color:var(--text2)">Assine o plano PRO para ter clientes e produtos ilimitados.</div>';
+    html += '</div>';
+    
+    // Botão corrigido que leva para a tela de planos
+    html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()" style="width:100%;margin-bottom:8px">🚀 Ver Planos PRO</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
 console.log('✅ Subscription.js carregado (Versão Final com Modais e Resumos)');
