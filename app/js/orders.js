@@ -1,5 +1,7 @@
 // ============ PEDIDOS E HISTÓRICO ============
 
+var html5QrCodeDevolucao = null;
+
 function renderizarPedidos() {
     var html = '<div class="card"><div class="card-title">📋 Pedidos (' + pedidos.length + ')</div></div>';
     if (pedidos.length === 0) {
@@ -14,6 +16,8 @@ function renderizarPedidos() {
             html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
             html += '<button class="btn btn-sm btn-primary" onclick="verPedido(\'' + p.id + '\')">Ver</button>';
             if (p.status === 'aberto') {
+                // 🔥 Botão Editar (apenas para pedidos abertos)
+                html += '<button class="btn btn-sm btn-outline" onclick="editarPedido(\'' + p.id + '\')">✏️ Editar</button>';
                 html += '<button class="btn btn-sm btn-green" onclick="finalizarPedidoStatus(\'' + p.id + '\')">✅ Encerrar</button>';
                 html += '<button class="btn btn-sm btn-warning" onclick="devolverPedido(\'' + p.id + '\')">↩️ Devolução</button>';
             }
@@ -23,6 +27,72 @@ function renderizarPedidos() {
         html += '</div>';
     }
     return html;
+}
+
+// 🔥 NOVA FUNÇÃO: Editar Pedido
+function editarPedido(pedidoId) {
+    var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+    if (!pedido) {
+        toast('Pedido não encontrado', 'error');
+        return;
+    }
+    
+    // Buscar itens do pedido
+    var itens = [];
+    if (isOnline && supabaseClient) {
+        supabaseClient
+            .from('pedido_itens')
+            .select('*')
+            .eq('pedido_id', pedidoId)
+            .then(function(result) {
+                if (result.data && result.data.length > 0) {
+                    itens = result.data;
+                    carregarPedidoParaEdicao(pedido, itens);
+                } else {
+                    // Fallback para itens_json
+                    if (pedido.itens_json) {
+                        try {
+                            itens = JSON.parse(pedido.itens_json);
+                        } catch(e) {}
+                    }
+                    carregarPedidoParaEdicao(pedido, itens);
+                }
+            });
+    } else {
+        // Offline
+        if (pedido.itens_json) {
+            try {
+                itens = JSON.parse(pedido.itens_json);
+            } catch(e) {}
+        }
+        carregarPedidoParaEdicao(pedido, itens);
+    }
+}
+
+function carregarPedidoParaEdicao(pedido, itens) {
+    // 1. Encontrar o cliente
+    var cliente = clientes.find(function(c) { return c.id === pedido.cliente_id; });
+    if (!cliente) {
+        toast('Cliente não encontrado', 'error');
+        return;
+    }
+    
+    // 2. Configurar as variáveis globais da venda
+    clienteAtual = cliente;
+    pedidoItens = itens.map(function(item) {
+        return {
+            produto_id: item.produto_id || item.id,
+            nome: item.nome,
+            codigo: item.codigo,
+            preco: parseFloat(item.preco) || 0,
+            qtd: parseInt(item.qtd) || 1
+        };
+    });
+    pedidoEmEdicao = pedido.id; // 🔥 Marca o ID do pedido que será atualizado
+    
+    // 3. Ir para a aba de venda e renderizar
+    toast('Editando pedido de ' + cliente.nome, 'success');
+    mudarAba('scan');
 }
 
 async function finalizarPedidoStatus(pedidoId) {
@@ -61,16 +131,16 @@ async function devolverPedido(pedidoId) {
     html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
     html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     
-    // Scanner
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="margin-bottom:12px"><strong>📷 Escanear Código de Barras</strong></div>';
     html += '<div style="display:flex;gap:8px">';
-    html += '<input type="text" class="form-input" id="scanner-codigo-devolucao" placeholder="Digite ou escaneie o código" style="flex:1" onkeypress="if(event.key===\'Enter\')removerItemPorCodigo(\'' + pedidoId + '\')">';
+    html += '<input type="text" class="form-input" id="scanner-codigo-devolucao" placeholder="Digite ou escaneie o código" style="flex:1" inputmode="none" autocomplete="off" onkeypress="if(event.key===\'Enter\')removerItemPorCodigo(\'' + pedidoId + '\')">';
+    html += '<button class="btn btn-sm btn-primary" onclick="abrirScannerDevolucao(\'' + pedidoId + '\')" style="margin:0;white-space:nowrap;font-size:18px">📷</button>';
     html += '<button class="btn btn-sm btn-primary" onclick="removerItemPorCodigo(\'' + pedidoId + '\')" style="margin:0;white-space:nowrap">Remover</button>';
     html += '</div>';
+    html += '<div id="scanner-reader-devolucao" style="width:100%;margin-top:12px;display:none"></div>';
     html += '</div>';
     
-    // Container para itens (será preenchido via JavaScript)
     html += '<div id="container-itens-devolucao">';
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<p style="color:var(--text2);text-align:center;padding:20px">Carregando itens...</p>';
@@ -81,10 +151,37 @@ async function devolverPedido(pedidoId) {
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
     
-    // Carregar itens após mostrar modal
     setTimeout(function() {
         carregarItensParaDevolucao(pedidoId);
     }, 100);
+}
+
+function abrirScannerDevolucao(pedidoId) {
+    var readerDiv = document.getElementById('scanner-reader-devolucao');
+    if (!readerDiv) return;
+
+    if (html5QrCodeDevolucao) {
+        html5QrCodeDevolucao.stop();
+        html5QrCodeDevolucao = null;
+    }
+
+    readerDiv.style.display = 'block';
+
+    html5QrCodeDevolucao = new Html5Qrcode("scanner-reader-devolucao");
+    html5QrCodeDevolucao.start(
+        { facingMode: "environment" }, 
+        { fps: 5, qrbox: { width: 250, height: 250 } }, 
+        function(decodedText) {
+            var input = document.getElementById('scanner-codigo-devolucao');
+            if (input) {
+                input.value = decodedText;
+                removerItemPorCodigo(pedidoId);
+            }
+        }
+    ).catch(function(err) {
+        console.warn('Erro ao iniciar scanner de devolução:', err);
+        toast('Erro ao acessar a câmera.', 'error');
+    });
 }
 
 async function carregarItensParaDevolucao(pedidoId) {
@@ -168,7 +265,6 @@ async function removerItemPorCodigo(pedidoId) {
     }
     
     try {
-        // Buscar item pelo código
         var result = await supabaseClient
             .from('pedido_itens')
             .select('*')
@@ -183,7 +279,6 @@ async function removerItemPorCodigo(pedidoId) {
         
         var item = result.data[0];
         
-        // Remover item
         var deleteResult = await supabaseClient
             .from('pedido_itens')
             .delete()
@@ -194,14 +289,12 @@ async function removerItemPorCodigo(pedidoId) {
             return;
         }
         
-        // Buscar pedido atual
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
         if (!pedido) {
             toast('Pedido não encontrado', 'error');
             return;
         }
         
-        // Carregar histórico existente
         var historicoDevolucoes = [];
         if (pedido.historico_devolucoes) {
             try {
@@ -209,7 +302,6 @@ async function removerItemPorCodigo(pedidoId) {
             } catch(e) {}
         }
         
-        // ADICIONAR ITEM AO HISTÓRICO DE DEVOLUÇÕES
         historicoDevolucoes.push({
             data: new Date().toISOString(),
             itens: [{
@@ -224,7 +316,6 @@ async function removerItemPorCodigo(pedidoId) {
             tipo: 'devolucao'
         });
         
-        // Atualizar pedido
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
         if (pedido) {
             var novosItens = Math.max(0, pedido.itens - item.qtd);
@@ -263,7 +354,6 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
             }
             
             try {
-                // Buscar item antes de remover
                 var itemResult = await supabaseClient
                     .from('pedido_itens')
                     .select('*')
@@ -277,7 +367,6 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
                 
                 var item = itemResult.data;
                 
-                // Remover item do banco
                 var deleteResult = await supabaseClient
                     .from('pedido_itens')
                     .delete()
@@ -288,14 +377,12 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
                     return;
                 }
                 
-                // Buscar pedido atual
                 var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
                 if (!pedido) {
                     toast('Pedido não encontrado', 'error');
                     return;
                 }
                 
-                // Carregar histórico existente
                 var historicoDevolucoes = [];
                 if (pedido.historico_devolucoes) {
                     try {
@@ -305,7 +392,6 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
                     }
                 }
                 
-                // ADICIONAR ITEM AO HISTÓRICO DE DEVOLUÇÕES
                 historicoDevolucoes.push({
                     data: new Date().toISOString(),
                     itens: [{
@@ -322,11 +408,9 @@ async function removerItemIndividual(pedidoId, idx, itemId) {
                 
                 console.log('📋 Histórico atualizado:', historicoDevolucoes);
                 
-                // Calcular novos totais
                 var novosItensCount = Math.max(0, (parseInt(pedido.itens) || 0) - (parseInt(item.qtd) || 1));
                 var novoTotal = Math.max(0, parseFloat(pedido.total) - parseFloat(item.total));
                 
-                // Atualizar pedido COM histórico
                 var updateData = {
                     itens: novosItensCount,
                     total: novoTotal,
@@ -361,7 +445,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
     }
     
     try {
-        // Buscar item atual
         var itemResult = await supabaseClient
             .from('pedido_itens')
             .select('*')
@@ -377,7 +460,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
         var qtdAtual = parseInt(item.qtd) || 0;
         var novaQtd = qtdAtual + delta;
         
-        // Se quantidade chegar a 0 ou menos, remover item
         if (novaQtd <= 0) {
             confirmar('Remover Item', 'Remover este item completamente?', function(confirmed) {
                 if (!confirmed) return;
@@ -386,18 +468,15 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             return;
         }
         
-        // Se reduziu a quantidade, registrar devolução
         if (novaQtd < qtdAtual) {
             var qtdDevolvida = qtdAtual - novaQtd;
             
-            // Buscar pedido atual
             var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
             if (!pedido) {
                 toast('Pedido não encontrado', 'error');
                 return;
             }
             
-            // Carregar histórico existente
             var historicoDevolucoes = [];
             if (pedido.historico_devolucoes) {
                 try {
@@ -405,7 +484,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
                 } catch(e) {}
             }
             
-            // Registrar devolução da diferença
             historicoDevolucoes.push({
                 data: new Date().toISOString(),
                 itens: [{
@@ -422,16 +500,13 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             
             console.log('📋 Devolução parcial registrada:', qtdDevolvida + 'x ' + item.nome);
             
-            // Calcular novo total do item
             var precoUnitario = parseFloat(item.preco) || 0;
             var novoTotalItem = novaQtd * precoUnitario;
             
-            // Calcular novo total do pedido
             var totalAntigo = parseFloat(item.total) || 0;
             var diferencaTotal = novoTotalItem - totalAntigo;
             var novoTotalPedido = parseFloat(pedido.total) + diferencaTotal;
             
-            // Atualizar item E pedido COM histórico
             await supabaseClient
                 .from('pedido_itens')
                 .update({ 
@@ -450,7 +525,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             
             await carregarDados();
             
-            // ATUALIZAR VISUALMENTE
             var itemContainer = document.querySelector('[data-item-id="' + itemId + '"]');
             if (itemContainer) {
                 var qtdDisplay = itemContainer.querySelector('[data-item-qtd]');
@@ -468,11 +542,9 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             return;
         }
         
-        // Se aumentou a quantidade (sem devolução)
         var precoUnitario = parseFloat(item.preco) || 0;
         var novoTotal = novaQtd * precoUnitario;
         
-        // Atualizar item no banco
         var updateResult = await supabaseClient
             .from('pedido_itens')
             .update({ 
@@ -486,7 +558,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             return;
         }
         
-        // Atualizar total do pedido
         var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
         if (pedido) {
             var totalAntigo = parseFloat(item.total) || 0;
@@ -503,7 +574,6 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
             await carregarDados();
         }
         
-        // ATUALIZAR VISUALMENTE (sem recarregar tudo)
         var itemContainer = document.querySelector('[data-item-id="' + itemId + '"]');
         if (itemContainer) {
             var qtdDisplay = itemContainer.querySelector('[data-item-qtd]');
@@ -542,7 +612,6 @@ function verPedido(pedidoId) {
     html += '<div style="display:flex;justify-content:space-between"><span>Total:</span><strong style="color:var(--accent);font-size:18px">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
     html += '</div>';
     
-    // Container para itens
     html += '<div id="container-itens-ver-pedido"></div>';
     
     html += '<button class="btn btn-primary" onclick="gerarPDFPedidoPorId(\'' + pedidoId + '\')">📄 Gerar PDF</button>';
@@ -550,7 +619,6 @@ function verPedido(pedidoId) {
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
     
-    // Carregar itens
     setTimeout(function() {
         carregarItensParaVerPedido(pedidoId);
     }, 100);
@@ -587,7 +655,6 @@ async function carregarItensParaVerPedido(pedidoId) {
         }
     }
     
-    // Carregar histórico de devoluções
     var historicoDevolucoes = [];
     var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
     if (pedido && pedido.historico_devolucoes) {
@@ -596,7 +663,6 @@ async function carregarItensParaVerPedido(pedidoId) {
         } catch(e) {}
     }
     
-    // Criar mapa de itens devolvidos
     var itensDevolvidosMap = {};
     historicoDevolucoes.forEach(function(dev) {
         if (dev.itens) {
@@ -608,7 +674,6 @@ async function carregarItensParaVerPedido(pedidoId) {
         }
     });
     
-    // Calcular total de itens RESTANTES
     var totalItensRestantes = 0;
     itens.forEach(function(item) {
         var qtdOriginal = parseInt(item.qtd) || 0;
@@ -630,7 +695,6 @@ async function carregarItensParaVerPedido(pedidoId) {
             var qtdDevolvida = itensDevolvidosMap[chave] || 0;
             var qtdAtual = qtdOriginal - qtdDevolvida;
             
-            // Mostrar apenas se tem quantidade restante
             if (qtdAtual > 0) {
                 html += '<div class="item-card"><div class="item-info"><div class="item-name">' + (item.nome || 'Sem nome') + '</div><div class="item-detail">' + qtdAtual + 'x R$ ' + parseFloat(item.preco || 0).toFixed(2).replace('.',',');
                 if (qtdDevolvida > 0) {
@@ -654,7 +718,6 @@ function gerarPDFPedidoPorId(pedidoId) {
 function renderizarHistorico() {
     var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
     
-    // Contar itens devolvidos
     var totalItensDevolvidos = 0;
     pedidos.forEach(function(p) {
         if (p.historico_devolucoes) {
@@ -685,7 +748,6 @@ function renderizarHistorico() {
     
     html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
     
-    // Agrupar pedidos por cliente
     var pedidosPorCliente = {};
     pedidos.forEach(function(p) {
         if (!pedidosPorCliente[p.cliente_nome]) {
@@ -728,7 +790,6 @@ function renderizarHistorico() {
                 }
             });
             
-            // Card compacto do cliente - CLICÁVEL
             html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\'") + '\')" style="cursor:pointer">';
             html += '<div class="item-info">';
             html += '<div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + nomeCliente + '</div>';
@@ -783,7 +844,6 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
     html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
     
-    // Informações básicas
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
     html += '<div><div style="font-size:12px;color:var(--text2)">Data</div><div style="font-weight:600">' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div></div>';
@@ -792,7 +852,6 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     html += '<div><div style="font-size:12px;color:var(--text2)">Itens</div><div style="font-weight:600">' + pedido.itens + ' unidades</div></div>';
     html += '</div></div>';
     
-    // Carregar itens vendidos
     var itensVendidos = [];
     var historicoDevolucoes = [];
     
@@ -816,14 +875,12 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         }
     }
     
-    // Calcular totais de devolução - USANDO CÓDIGO E NOME
     var totalDevolvido = 0;
     var itensDevolvidosMap = {};
     
     historicoDevolucoes.forEach(function(dev) {
         if (dev.itens) {
             dev.itens.forEach(function(itemDev) {
-                // Criar chave com código E nome para garantir correspondência
                 var codigoKey = 'cod_' + (itemDev.codigo || '');
                 var nomeKey = 'nome_' + (itemDev.nome || '').toLowerCase().trim();
                 var produtoIdKey = 'id_' + (itemDev.produto_id || '');
@@ -843,7 +900,6 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     
     console.log('🔍 Itens devolvidos map:', itensDevolvidosMap);
     
-    // Mostrar itens vendidos
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="margin-bottom:12px"><strong>📦 Itens Vendidos (' + itensVendidos.length + ')</strong></div>';
     
@@ -854,13 +910,11 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         itensVendidos.forEach(function(item) {
             var qtdVendida = parseInt(item.qtd) || 0;
             
-            // Buscar quantidade devolvida usando múltiplas chaves
             var qtdDevolvida = 0;
             qtdDevolvida += (itensDevolvidosMap['cod_' + (item.codigo || '')] || 0);
             qtdDevolvida += (itensDevolvidosMap['nome_' + (item.nome || '').toLowerCase().trim()] || 0);
             qtdDevolvida += (itensDevolvidosMap['id_' + (item.produto_id || '')] || 0);
             
-            // Evitar contar duplicado se as chaves forem iguais
             if (qtdDevolvida > qtdVendida) qtdDevolvida = qtdVendida;
             
             var qtdRestante = qtdVendida - qtdDevolvida;
@@ -900,7 +954,6 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     }
     html += '</div>';
     
-    // Mostrar histórico de devoluções
     if (historicoDevolucoes.length > 0) {
         html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
         html += '<div style="margin-bottom:12px"><strong>↩️ Histórico de Devoluções (' + historicoDevolucoes.length + ' itens)</strong></div>';
@@ -918,7 +971,6 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         html += '</div>';
     }
     
-    // Resumo final
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Vendido:</span><strong style="color:var(--success)">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Devolvido:</span><strong style="color:var(--warning)">R$ ' + totalDevolvido.toFixed(2).replace('.',',') + '</strong></div>';
@@ -932,4 +984,4 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-console.log('✅ Orders.js carregado');
+console.log('✅ Orders.js carregado (Com suporte a edição de pedidos)');
