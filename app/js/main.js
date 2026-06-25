@@ -329,6 +329,12 @@ window.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    // ✅ NOVO: Verificar se voltou de um pagamento PRIMEIRO
+    if (typeof verificarRetornoPagamento === 'function') {
+        console.log('[MAIN] Verificando retorno de pagamento...');
+        verificarRetornoPagamento();
+    }
+    
     // Carregar dados iniciais
     verificarStatusPro();
     carregarConfigEmpresa();
@@ -344,6 +350,8 @@ window.addEventListener('DOMContentLoaded', function() {
         if (currentUser) {
             toast('🔄 Online! Sincronizando...', 'warning');
             carregarDados();
+            // ✅ NOVO: Re-verificar status PRO ao ficar online
+            setTimeout(verificarStatusPro, 2000);
         }
     });
     window.addEventListener('offline', function() { 
