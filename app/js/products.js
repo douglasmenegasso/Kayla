@@ -1,28 +1,33 @@
 // ============ PRODUTOS ============
 
 function renderizarProdutos() {
-    var html = '<div class="card"><div class="card-title">🏷️ Produtos (' + produtos.length + (LIMITES.proAtivo ? '' : '/' + LIMITES.freeProdutos) + ')</div>';
-    if (!LIMITES.proAtivo && produtos.length >= LIMITES.freeProdutos) {
-        html += '<div class="limit-warning">⚠️ Limite atingido!</div>';
-    }
-    html += '<button class="btn btn-primary" onclick="verificarLimite(\'produtos\') && abrirModalProduto()">+ Novo Produto</button></div>';
+    var limiteProdutos = LIMITES.proAtivo ? '∞' : (LIMITES.maxProdutos || 5);
     
-    if (produtos.length === 0) {
-        html += '<div class="card"><div class="empty-state">Nenhum produto</div></div>';
-    } else {
-        html += '<div class="item-list">';
-        produtos.forEach(function(p) {
-            html += '<div class="item-card"><div class="item-info"><div class="item-name">' + p.nome + '</div><div class="item-detail">' + p.codigo + ' - R$ ' + p.preco.toFixed(2).replace('.',',') + '</div></div>';
-            html += '<div style="display:flex;gap:8px">';
-            html += '<button class="btn btn-sm btn-outline" onclick="editarProduto(\'' + p.id + '\')">✏️</button>';
-            html += '<button class="btn btn-sm btn-red" onclick="excluirProduto(\'' + p.id + '\')">🗑️</button>';
-            html += '</div></div>';
-        });
-        html += '</div>';
+    var html = '<div class="card"><div class="card-title">🏷️ Produtos (' + produtos.length + '/' + limiteProdutos + ')</div>';
+    
+    if (!LIMITES.proAtivo && produtos.length >= (LIMITES.maxProdutos || 5)) {
+        html += '<div class="limit-warning">⚠️ Limite atingido! Faça upgrade para PRO.</div>';
     }
+    
+    html += '<button class="btn btn-primary" onclick="adicionarProdutoComLimite()">+ Novo Produto</button></div>';
+    
+    // ... resto do código
     return html;
 }
 
+function adicionarProdutoComLimite() {
+    var maxProdutos = LIMITES.maxProdutos || 5;
+    
+    if (!LIMITES.proAtivo && produtos.length >= maxProdutos) {
+        toast(' Limite do plano FREE atingido! (' + maxProdutos + ' produtos)', 'error');
+        setTimeout(function() {
+            mostrarPlanos();
+        }, 1000);
+        return;
+    }
+    
+    abrirModalProduto();
+}
 function abrirModalProduto() {
     if (!verificarLimite('produtos')) return;
     var html = '<div class="modal-handle"></div>';
