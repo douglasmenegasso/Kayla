@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pagamento Aprovado - Kayla</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             background: #0f0f13;
@@ -62,8 +61,33 @@
     <div class="card">
         <div class="success-icon">✅</div>
         <div class="title">Pagamento Aprovado!</div>
-        <div class="subtitle">Seu plano PRO foi ativado com sucesso.</div>
-        <a href="/app/" class="btn">Acessar App</a>
+        <div class="subtitle">Seu plano PRO foi ativado com sucesso.<br>Redirecionando em 3 segundos...</div>
+        <a href="#" id="btnApp" class="btn">Acessar App</a>
     </div>
+
+    <script>
+        // ✅ Ler parâmetros do Mercado Pago da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const collectionStatus = urlParams.get('collection_status');
+        const paymentId = urlParams.get('payment_id');
+        const preferenceId = urlParams.get('preference_id');
+        const externalReference = urlParams.get('external_reference');
+        
+        console.log('[MP Sucesso] Parâmetros:', { collectionStatus, paymentId, preferenceId, externalReference });
+        
+        // ✅ Construir URL com parâmetros
+        const appUrl = '/app/?collection_status=' + encodeURIComponent(collectionStatus || 'approved') +
+                       '&payment_id=' + encodeURIComponent(paymentId || '') +
+                       '&preference_id=' + encodeURIComponent(preferenceId || '') +
+                       '&external_reference=' + encodeURIComponent(externalReference || '');
+        
+        // ✅ Atualizar botão
+        document.getElementById('btnApp').href = appUrl;
+        
+        // ✅ Redirecionamento automático após 3 segundos
+        setTimeout(function() {
+            window.location.href = appUrl;
+        }, 3000);
+    </script>
 </body>
 </html>
