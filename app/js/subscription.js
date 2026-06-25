@@ -508,60 +508,7 @@ if (typeof window !== 'undefined') {
 
 // ============ MOSTRAR INFORMAÇÕES DA ASSINATURA ============
 
-async function mostrarInfoAssinatura() {
-    if (!currentUser || !supabaseClient) {
-        toast('Faça login primeiro', 'error');
-        return;
-    }
-    try {
-        var result = await supabaseClient
-            .from('assinaturas')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('status', 'ativa')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-        if (result.error || !result.data) {
-            toast('Nenhuma assinatura ativa encontrada', 'error');
-            return;
-        }
-        var assinatura = result.data;
-        var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
-        var diasRestantes = Math.floor((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
-        
-        var html = '<div class="modal-handle"></div>';
-        html += '<div class="modal-title">📋 Minha Assinatura</div>';
-        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
-        html += '<span style="color:var(--text2)">Status:</span>';
-        html += '<span class="badge-pro">ATIVA</span>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
-        html += '<span style="color:var(--text2)">Key:</span>';
-        html += '<strong style="font-family:monospace;font-size:12px">' + (assinatura.key_ativacao || 'N/A') + '</strong>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
-        html += '<span style="color:var(--text2)">Dispositivos:</span>';
-        html += '<strong>' + assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max + '</strong>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
-        html += '<span style="color:var(--text2)">Validade:</span>';
-        html += '<strong>' + dataFim + '</strong>';
-        html += '</div>';
-        html += '<div style="display:flex;justify-content:space-between">';
-        html += '<span style="color:var(--text2)">Dias restantes:</span>';
-        html += '<strong style="color:' + (diasRestantes <= 7 ? 'var(--warning)' : 'var(--success)') + '">' + diasRestantes + ' dias</strong>';
-        html += '</div>';
-        html += '</div>';
-        html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
-        document.getElementById('modal-body').innerHTML = html;
-        document.getElementById('modal-overlay').classList.add('show');
-    } catch(e) {
-        console.error('[Assinatura] Erro:', e);
-        toast('Erro ao carregar assinatura', 'error');
-    }
-}
+// ====== REMOVIDO DUPLICIDADE COM PAYMENT COMPLETO ===========
 
 // ============ MOSTRAR AVISO DE LIMITE (CORRIGIDO) ============
 
