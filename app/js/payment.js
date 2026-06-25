@@ -1263,4 +1263,53 @@ async function mostrarInfoAssinatura() {
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
+
+// ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
+
+function verificarRetornoPagamento() {
+    // Verificar se voltou de um pagamento (parâmetros na URL)
+    var urlParams = new URLSearchParams(window.location.search);
+    var status = urlParams.get('status');
+    var preferenceId = urlParams.get('preference_id');
+    var pagamentoId = urlParams.get('pagamento_id');
+    
+    console.log('[Pagamento] Retorno detectado:', { status, preferenceId, pagamentoId });
+    
+    if (status === 'approved' || status === 'success') {
+        toast('✅ Pagamento aprovado! Ativando plano PRO...', 'success');
+        
+        // Aguardar webhook processar e verificar status PRO
+        setTimeout(async function() {
+            await verificarStatusPro();
+            
+            if (LIMITES.proAtivo) {
+                toast('🎉 Plano PRO ativado com sucesso!', 'success');
+                atualizarBadgePlano();
+                mudarAba('settings');
+            } else {
+                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde alguns segundos e faça login novamente.', 'warning');
+            }
+        }, 3000);
+        
+        // Limpar URL (remover parâmetros)
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+    } else if (status === 'pending') {
+        toast('⏳ Pagamento pendente. Aguardando confirmação...', 'warning');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === 'rejected' || status === 'failed') {
+        toast('❌ Pagamento não aprovado. Tente novamente.', 'error');
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+// Chamar verificação ao carregar a página
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(verificarRetornoPagamento, 1500);
+    });
+}
+
+console.log('✅ Payments.js carregado');
+
 console.log('✅ Payments.js carregado');
