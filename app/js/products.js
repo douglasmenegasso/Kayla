@@ -1,25 +1,39 @@
 // ============ PRODUTOS ============
 
 function renderizarProdutos() {
-    var limiteProdutos = LIMITES.proAtivo ? '∞' : (LIMITES.maxProdutos || 5);
+    var limiteProdutos = LIMITES.proAtivo ? '∞' : (LIMITES.maxProdutos || LIMITES.freeProdutos || 5);
     
     var html = '<div class="card"><div class="card-title">🏷️ Produtos (' + produtos.length + '/' + limiteProdutos + ')</div>';
     
-    if (!LIMITES.proAtivo && produtos.length >= (LIMITES.maxProdutos || 5)) {
-        html += '<div class="limit-warning">⚠️ Limite atingido! Faça upgrade para PRO.</div>';
+    if (!LIMITES.proAtivo && produtos.length >= (LIMITES.maxProdutos || LIMITES.freeProdutos || 5)) {
+        html += '<div class="limit-warning">⚠️ Limite atingido!</div>';
     }
     
-    html += '<button class="btn btn-primary" onclick="adicionarProdutoComLimite()">+ Novo Produto</button></div>';
+    // ✅ CORREÇÃO: Chama função que verifica E mostra modal de planos
+    html += '<button class="btn btn-primary" onclick="adicionarProdutoComVerificacao()">+ Novo Produto</button></div>';
     
-    // ... resto do código
+    if (produtos.length === 0) {
+        html += '<div class="card"><div class="empty-state">Nenhum produto</div></div>';
+    } else {
+        html += '<div class="item-list">';
+        produtos.forEach(function(p) {
+            html += '<div class="item-card"><div class="item-info"><div class="item-name">' + p.nome + '</div><div class="item-detail">' + p.codigo + ' - R$ ' + p.preco.toFixed(2).replace('.',',') + '</div></div>';
+            html += '<div style="display:flex;gap:8px">';
+            html += '<button class="btn btn-sm btn-outline" onclick="editarProduto(\'' + p.id + '\')">✏️</button>';
+            html += '<button class="btn btn-sm btn-red" onclick="excluirProduto(\'' + p.id + '\')">🗑️</button>';
+            html += '</div></div>';
+        });
+        html += '</div>';
+    }
     return html;
 }
 
-function adicionarProdutoComLimite() {
-    var maxProdutos = LIMITES.maxProdutos || 5;
+// ✅ NOVA FUNÇÃO: Verifica limite e mostra modal de planos
+function adicionarProdutoComVerificacao() {
+    var maxProdutos = LIMITES.maxProdutos || LIMITES.freeProdutos || 5;
     
     if (!LIMITES.proAtivo && produtos.length >= maxProdutos) {
-        toast(' Limite do plano FREE atingido! (' + maxProdutos + ' produtos)', 'error');
+        toast('🔒 Limite do plano FREE atingido! (' + maxProdutos + ' produtos)', 'error');
         setTimeout(function() {
             mostrarPlanos();
         }, 1000);
@@ -28,6 +42,7 @@ function adicionarProdutoComLimite() {
     
     abrirModalProduto();
 }
+
 function abrirModalProduto() {
     if (!verificarLimite('produtos')) return;
     var html = '<div class="modal-handle"></div>';
