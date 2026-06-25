@@ -5,17 +5,17 @@
 var HISTORICO_VERSOES = [
     { 
         versao: '5.4.0', 
-        data: '17/06/2026', 
+        data: '25/06/2026', 
         mudancas: [
             '💳 Sistema de Pagamentos com Mercado Pago',
-            '📧 Envio de emails via SendGrid (ativação, upgrade)',
-            '🔑 Sistema de Keys PRO com validação',
+            '📧 Envio de emails (ativação, upgrade, cancelamento)',
+            '🔑 Sistema de ativação PRO com validação automática',
             '📱 Registro automático de dispositivos',
             '⬆️ Upgrade de dispositivos (calcula corretamente)',
             '💾 Backup local (exportar/importar) - PRO',
             '💬 Suporte via WhatsApp',
-            '🔒 Autenticação de domínio (DKIM, SPF, DMARC)',
-            '✅ Correção: upgrade não estende prazo da assinatura'
+            '🔒 Autenticação de domínio',
+            '✅ Correção: upgrade de assinatura'
         ] 
     },
     { 
@@ -42,7 +42,7 @@ var HISTORICO_VERSOES = [
         mudancas: [
             'Landing page kayla.app.br', 
             'Domínio configurado', 
-            'E-mails Microsoft 365'
+            'E-mails de contato e suporte'
         ] 
     },
     { 
