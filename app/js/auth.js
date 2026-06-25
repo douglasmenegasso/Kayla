@@ -52,6 +52,11 @@ async function verificarSessao() {
             if (isOnline && supabaseClient) {
                 try {
                     await carregarDados();
+                    await verificarStatusPro();
+                    // ✅ CORREÇÃO: Tentar registrar o dispositivo ao reabrir o app também
+                    if (LIMITES.proAtivo) {
+                        await registrarDispositivoAtual();
+                    }
                 } catch(e) {
                     console.warn('Falha ao sincronizar, usando dados locais');
                 }
@@ -179,7 +184,6 @@ async function fazerLogin() {
             // Login online sucesso
             if (result.data && result.data.user) {
                 await loginSucesso(result.data.user, senha, lembrarMe);
-                // ⭐ REMOVIDO: await verificarAcessoApp(); (função não existe)
             } else {
                 toast('Erro ao fazer login', 'error');
             }
@@ -258,9 +262,25 @@ async function loginSucesso(user, senha, lembrarMe) {
         console.log('[AUTH] Carregando dados offline...');
         carregarDadosLocais();
     }
-    
-    // ✅ ADICIONE ESTA LINHA AQUI:
+
+    // Verifica se tem assinatura válida e define a badge
     await verificarStatusPro();
+
+    // ✅ CORREÇÃO: Tenta registrar o dispositivo ATUAL no banco
+    if (isOnline && supabaseClient && currentUser) {
+        try {
+            // A função registrarDispositivoAtual está no subscription.js
+            var dispositivoRegistrado = await registrarDispositivoAtual();
+            
+            // Se o registro falhou (porque estourou o limite), re-verifica o status para rebaixar para GRÁTIS
+            if (!dispositivoRegistrado) {
+                await verificarStatusPro();
+                console.warn('[AUTH] 🔒 Limite de dispositivos atingido. Modo GRÁTIS ativado neste dispositivo.');
+            }
+        } catch (e) {
+            console.warn('Erro ao registrar dispositivo:', e);
+        }
+    }
     
     fecharModal();
     toast('Bem-vindo!', 'success');
@@ -379,4 +399,4 @@ function recuperarSenha() {
     });
 }
 
-console.log('✅ Auth.js carregado');
+console.log('✅ Auth.js carregado (Versão corrigida com registro de dispositivo)');
