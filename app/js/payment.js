@@ -23,7 +23,7 @@ window.PLANOS = {
         id: 'anual',
         nome: 'Plano Anual',
         precoBase: 199.90,
-        precoPorDevice: 5.00, // ✅ CORREÇÃO AQUI: 5.00 (o valor mensal real)
+        precoPorDevice: 5.00,
         dispositivosInclusos: 1,
         dispositivosMax: 5,
         duracaoDias: 365,
@@ -108,10 +108,9 @@ async function getAssinaturaAtiva() {
             .eq('status', 'ativa')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle(); // ✅ CORREÇÃO AQUI: usa maybeSingle() em vez de single()
+            .maybeSingle();
         
         if (result.error) {
-            // Se der erro, retorna null (não quebra o app)
             console.warn('[getAssinaturaAtiva] Erro:', result.error);
             return null;
         }
@@ -371,7 +370,6 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         var pagamentoId = registroPagamento.data.id;
         
-        // ✅ CORREÇÃO AQUI: Usar a variável SUPABASE_KEY (do config.js) em vez do token hardcoded
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -582,11 +580,8 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
     var dataFim = new Date(assinaturaAtual.data_fim);
     var hoje = new Date();
     
-    // 🔥 CORREÇÃO AQUI: Força 1 mês para o cálculo de crédito/dispositivo extra
-    // Mesmo que a assinatura tenha 2 meses, o sistema cobra apenas o mês atual
     var mesesRestantes = 1; 
     
-    // Calcular APENAS os dispositivos extras
     var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
     
     if (dispositivosExtras <= 0) {
@@ -600,7 +595,6 @@ function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
         };
     }
     
-    // Cobra R$ 5,00 POR DISPOSITIVO EXTRA (sempre!)
     var valorPorMes = 5.00;
     var valorPorDispositivo = 5.00;
     var valorTotal = dispositivosExtras * valorPorMes;
@@ -635,7 +629,6 @@ async function fazerUpgradeDispositivos() {
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="text-align:center;margin-bottom:16px">';
     html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
-    // 🔥 Ocultamos os meses restantes para não gerar confusão
     html += '</div>';
     
     for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
@@ -657,7 +650,6 @@ async function fazerUpgradeDispositivos() {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-// ✅ CORREÇÃO AQUI: Função que pergunta o método de pagamento
 async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     if (!currentUser) return;
     
@@ -696,7 +688,6 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     html += '</div>';
     html += '</div>';
     
-    // ✅ ADICIONADO OS BOTÕES DE ESCOLHA DE PAGAMENTO
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
     
@@ -729,16 +720,14 @@ async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-// ✅ CORREÇÃO AQUI: Processa o upgrade aceitando o método de pagamento
 async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPagamento) {
     if (!currentUser) return;
-    metodoPagamento = metodoPagamento || 'pix'; // Se não vier nada, usa PIX como padrão
+    metodoPagamento = metodoPagamento || 'pix';
     
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) return;
     
     try {
-        // PASSO 1: Registrar pagamento no banco como "upgrade"
         console.log('[Upgrade] Registrando pagamento no banco...');
         
         var registroPagamento = await supabaseClient
@@ -747,7 +736,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 user_id: currentUser.id,
                 plano_id: assinatura.plano_id,
                 valor: valor,
-                metodo_pagamento: metodoPagamento, // ✅ Usa o método escolhido
+                metodo_pagamento: metodoPagamento,
                 status: 'pendente',
                 metadata: {
                     tipo: 'upgrade',
@@ -767,7 +756,6 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         var pagamentoId = registroPagamento.data.id;
         console.log('[Upgrade] Pagamento registrado:', pagamentoId);
         
-        // PASSO 2: Chamar Edge Function do MP
         console.log('[Upgrade] Criando preferência...');
         
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
@@ -786,7 +774,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 pagamento_id: pagamentoId,
                 tipo: 'upgrade',
                 assinatura_id: assinatura.id,
-                metodo_pagamento: metodoPagamento // ✅ Envia o método para o PHP
+                metodo_pagamento: metodoPagamento
             })
         });
         
@@ -794,14 +782,12 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         
         console.log('[Upgrade] Resultado:', resultado);
         
-        // Se for PIX, mostrar QR Code na tela
         if (metodoPagamento === 'pix' && resultado.qr_code_base64 && resultado.qr_code) {
             console.log('[Upgrade] Exibindo PIX na tela.');
             mostrarQRCodePIX(resultado, pagamentoId);
             return;
         }
         
-        // Se for Cartão ou tiver init_point, redireciona
         if (resultado.init_point) {
             localStorage.setItem('kayla_pending_payment', JSON.stringify({
                 preference_id: resultado.id,
@@ -861,7 +847,6 @@ async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
 }
 
 async function gerenciarDispositivos() {
-    // Força o recarregamento do modal
     var modalBody = document.getElementById('modal-body');
     if (modalBody) modalBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Carregando...</div>';
     
@@ -877,7 +862,6 @@ async function gerenciarDispositivos() {
     }
     
     try {
-        // ✅ BUSCA APENAS OS DISPOSITIVOS COM ativo = true
         var result = await supabaseClient
             .from('dispositivos')
             .select('*')
@@ -907,14 +891,12 @@ async function gerenciarDispositivos() {
                 html += '<div class="item-name">' + tipoIcon + ' ' + (device.device_name || 'Dispositivo') + '</div>';
                 html += '<div class="item-detail">Último acesso: ' + ultimoAcesso + '</div>';
                 html += '</div>';
-                // Passa o "this" para a função de remover para sumir da tela na hora
                 html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\', \'' + assinatura.id + '\', this)">🗑️</button>';
                 html += '</div>';
             });
             html += '</div>';
         }
         
-        // Botão de adicionar/upgrade baseado no limite
         if (dispositivos.length < assinatura.dispositivos_max) {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivo</button>';
         } else {
@@ -938,7 +920,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         return false;
     }
     
-    // Verificação extra: se o ID da assinatura não foi passado, tenta buscar
     if (!assinaturaId) {
         try {
             var assinatura = await getAssinaturaAtiva();
@@ -956,7 +937,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
     }
     
     try {
-        // ✅ CORREÇÃO: Envia a atualização com a coluna no nome EXATO do Supabase
         var { error } = await supabaseClient
             .from('dispositivos')
             .update({ ativo: false }) 
@@ -969,7 +949,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
             return false;
         }
         
-        // Atualizar contador de dispositivos usados no banco
         var { data: assinatura, error: assError } = await supabaseClient
             .from('assinaturas')
             .select('dispositivos_usados')
@@ -987,7 +966,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 })
                 .eq('id', assinaturaId);
             
-            // ✅ ATUALIZAR O TEXTO DO CONTADOR NA TELA IMEDIATAMENTE
             var contadorTexto = document.querySelector('#modal-body .modal-sub');
             if (contadorTexto) {
                 var textoAtual = contadorTexto.innerText;
@@ -1001,9 +979,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         
         console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         
-        // ✅ REMOVER O ELEMENTO DA TELA IMEDIATAMENTE
         if (elementoHtml && elementoHtml.parentElement) {
-            // Adiciona um pequeno efeito visual de fade out antes de remover
             elementoHtml.style.transition = 'all 0.3s ease';
             elementoHtml.style.opacity = '0';
             elementoHtml.style.transform = 'scale(0.95)';
@@ -1013,7 +989,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 toast('✅ Dispositivo removido!', 'success');
             }, 300);
         } else {
-            // Fallback: recarregar a lista se não encontrar o elemento
             if (typeof gerenciarDispositivos === 'function') {
                 gerenciarDispositivos();
             }
@@ -1030,8 +1005,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
 
 // ============ NOVAS FUNÇÕES DE DOWNGRADE E RENOVAÇÃO ============
 
-// ============ CANCELAMENTO / DOWNGRADE DE DISPOSITIVOS ============
-
 async function cancelarDispositivos(novosDispositivos) {
     if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
     var assinatura = await getAssinaturaAtiva();
@@ -1039,7 +1012,6 @@ async function cancelarDispositivos(novosDispositivos) {
     if (novosDispositivos >= assinatura.dispositivos_max) { toast('Você só pode reduzir o número de dispositivos.', 'warning'); return; }
     
     var dispositivosRemovidos = assinatura.dispositivos_max - novosDispositivos;
-    // ✅ CORREÇÃO AQUI: Calcula o crédito com base em apenas 1 mês (não multiplica pelos meses restantes)
     var valorCredito = dispositivosRemovidos * 5; 
     valorCredito = Math.round(valorCredito * 100) / 100;
     
@@ -1093,14 +1065,12 @@ function iniciarCancelamentoDispositivos() {
     });
 }
 
-// ============ RENOVAÇÃO INTELIGENTE DE ASSINATURA (Com Desconto de Crédito) ============
 function iniciarRenovacao() {
     if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
     getAssinaturaAtiva().then(async function(assinatura) {
         if (!assinatura) { toast('Nenhuma assinatura ativa para renovar', 'error'); return; }
         if (Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24)) > 15) { toast('⚠️ Renove apenas quando faltar menos de 15 dias.', 'warning'); return; }
         
-        // Buscar créditos disponíveis
         var { data: creditos } = await supabaseClient
             .from('creditos')
             .select('valor')
@@ -1137,7 +1107,6 @@ async function confirmarRenovacao(novosDispositivos, valorPagar) {
         var assinatura = await getAssinaturaAtiva();
         if (!assinatura) { toast('Assinatura não encontrada', 'error'); return; }
         
-        // Aplicar créditos e marcar como utilizados
         await supabaseClient
             .from('creditos')
             .update({ utilizado: true })
@@ -1158,14 +1127,12 @@ async function confirmarRenovacao(novosDispositivos, valorPagar) {
     } catch(e) { toast('Erro ao renovar', 'error'); }
 }
 
-// ============ MOSTRAR INFORMAÇÕES DA ASSINATURA (COM CRÉDITO) ============
 async function mostrarInfoAssinatura() {
     if (!currentUser || !supabaseClient) {
         toast('Faça login primeiro', 'error');
         return;
     }
     
-    // Buscar a assinatura ATIVA no banco
     var result = await supabaseClient
         .from('assinaturas')
         .select('*')
@@ -1201,10 +1168,8 @@ async function mostrarInfoAssinatura() {
     
     var assinatura = result.data;
     var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
-    // ✅ CORREÇÃO: usa Math.floor para evitar dias extras (30 em vez de 31)
     var diasRestantes = Math.floor((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
 
-    // Buscar créditos disponíveis
     var saldoCredito = 0;
     try {
         var { data: creditos, error: credError } = await supabaseClient
@@ -1217,7 +1182,6 @@ async function mostrarInfoAssinatura() {
         }
     } catch(e) { console.warn('Erro ao buscar créditos:', e); }
     
-    // Atualiza o cache local com os dados reais do banco
     localStorage.setItem('kayla_pro', 'true');
     localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
     localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
@@ -1228,7 +1192,6 @@ async function mostrarInfoAssinatura() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📋 Minha Assinatura</div>';
 
-    // 🔥 CORREÇÃO DA COR: Verde escuro e texto branco
     if (saldoCredito > 0) {
         html += '<div style="background:#15803d;color:#fff;padding:12px;border-radius:8px;text-align:center;margin-bottom:12px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">';
         html += '💰 Você tem <strong>R$ ' + saldoCredito.toFixed(2).replace('.', ',') + '</strong> em crédito disponível para sua próxima renovação!';
@@ -1267,49 +1230,79 @@ async function mostrarInfoAssinatura() {
 // ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 
 function verificarRetornoPagamento() {
-    // Verificar se voltou de um pagamento (parâmetros na URL)
+    // ✅ CORREÇÃO: Usar os parâmetros CORRETOS do Mercado Pago
     var urlParams = new URLSearchParams(window.location.search);
-    var status = urlParams.get('status');
+    var collectionStatus = urlParams.get('collection_status');  // ✅ CORRETO!
+    var paymentId = urlParams.get('payment_id');
     var preferenceId = urlParams.get('preference_id');
-    var pagamentoId = urlParams.get('pagamento_id');
+    var externalReference = urlParams.get('external_reference');
     
-    console.log('[Pagamento] Retorno detectado:', { status, preferenceId, pagamentoId });
+    console.log('[Pagamento] Retorno detectado:', { 
+        collectionStatus, 
+        paymentId, 
+        preferenceId, 
+        externalReference 
+    });
     
-    if (status === 'approved' || status === 'success') {
-        toast('✅ Pagamento aprovado! Ativando plano PRO...', 'success');
+    // Se tem parâmetros de pagamento na URL, processar
+    if (collectionStatus || paymentId || preferenceId) {
+        console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
         
-        // Aguardar webhook processar e verificar status PRO
+        // Limpar dados antigos do localStorage
+        localStorage.removeItem('kayla_pro');
+        localStorage.removeItem('kayla_pro_key');
+        localStorage.removeItem('kayla_pro_expires');
+        localStorage.removeItem('kayla_pro_devices');
+        LIMITES.proAtivo = false;
+        
+        // Mostrar mensagem
+        toast('✅ Pagamento detectado! Verificando status...', 'success');
+        
+        // Aguardar webhook processar e verificar status
         setTimeout(async function() {
+            console.log('[Pagamento] Chamando verificarStatusPro()...');
+            
             await verificarStatusPro();
             
             if (LIMITES.proAtivo) {
                 toast('🎉 Plano PRO ativado com sucesso!', 'success');
                 atualizarBadgePlano();
-                mudarAba('settings');
+                
+                // Ir para configurações
+                if (typeof mudarAba === 'function') {
+                    mudarAba('settings');
+                }
             } else {
-                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde alguns segundos e faça login novamente.', 'warning');
+                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
+                
+                // Tentar novamente após 10 segundos
+                setTimeout(async function() {
+                    await verificarStatusPro();
+                    if (LIMITES.proAtivo) {
+                        toast('🎉 Plano PRO ativado!', 'success');
+                        atualizarBadgePlano();
+                        if (typeof mudarAba === 'function') {
+                            mudarAba('settings');
+                        }
+                    }
+                }, 10000);
             }
         }, 3000);
         
         // Limpar URL (remover parâmetros)
         window.history.replaceState({}, document.title, window.location.pathname);
-        
-    } else if (status === 'pending') {
-        toast('⏳ Pagamento pendente. Aguardando confirmação...', 'warning');
-        window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (status === 'rejected' || status === 'failed') {
-        toast('❌ Pagamento não aprovado. Tente novamente.', 'error');
-        window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
 
-// Chamar verificação ao carregar a página
+// ✅ CORREÇÃO: Chamar imediatamente E no DOMContentLoaded
 if (typeof window !== 'undefined') {
+    // Verificar imediatamente
+    verificarRetornoPagamento();
+    
+    // E também no DOMContentLoaded
     window.addEventListener('DOMContentLoaded', function() {
-        setTimeout(verificarRetornoPagamento, 1500);
+        setTimeout(verificarRetornoPagamento, 500);
     });
 }
-
-console.log('✅ Payments.js carregado');
 
 console.log('✅ Payments.js carregado');
