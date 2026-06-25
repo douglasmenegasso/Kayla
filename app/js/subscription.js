@@ -3,9 +3,9 @@
 // Configurações de limites
 window.LIMITES = {
     proAtivo: false,
-    maxClientes: 50,
-    maxProdutos: 100,
-    maxVendas: 200
+    maxClientes: 3,
+    maxProdutos: 10,
+    maxVendas: 3
 };
 
 // ============ FUNÇÃO DE REGISTRO DE DISPOSITIVO ============
