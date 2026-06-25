@@ -15,7 +15,7 @@ var APP_CONFIG = {
     nome: 'Kayla',
     descricao: 'Sistema de Venda Consignada',
     cor: '#7c5cfc',
-    suporte: 'https://wa.me/5500000000000'
+    suporte: 'https://wa.me/5541996427444'
 };
 
 // Variáveis globais
