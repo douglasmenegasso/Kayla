@@ -862,6 +862,7 @@ async function gerenciarDispositivos() {
     }
     
     try {
+        // ✅ CORREÇÃO: Buscar dispositivos ATIVOS do banco
         var result = await supabaseClient
             .from('dispositivos')
             .select('*')
@@ -871,9 +872,13 @@ async function gerenciarDispositivos() {
         
         var dispositivos = result.data || [];
         
+        // ✅ CORREÇÃO: Usar contagem REAL de dispositivos ativos
+        var dispositivosAtivos = dispositivos.length;
+        var dispositivosMax = assinatura.dispositivos_max;
+        
         var html = '<div class="modal-handle"></div>';
         html += '<div class="modal-title">📱 Dispositivos</div>';
-        html += '<div class="modal-sub">' + dispositivos.length + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        html += '<div class="modal-sub">' + dispositivosAtivos + ' de ' + dispositivosMax + ' dispositivos em uso</div>';
         
         if (dispositivos.length === 0) {
             html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center">';
@@ -949,6 +954,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
             return false;
         }
         
+        // ✅ CORREÇÃO: Atualizar contador no banco
         var { data: assinatura, error: assError } = await supabaseClient
             .from('assinaturas')
             .select('dispositivos_usados')
@@ -966,6 +972,10 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 })
                 .eq('id', assinaturaId);
             
+            // ✅ CORREÇÃO: Atualizar localStorage
+            localStorage.setItem('kayla_pro_devices', novosUsados + '/' + assinatura.dispositivos_max);
+            
+            // Atualizar contador na tela
             var contadorTexto = document.querySelector('#modal-body .modal-sub');
             if (contadorTexto) {
                 var textoAtual = contadorTexto.innerText;
@@ -979,15 +989,23 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         
         console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         
+        // Remover elemento da tela
         if (elementoHtml && elementoHtml.parentElement) {
-            elementoHtml.style.transition = 'all 0.3s ease';
-            elementoHtml.style.opacity = '0';
-            elementoHtml.style.transform = 'scale(0.95)';
+            var cardElement = elementoHtml.closest('.item-card') || elementoHtml.parentElement;
             
-            setTimeout(function() {
-                elementoHtml.remove();
-                toast('✅ Dispositivo removido!', 'success');
-            }, 300);
+            if (cardElement) {
+                cardElement.style.transition = 'all 0.3s ease';
+                cardElement.style.opacity = '0';
+                cardElement.style.transform = 'scale(0.95)';
+                
+                setTimeout(function() {
+                    cardElement.remove();
+                    toast('✅ Dispositivo removido!', 'success');
+                    
+                    // Atualizar contador após remover
+                    gerenciarDispositivos();
+                }, 300);
+            }
         } else {
             if (typeof gerenciarDispositivos === 'function') {
                 gerenciarDispositivos();
