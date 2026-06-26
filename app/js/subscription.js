@@ -53,7 +53,7 @@ async function registrarDispositivoAtual() {
 
         // 2. Verificar limite antes de registrar um novo
         if (assinatura.dispositivos_usados >= assinatura.dispositivos_max) {
-            console.warn('[Dispositivo] Limite de dispositivos atingido! Modo GRÁTIS ativado.');
+            console.warn('[Dispositivo] ⚠️ Limite de dispositivos atingido! Não é possível registrar novo dispositivo.');
             return false; // Bloqueia o registro para não estourar a tabela
         }
 
@@ -108,7 +108,7 @@ async function verificarStatusPro() {
             .eq('status', 'ativa')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle(); // .single() trocado para evitar erros de cache
+            .maybeSingle();
         
         if (result.error || !result.data) {
             LIMITES.proAtivo = false;
@@ -138,24 +138,11 @@ async function verificarStatusPro() {
             return false;
         }
 
-        // Verificar o número de dispositivos ativos
-        var { count: dispositivosAtivos, error: countError } = await supabaseClient
-            .from('dispositivos')
-            .select('id', { count: 'exact', head: true })
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true);
+        // ✅ CORREÇÃO: REMOVIDA a verificação de dispositivos daqui!
+        // A verificação de limite deve ser feita APENAS ao tentar registrar NOVO dispositivo
+        // Se o usuário tem assinatura ativa e não expirou, ele é PRO (mesmo com limite atingido)
 
-        if (!countError && dispositivosAtivos >= assinatura.dispositivos_max) {
-            // Limite atingido! Rebaixa para GRÁTIS localmente
-            LIMITES.proAtivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            return false; // Mantém o login, mas sem recursos PRO
-        }
-        
-        // Ativar PRO (se passou pela verificação)
+        // Ativar PRO
         LIMITES.proAtivo = true;
         localStorage.setItem('kayla_pro', 'true');
         localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
@@ -483,7 +470,7 @@ function abrirSuporteWhatsApp() {
         mensagem += '\nPlano: ' + (LIMITES.proAtivo ? 'PRO' : 'GRÁTIS');
         mensagem += '\nVersão: 5.4.0';
     }
-    var url = 'https://wa.me/5500000000000?text=' + encodeURIComponent(mensagem);
+    var url = 'https://wa.me/5541996427444?text=' + encodeURIComponent(mensagem);
     window.open(url, '_blank');
 }
 
