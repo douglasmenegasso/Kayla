@@ -862,7 +862,6 @@ async function gerenciarDispositivos() {
     }
     
     try {
-        // ✅ CORREÇÃO: Buscar dispositivos ATIVOS do banco
         var result = await supabaseClient
             .from('dispositivos')
             .select('*')
@@ -872,7 +871,6 @@ async function gerenciarDispositivos() {
         
         var dispositivos = result.data || [];
         
-        // ✅ CORREÇÃO: Usar contagem REAL de dispositivos ativos
         var dispositivosAtivos = dispositivos.length;
         var dispositivosMax = assinatura.dispositivos_max;
         
@@ -954,16 +952,17 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
             return false;
         }
         
-        // ✅ CORREÇÃO: Atualizar contador no banco
+        // Buscar assinatura atualizada
         var { data: assinatura, error: assError } = await supabaseClient
             .from('assinaturas')
-            .select('dispositivos_usados')
+            .select('dispositivos_usados, dispositivos_max')
             .eq('id', assinaturaId)
             .single();
         
         if (!assError && assinatura) {
             var novosUsados = Math.max(0, assinatura.dispositivos_usados - 1);
             
+            // Atualizar contador no banco
             await supabaseClient
                 .from('assinaturas')
                 .update({ 
@@ -972,18 +971,24 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 })
                 .eq('id', assinaturaId);
             
-            // ✅ CORREÇÃO: Atualizar localStorage
+            // Atualizar localStorage
             localStorage.setItem('kayla_pro_devices', novosUsados + '/' + assinatura.dispositivos_max);
+            
+            // ✅ CORREÇÃO: Re-verificar status PRO para liberar licença em outros dispositivos
+            if (typeof verificarStatusPro === 'function') {
+                await verificarStatusPro();
+                console.log('[Dispositivo] Status PRO re-verificado após remoção:', LIMITES.proAtivo);
+            }
+            
+            // Atualizar badge do plano
+            if (typeof atualizarBadgePlano === 'function') {
+                atualizarBadgePlano();
+            }
             
             // Atualizar contador na tela
             var contadorTexto = document.querySelector('#modal-body .modal-sub');
             if (contadorTexto) {
-                var textoAtual = contadorTexto.innerText;
-                var match = textoAtual.match(/(\d+)\s+de\s+(\d+)/);
-                if (match) {
-                    var max = parseInt(match[2]);
-                    contadorTexto.innerText = novosUsados + ' de ' + max + ' dispositivos em uso';
-                }
+                contadorTexto.innerText = novosUsados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso';
             }
         }
         
@@ -1000,10 +1005,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 
                 setTimeout(function() {
                     cardElement.remove();
-                    toast('✅ Dispositivo removido!', 'success');
-                    
-                    // Atualizar contador após remover
-                    gerenciarDispositivos();
+                    toast('✅ Dispositivo removido! Licença liberada.', 'success');
                 }, 300);
             }
         } else {
@@ -1248,9 +1250,8 @@ async function mostrarInfoAssinatura() {
 // ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 
 function verificarRetornoPagamento() {
-    // ✅ CORREÇÃO: Usar os parâmetros CORRETOS do Mercado Pago
     var urlParams = new URLSearchParams(window.location.search);
-    var collectionStatus = urlParams.get('collection_status');  // ✅ CORRETO!
+    var collectionStatus = urlParams.get('collection_status');
     var paymentId = urlParams.get('payment_id');
     var preferenceId = urlParams.get('preference_id');
     var externalReference = urlParams.get('external_reference');
@@ -1262,21 +1263,17 @@ function verificarRetornoPagamento() {
         externalReference 
     });
     
-    // Se tem parâmetros de pagamento na URL, processar
     if (collectionStatus || paymentId || preferenceId) {
         console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
         
-        // Limpar dados antigos do localStorage
         localStorage.removeItem('kayla_pro');
         localStorage.removeItem('kayla_pro_key');
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
         LIMITES.proAtivo = false;
         
-        // Mostrar mensagem
         toast('✅ Pagamento detectado! Verificando status...', 'success');
         
-        // Aguardar webhook processar e verificar status
         setTimeout(async function() {
             console.log('[Pagamento] Chamando verificarStatusPro()...');
             
@@ -1286,14 +1283,12 @@ function verificarRetornoPagamento() {
                 toast('🎉 Plano PRO ativado com sucesso!', 'success');
                 atualizarBadgePlano();
                 
-                // Ir para configurações
                 if (typeof mudarAba === 'function') {
                     mudarAba('settings');
                 }
             } else {
                 toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
                 
-                // Tentar novamente após 10 segundos
                 setTimeout(async function() {
                     await verificarStatusPro();
                     if (LIMITES.proAtivo) {
@@ -1307,17 +1302,13 @@ function verificarRetornoPagamento() {
             }
         }, 3000);
         
-        // Limpar URL (remover parâmetros)
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
 
-// ✅ CORREÇÃO: Chamar imediatamente E no DOMContentLoaded
 if (typeof window !== 'undefined') {
-    // Verificar imediatamente
     verificarRetornoPagamento();
     
-    // E também no DOMContentLoaded
     window.addEventListener('DOMContentLoaded', function() {
         setTimeout(verificarRetornoPagamento, 500);
     });
