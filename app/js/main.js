@@ -219,13 +219,42 @@ function renderizarConfig() {
     html += '<div style="font-size:18px;font-weight:700;color:' + planoCor + '">' + planoTexto + '</div>';
     html += '</div>';
     
-    // Banner Dispositivos
+    // Banner Dispositivos - ✅ CORREÇÃO: Adicionado ID para atualizar dinamicamente
     html += '<div style="flex:1;background:linear-gradient(135deg, var(--bg3) 0%, var(--bg2) 100%);padding:12px;border-radius:8px;text-align:center;border:1px solid var(--border)">';
     html += '<div style="font-size:11px;color:var(--text2);margin-bottom:4px">DISPOSITIVOS</div>';
-    html += '<div style="font-size:18px;font-weight:700;color:var(--accent)">' + devices + '</div>';
+    html += '<div id="devices-banner-value" style="font-size:18px;font-weight:700;color:var(--accent)">' + devices + '</div>';
     html += '</div>';
     
     html += '</div>';
+    
+    // ✅ CORREÇÃO: Buscar dispositivos do banco em tempo real
+    if (isPro && currentUser && supabaseClient && isOnline) {
+        supabaseClient
+            .from('assinaturas')
+            .select('dispositivos_usados, dispositivos_max')
+            .eq('user_id', currentUser.id)
+            .eq('status', 'ativa')
+            .single()
+            .then(function(result) {
+                if (result.data) {
+                    var usados = result.data.dispositivos_usados || 0;
+                    var max = result.data.dispositivos_max || 1;
+                    var devicesCorretos = usados + '/' + max;
+                    
+                    // Atualizar localStorage com dados corretos
+                    localStorage.setItem('kayla_pro_devices', devicesCorretos);
+                    
+                    // Atualizar o banner na tela
+                    var devicesBanner = document.getElementById('devices-banner-value');
+                    if (devicesBanner) {
+                        devicesBanner.textContent = devicesCorretos;
+                    }
+                }
+            })
+            .catch(function(error) {
+                console.warn('[CONFIG] Erro ao buscar dispositivos:', error);
+            });
+    }
     
     // Validade (apenas PRO)
     if (isPro) {
