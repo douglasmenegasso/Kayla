@@ -101,6 +101,7 @@ async function verificarStatusPro() {
     }
     
     try {
+        // 1. Buscar assinatura ativa
         var result = await supabaseClient
             .from('assinaturas')
             .select('*')
@@ -121,7 +122,7 @@ async function verificarStatusPro() {
         
         var assinatura = result.data;
         
-        // Verificar se não expirou
+        // 2. Verificar se não expirou
         if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
             LIMITES.proAtivo = false;
             localStorage.removeItem('kayla_pro');
@@ -129,7 +130,6 @@ async function verificarStatusPro() {
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
             
-            // Atualizar status no banco
             await supabaseClient
                 .from('assinaturas')
                 .update({ status: 'expirada' })
@@ -138,17 +138,46 @@ async function verificarStatusPro() {
             return false;
         }
 
-        // ✅ CORREÇÃO: REMOVIDA a verificação de dispositivos daqui!
-        // A verificação de limite deve ser feita APENAS ao tentar registrar NOVO dispositivo
-        // Se o usuário tem assinatura ativa e não expirou, ele é PRO (mesmo com limite atingido)
+        // 3. ✅ CONTAR DISPOSITIVOS ATIVOS NO BANCO
+        var { count: dispositivosAtivos, error: countError } = await supabaseClient
+            .from('dispositivos')
+            .select('id', { count: 'exact', head: true })
+            .eq('assinatura_id', assinatura.id)
+            .eq('ativo', true);
 
-        // Ativar PRO
+        if (countError) {
+            console.error('[Pro] Erro ao contar dispositivos:', countError);
+            dispositivosAtivos = 0;
+        }
+
+        console.log('[Pro] Dispositivos ativos:', dispositivosAtivos, '/', assinatura.dispositivos_max);
+
+        // 4. ✅ VERIFICAR SE ATINGIU O LIMITE
+        if (dispositivosAtivos >= assinatura.dispositivos_max) {
+            console.warn('[Pro] ⚠️ LIMITE DE DISPOSITIVOS ATINGIDO! (' + dispositivosAtivos + '/' + assinatura.dispositivos_max + ')');
+            console.warn('[Pro] 🔒 Rebaixando para GRÁTIS neste dispositivo.');
+            
+            // Rebaixar para GRÁTIS (mas NÃO remover a assinatura do banco!)
+            LIMITES.proAtivo = false;
+            localStorage.removeItem('kayla_pro');
+            localStorage.removeItem('kayla_pro_key');
+            localStorage.removeItem('kayla_pro_expires');
+            localStorage.removeItem('kayla_pro_devices');
+            
+            // Atualizar localStorage com info correta
+            localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
+            
+            return false; // Mantém login, mas sem PRO
+        }
+        
+        // 5. ✅ ATIVAR PRO (só se passou pela verificação)
         LIMITES.proAtivo = true;
         localStorage.setItem('kayla_pro', 'true');
         localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
         localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-        localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
+        localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
         
+        console.log('[Pro] ✅ PRO ativado! Dispositivos:', dispositivosAtivos + '/' + assinatura.dispositivos_max);
         return true;
         
     } catch(e) {
