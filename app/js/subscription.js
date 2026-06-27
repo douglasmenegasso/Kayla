@@ -5,7 +5,8 @@ window.LIMITES = {
     proAtivo: false,
     maxClientes: 3,
     maxProdutos: 10,
-    maxVendas: 3
+    maxVendas: 3,
+    bloqueadoPorDispositivo: false // NOVO: Flag para modo somente leitura
 };
 
 // ============ FUNÇÃO DE REGISTRO DE DISPOSITIVO ============
@@ -126,10 +127,12 @@ async function verificarStatusPro() {
         
         if (result.error || !result.data) {
             LIMITES.proAtivo = false;
+            LIMITES.bloqueadoPorDispositivo = false;
             localStorage.removeItem('kayla_pro');
             localStorage.removeItem('kayla_pro_key');
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
+            localStorage.removeItem('kayla_pro_blocked');
             return false;
         }
         
@@ -137,10 +140,12 @@ async function verificarStatusPro() {
         
         if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
             LIMITES.proAtivo = false;
+            LIMITES.bloqueadoPorDispositivo = false;
             localStorage.removeItem('kayla_pro');
             localStorage.removeItem('kayla_pro_key');
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
+            localStorage.removeItem('kayla_pro_blocked');
             
             await supabaseClient
                 .from('assinaturas')
@@ -163,26 +168,34 @@ async function verificarStatusPro() {
 
         console.log('[Pro] Dispositivos ativos:', dispositivosAtivos, '/', assinatura.dispositivos_max);
 
+        // 🔒 NOVA LÓGICA: Se atingiu o limite, NÃO rebaixar para GRÁTIS. Ativar modo SOMENTE LEITURA.
         if (dispositivosAtivos >= assinatura.dispositivos_max) {
             console.warn('[Pro] ⚠️ LIMITE DE DISPOSITIVOS ATINGIDO! (' + dispositivosAtivos + '/' + assinatura.dispositivos_max + ')');
-            console.warn('[Pro] 🔒 Rebaixando para GRÁTIS neste dispositivo.');
+            console.warn('[Pro] 🔒 Modo SOMENTE LEITURA ativado neste dispositivo. Ações de escrita bloqueadas.');
             
-            LIMITES.proAtivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
+            // Manter como PRO (para visualizar dados), mas bloquear ações
+            LIMITES.proAtivo = true;
+            LIMITES.bloqueadoPorDispositivo = true;
             
+            localStorage.setItem('kayla_pro', 'true');
+            localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
+            localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
             localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
+            localStorage.setItem('kayla_pro_blocked', 'true');
             
-            return false;
+            // Exibir o aviso para o usuário (será chamado pela UI)
+            // mostrarAvisoLimiteDispositivos(); <-- Pode ser chamado onde for verificado o estado
+            
+            return true;
         }
         
         LIMITES.proAtivo = true;
+        LIMITES.bloqueadoPorDispositivo = false;
         localStorage.setItem('kayla_pro', 'true');
         localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
         localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
         localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
+        localStorage.removeItem('kayla_pro_blocked');
         
         console.log('[Pro] ✅ PRO ativado! Dispositivos:', dispositivosAtivos + '/' + assinatura.dispositivos_max);
         return true;
@@ -199,7 +212,11 @@ function atualizarBadgePlano() {
     var badge = document.getElementById('plan-badge');
     if (!badge) return;
     
-    if (LIMITES.proAtivo) {
+    if (LIMITES.bloqueadoPorDispositivo) {
+        // Badge especial para modo apenas leitura
+        badge.textContent = 'PRO (LEITURA)';
+        badge.className = 'badge-pro badge-blocked';
+    } else if (LIMITES.proAtivo) {
         badge.textContent = 'PRO';
         badge.className = 'badge-pro';
     } else {
@@ -249,6 +266,13 @@ async function getAssinaturaAtiva() {
 
 async function cancelarAssinatura() {
     if (!currentUser) { toast('Faça login primeiro.', 'error'); return; }
+    
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        return;
+    }
+
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) { toast('Você não possui uma assinatura PRO ativa.', 'error'); return; }
 
@@ -288,7 +312,9 @@ async function cancelarAssinatura() {
             localStorage.removeItem('kayla_pro_key');
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
+            localStorage.removeItem('kayla_pro_blocked');
             LIMITES.proAtivo = false;
+            LIMITES.bloqueadoPorDispositivo = false;
             atualizarBadgePlano();
             if (typeof mudarAba === 'function') mudarAba('settings');
             toast('✅ Assinatura PRO cancelada com sucesso!', 'success');
@@ -303,6 +329,12 @@ async function cancelarAssinatura() {
 
 async function excluirConta() {
     if (!currentUser || !supabaseClient) { toast('Nenhum usuário logado.', 'error'); return; }
+    
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        return;
+    }
     
     var resumoTexto = '';
     try {
@@ -352,6 +384,7 @@ async function excluirConta() {
                     localStorage.clear();
                     currentUser = null;
                     LIMITES.proAtivo = false;
+                    LIMITES.bloqueadoPorDispositivo = false;
                     mostrarTelaSelecao();
                     toast('✅ Dados excluídos com sucesso!', 'success');
                 } else {
@@ -367,6 +400,11 @@ async function excluirConta() {
 // ============ BACKUP E RESTAURAÇÃO ============
 
 function exportarBackup() {
+    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        return;
+    }
     if (!LIMITES.proAtivo) {
         toast('Recurso disponível apenas no plano PRO', 'error');
         return;
@@ -397,6 +435,11 @@ function exportarBackup() {
 }
 
 function importarBackup() {
+    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        return;
+    }
     if (!LIMITES.proAtivo) {
         toast('Recurso disponível apenas no plano PRO', 'error');
         return;
@@ -444,6 +487,11 @@ function importarBackup() {
 // ============ CONFIGURAÇÃO DA EMPRESA ============
 
 function configurarEmpresa() {
+    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        return;
+    }
     if (!LIMITES.proAtivo) {
         toast('Recurso disponível apenas no plano PRO', 'error');
         return;
@@ -479,6 +527,12 @@ function configurarEmpresa() {
 }
 
 function salvarConfigEmpresa() {
+    // 🚫 Bloqueio duplo por segurança
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        fecharModal();
+        return;
+    }
     var config = {
         nome: document.getElementById('emp-nome').value.trim(),
         cnpj: document.getElementById('emp-cnpj').value.trim(),
@@ -524,8 +578,9 @@ if (typeof window !== 'undefined') {
     carregarConfigEmpresa();
 }
 
-// ============ MOSTRAR AVISO DE LIMITE (CORRIGIDO) ============
+// ============ MODAIS DE AVISO ============
 
+// Aviso original para limite de itens do GRÁTIS
 function mostrarAvisoLimite(tipo) {
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('modal-body').innerHTML = '';
@@ -547,4 +602,126 @@ function mostrarAvisoLimite(tipo) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-console.log('✅ Subscription.js carregado (Versão Final com Modais e Resumos)');
+// NOVO: Aviso específico para Limite de Dispositivos (Modo Somente Leitura)
+function mostrarAvisoLimiteDispositivos() {
+    document.getElementById('modal-overlay').classList.remove('show');
+    document.getElementById('modal-body').innerHTML = '';
+
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Limite de Dispositivos Atingido</div>';
+    html += '<div class="modal-sub">Você está no modo <strong>SOMENTE LEITURA</strong>.</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:48px;margin-bottom:12px">👁️</div>';
+    html += '<div style="font-size:15px;font-weight:500;color:var(--warning);margin-bottom:8px">Você pode ver todos os dados, mas não pode alterá-los.</div>';
+    html += '<div style="font-size:13px;color:var(--text2);line-height:1.6">';
+    html += 'Para voltar a adicionar, editar ou gerar PDFs, você deve:<br>';
+    html += '1️⃣ <strong>Desativar</strong> um dispositivo antigo na aba "Config".<br>';
+    html += '2️⃣ Ou <strong>Adquirir mais licenças</strong> para o seu plano PRO.';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="fecharModal()" style="width:100%;margin-bottom:8px">Entendi, continuar visualizando</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal(); mudarAba(\'settings\')" style="width:100%">Ir para Configurações</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+
+// ====================================================================
+// 🆕 NOVAS FUNÇÕES PARA GERENCIAR DISPOSITIVOS (CHAMADAS PELA CONFIG)
+// ====================================================================
+
+// 1. Listar todos os dispositivos ativos do usuário
+async function listarDispositivosAtivos() {
+    if (!currentUser) return [];
+    try {
+        var assinatura = await getAssinaturaAtiva();
+        if (!assinatura) return [];
+        
+        var { data, error } = await supabaseClient
+            .from('dispositivos')
+            .select('id, device_name, device_type, ultimo_acesso, user_agent')
+            .eq('assinatura_id', assinatura.id)
+            .eq('ativo', true)
+            .order('ultimo_acesso', { ascending: false });
+
+        if (error) {
+            console.error('[Dispositivos] Erro ao listar:', error);
+            return [];
+        }
+        return data || [];
+    } catch(e) {
+        console.error('[Dispositivos] Erro na listagem:', e);
+        return [];
+    }
+}
+
+// 2. Desativar um dispositivo específico
+async function desativarDispositivo(deviceId) {
+    if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
+    if (!deviceId) { toast('ID do dispositivo inválido.', 'error'); return false; }
+
+    try {
+        var { error } = await supabaseClient
+            .from('dispositivos')
+            .update({ ativo: false })
+            .eq('id', deviceId)
+            .eq('user_id', currentUser.id);
+
+        if (error) {
+            console.error('[Dispositivo] Erro ao desativar:', error);
+            toast('Erro ao desativar o dispositivo.', 'error');
+            return false;
+        }
+
+        toast('✅ Dispositivo removido com sucesso!', 'success');
+        
+        // Atualiza o status local imediatamente
+        await verificarStatusPro();
+        atualizarBadgePlano();
+        
+        // Se a UI tiver uma função de re-renderização, chame-a para mostrar o botão de ativar
+        if (typeof renderizarConteudo === 'function') renderizarConteudo();
+        
+        return true;
+    } catch(e) {
+        console.error('[Dispositivo] Erro na desativação:', e);
+        toast('Erro de conexão ao desativar.', 'error');
+        return false;
+    }
+}
+
+// 3. Forçar a ativação do dispositivo ATUAL (para usar após desativar um antigo)
+async function ativarDispositivoAtual() {
+    if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
+
+    try {
+        var resultado = await registrarDispositivoAtual();
+        
+        if (resultado === true) {
+            // Reavalia o status (o verificarStatusPro vai ver que agora tem vaga e destravar)
+            await verificarStatusPro();
+            atualizarBadgePlano();
+            
+            if (!LIMITES.bloqueadoPorDispositivo) {
+                toast('✅ Dispositivo ativado com sucesso! Plano PRO liberado.', 'success');
+                if (typeof renderizarConteudo === 'function') renderizarConteudo();
+                return true;
+            } else {
+                toast('⚠️ Dispositivo registrado, mas o limite ainda não foi liberado.', 'warning');
+                return false;
+            }
+        } else {
+            toast('❌ Não foi possível ativar este dispositivo. Verifique o limite.', 'error');
+            return false;
+        }
+    } catch(e) {
+        console.error('[Dispositivo] Erro ao ativar atual:', e);
+        toast('Erro de conexão ao ativar.', 'error');
+        return false;
+    }
+}
+
+console.log('✅ Subscription.js carregado (Versão Final com Gerenciamento de Dispositivos)');
