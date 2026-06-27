@@ -956,10 +956,13 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 }
             }
             
-            // ✅ NOVO: Recarregar a lista de dispositivos imediatamente para exibir o botão "Ativar este dispositivo"
-            if (typeof gerenciarDispositivos === 'function') {
-                gerenciarDispositivos();
-            }
+            // ✅ CORREÇÃO CRUCIAL: Recarregar a lista no modal ATUAL com um leve delay
+            setTimeout(function() {
+                if (typeof gerenciarDispositivos === 'function') {
+                    // Essa função substitui o HTML do modal atual pelos dados novos
+                    gerenciarDispositivos();
+                }
+            }, 300);
             
             console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         }
@@ -972,7 +975,6 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         return false;
     }
 }
-
 
 // ============ NOVAS FUNÇÕES DE DOWNGRADE E RENOVAÇÃO ============
 
