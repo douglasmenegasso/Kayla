@@ -862,51 +862,23 @@ async function gerenciarDispositivos() {
     }
     
     try {
-        var result = await supabaseClient
-            .from('dispositivos')
-            .select('*')
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true) 
-            .order('ultimo_acesso', { ascending: false });
-        
-        var dispositivos = result.data || [];
-        
-        var dispositivosAtivos = dispositivos.length;
-        var dispositivosMax = assinatura.dispositivos_max;
+        // ✅ Usa a função criada no config.js que já possui a lógica de renderizar o botão "Ativar este dispositivo" automaticamente
+        var dispositivosHtml = await gerarHtmlListaDispositivos();
         
         var html = '<div class="modal-handle"></div>';
         html += '<div class="modal-title">📱 Dispositivos</div>';
-        html += '<div class="modal-sub">' + dispositivosAtivos + ' de ' + dispositivosMax + ' dispositivos em uso</div>';
+        html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
         
-        if (dispositivos.length === 0) {
-            html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center">';
-            html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
-            html += '<div style="color:var(--text2)">Nenhum dispositivo registrado</div>';
-            html += '</div>';
+        html += dispositivosHtml;
+        
+        // Botões auxiliares
+        if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Adicionar Dispositivo</button>';
         } else {
-            html += '<div class="item-list">';
-            dispositivos.forEach(function(device) {
-                var tipoIcon = device.device_type === 'mobile' ? '📱' : (device.device_type === 'tablet' ? '📱' : '💻');
-                var ultimoAcesso = new Date(device.ultimo_acesso).toLocaleString('pt-BR');
-                
-                html += '<div class="item-card" style="margin-bottom:8px">';
-                html += '<div class="item-info">';
-                html += '<div class="item-name">' + tipoIcon + ' ' + (device.device_name || 'Dispositivo') + '</div>';
-                html += '<div class="item-detail">Último acesso: ' + ultimoAcesso + '</div>';
-                html += '</div>';
-                html += '<button class="btn btn-sm btn-red" onclick="removerDispositivo(\'' + device.id + '\', \'' + assinatura.id + '\', this)">🗑️</button>';
-                html += '</div>';
-            });
-            html += '</div>';
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Fazer Upgrade</button>';
         }
         
-        if (dispositivos.length < assinatura.dispositivos_max) {
-            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Adicionar Dispositivo</button>';
-        } else {
-            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()">⬆️ Fazer Upgrade</button>';
-        }
-        
-        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:8px">Fechar</button>';
         
         document.getElementById('modal-body').innerHTML = html;
         document.getElementById('modal-overlay').classList.add('show');
@@ -979,39 +951,17 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 const statusAtualizado = await verificarStatusPro();
                 console.log('[Dispositivo] Status PRO re-verificado após remoção:', statusAtualizado);
                 
-                // Atualizar badge do plano SOMENTE após a verificação
                 if (typeof atualizarBadgePlano === 'function') {
                     atualizarBadgePlano();
                 }
             }
             
-            // Atualizar contador na tela
-            var contadorTexto = document.querySelector('#modal-body .modal-sub');
-            if (contadorTexto) {
-                contadorTexto.innerText = novosUsados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso';
-            }
-        }
-        
-        console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
-        
-        // Remover elemento da tela
-        if (elementoHtml && elementoHtml.parentElement) {
-            var cardElement = elementoHtml.closest('.item-card') || elementoHtml.parentElement;
-            
-            if (cardElement) {
-                cardElement.style.transition = 'all 0.3s ease';
-                cardElement.style.opacity = '0';
-                cardElement.style.transform = 'scale(0.95)';
-                
-                setTimeout(function() {
-                    cardElement.remove();
-                    toast('✅ Dispositivo removido! Licença liberada.', 'success');
-                }, 300);
-            }
-        } else {
+            // ✅ NOVO: Recarregar a lista de dispositivos imediatamente para exibir o botão "Ativar este dispositivo"
             if (typeof gerenciarDispositivos === 'function') {
                 gerenciarDispositivos();
             }
+            
+            console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         }
         
         return true;
@@ -1022,6 +972,7 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
         return false;
     }
 }
+
 
 // ============ NOVAS FUNÇÕES DE DOWNGRADE E RENOVAÇÃO ============
 
