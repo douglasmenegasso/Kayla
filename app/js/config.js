@@ -69,9 +69,10 @@ async function listarDispositivosAtivos() {
         if (result.error || !result.data) return [];
         var assinaturaId = result.data.id;
         
+        // ✅ ADICIONADO: device_id para detectar o dispositivo atual
         var { data, error } = await supabaseClient
             .from('dispositivos')
-            .select('id, device_name, device_type, ultimo_acesso, user_agent')
+            .select('id, device_id, device_name, device_type, ultimo_acesso, user_agent')
             .eq('assinatura_id', assinaturaId)
             .eq('ativo', true)
             .order('ultimo_acesso', { ascending: false });
@@ -107,7 +108,7 @@ async function desativarDispositivo(deviceId) {
 
         toast('✅ Dispositivo removido com sucesso!', 'success');
         
-        // Atualiza o status local imediatamente (verifica se a função existe para evitar erros caso o subscription.js demore a carregar)
+        // Atualiza o status local imediatamente
         if (typeof verificarStatusPro === 'function') {
             await verificarStatusPro();
         }
@@ -138,7 +139,7 @@ async function ativarDispositivoAtual() {
             var resultado = await registrarDispositivoAtual();
             
             if (resultado === true) {
-                // Reavalia o status (o verificarStatusPro vai ver que agora tem vaga e destravar)
+                // Reavalia o status
                 if (typeof verificarStatusPro === 'function') {
                     await verificarStatusPro();
                 }
@@ -177,16 +178,14 @@ async function ativarDispositivoAtual() {
 // 🆕 FUNÇÃO DE INTERFACE (UI) PARA A ABA CONFIGURAÇÕES
 // ====================================================================
 
-// Renderiza o HTML da lista de dispositivos (para você colocar dentro da sua aba Config)
+// Renderiza o HTML da lista de dispositivos
 async function renderizarListaDispositivosConfig() {
     var containerId = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 'container-dispositivos';
     var container = document.getElementById(containerId);
     
     if (!container) {
-        // Se não existir, apenas retorna o HTML para você inserir onde quiser
         return gerarHtmlListaDispositivos();
     } else {
-        // Se existir, insere o HTML dentro dele
         container.innerHTML = await gerarHtmlListaDispositivos();
     }
 }
@@ -194,7 +193,21 @@ async function renderizarListaDispositivosConfig() {
 // Função auxiliar que gera o HTML da lista de dispositivos
 async function gerarHtmlListaDispositivos() {
     var dispositivos = await listarDispositivosAtivos();
+    var assinatura = await getAssinaturaAtiva();
+    
     var html = '';
+
+    if (!assinatura) {
+        html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhuma assinatura PRO ativa encontrada.</div>';
+        return html;
+    }
+
+    var maxDevices = assinatura.dispositivos_max;
+    var currentDeviceId = getDeviceId();
+    // Verifica se o dispositivo que está usando o app agora já está ativo na lista
+    var isCurrentDeviceActive = dispositivos.some(function(d) {
+        return d.device_id === currentDeviceId;
+    });
 
     if (dispositivos.length === 0) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhum dispositivo ativo encontrado.</div>';
@@ -217,8 +230,21 @@ async function gerarHtmlListaDispositivos() {
         }
     }
 
-    // Verifica se o usuário está bloqueado e adiciona o botão de reativar o dispositivo atual
-    if (window.LIMITES && window.LIMITES.bloqueadoPorDispositivo) {
+    // ✅ Lógica CORRIGIDA: Mostra o botão se o dispositivo ATUAL não estiver ativo (independente da flag de bloqueio)
+    if (!isCurrentDeviceActive && dispositivos.length < maxDevices) {
+        html += `
+            <div style="margin-top:20px; padding:20px; text-align:center; background:var(--bg3); border-radius:8px; border:1px dashed var(--success);">
+                <p style="margin-bottom:12px; color:var(--text2); font-size:14px;">
+                    <strong>Este dispositivo ainda não está ativo.</strong><br>
+                    Registre-o agora para usar o plano PRO neste navegador.
+                </p>
+                <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%;">
+                    📱 Ativar este dispositivo
+                </button>
+            </div>
+        `;
+    } else if (!isCurrentDeviceActive && dispositivos.length >= maxDevices) {
+        // Aviso específico caso o usuário tenha removido o único dispositivo, mas não tem vaga
         html += `
             <div style="margin-top:20px; padding:20px; text-align:center; background:var(--bg3); border-radius:8px; border:1px dashed var(--warning);">
                 <p style="margin-bottom:12px; color:var(--text2); font-size:14px;">
