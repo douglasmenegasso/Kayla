@@ -974,15 +974,15 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
             // Atualizar localStorage
             localStorage.setItem('kayla_pro_devices', novosUsados + '/' + assinatura.dispositivos_max);
             
-            // ✅ CORREÇÃO: Re-verificar status PRO para liberar licença em outros dispositivos
+            // ✅ CORREÇÃO: Aguardar a verificação antes de atualizar a interface
             if (typeof verificarStatusPro === 'function') {
-                await verificarStatusPro();
-                console.log('[Dispositivo] Status PRO re-verificado após remoção:', LIMITES.proAtivo);
-            }
-            
-            // Atualizar badge do plano
-            if (typeof atualizarBadgePlano === 'function') {
-                atualizarBadgePlano();
+                const statusAtualizado = await verificarStatusPro();
+                console.log('[Dispositivo] Status PRO re-verificado após remoção:', statusAtualizado);
+                
+                // Atualizar badge do plano SOMENTE após a verificação
+                if (typeof atualizarBadgePlano === 'function') {
+                    atualizarBadgePlano();
+                }
             }
             
             // Atualizar contador na tela
