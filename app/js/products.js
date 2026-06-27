@@ -30,6 +30,12 @@ function renderizarProdutos() {
 
 // ✅ NOVA FUNÇÃO: Verifica limite e mostra modal de planos
 function adicionarProdutoComVerificacao() {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var maxProdutos = LIMITES.maxProdutos || LIMITES.freeProdutos || 5;
     
     if (!LIMITES.proAtivo && produtos.length >= maxProdutos) {
@@ -58,6 +64,12 @@ function abrirModalProduto() {
 }
 
 async function salvarProduto() {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var nome = document.getElementById('produto-nome-manual').value.trim();
     var codigo = document.getElementById('produto-codigo-manual').value.trim();
     var preco = parseFloat(document.getElementById('produto-preco-manual').value);
@@ -116,6 +128,12 @@ async function salvarProduto() {
 }
 
 function editarProduto(id) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var produto = produtos.find(function(p) { return p.id === id; });
     if (!produto) return;
     
@@ -132,6 +150,12 @@ function editarProduto(id) {
 }
 
 async function salvarProdutoEdit(id) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var nome = document.getElementById('produto-nome-edit').value.trim();
     var preco = parseFloat(document.getElementById('produto-preco-edit').value);
     if (!nome || !preco) { toast('Preencha tudo', 'error'); return; }
@@ -156,6 +180,12 @@ async function salvarProdutoEdit(id) {
 }
 
 async function excluirProduto(produtoId) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     if (!confirm('Tem certeza que deseja excluir este produto permanentemente?')) return;
     
     if (isOnline && supabaseClient) {
@@ -183,4 +213,4 @@ async function excluirProduto(produtoId) {
     mudarAba('products');
 }
 
-console.log('✅ Products.js carregado');
+console.log('✅ Products.js carregado (Modo Somente Leitura Ativo)');
