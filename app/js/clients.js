@@ -31,13 +31,18 @@ function renderizarClientes() {
 
 // ✅ NOVA FUNÇÃO: Verifica limite e mostra modal de planos se necessário
 function adicionarClienteComVerificacao() {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var maxClientes = LIMITES.maxClientes || LIMITES.freeClientes || 3;
     
     if (!LIMITES.proAtivo && clientes.length >= maxClientes) {
-        // ✅ Mostra modal de planos (não apenas o aviso!)
         toast('🔒 Limite do plano FREE atingido! (' + maxClientes + ' clientes)', 'error');
         setTimeout(function() {
-            mostrarPlanos(); // ← ESSA É A FUNÇÃO QUE ABRE O MODAL DE ASSINATURA!
+            mostrarPlanos(); 
         }, 1000);
         return;
     }
@@ -61,10 +66,21 @@ function abrirModalCliente(clienteId) {
 }
 
 function editarCliente(clienteId) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
     abrirModalCliente(clienteId);
 }
 
 async function excluirCliente(clienteId) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
     
     if (isOnline && supabaseClient) {
@@ -81,6 +97,12 @@ async function excluirCliente(clienteId) {
 }
 
 async function salvarCliente(clienteId) {
+    // 🚫 Bloqueio por dispositivo
+    if (LIMITES.bloqueadoPorDispositivo) {
+        toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
+        return;
+    }
+
     var nome = document.getElementById('cliente-nome').value.trim();
     if (!nome) { toast('Nome obrigatório', 'error'); return; }
     
@@ -123,4 +145,4 @@ async function salvarCliente(clienteId) {
     mudarAba('clients');
 }
 
-console.log('✅ Clients.js carregado');
+console.log('✅ Clients.js carregado (Modo Somente Leitura Ativo)');
