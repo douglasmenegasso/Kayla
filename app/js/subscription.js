@@ -13,7 +13,7 @@ window.LIMITES = {
 async function registrarDispositivoAtual() {
     if (!currentUser || !supabaseClient || !isOnline) {
         console.log('[Dispositivo] Não é possível registrar dispositivo (offline ou sem login)');
-        return true; // Permite acesso offline
+        return true;
     }
 
     try {
@@ -51,10 +51,24 @@ async function registrarDispositivoAtual() {
             return true;
         }
 
+        // ✅ CORREÇÃO: Contar dispositivos ativos REAIS no banco (não confiar no campo dispositivos_usados)
+        var { count: dispositivosAtivosReais, error: countError } = await supabaseClient
+            .from('dispositivos')
+            .select('id', { count: 'exact', head: true })
+            .eq('assinatura_id', assinatura.id)
+            .eq('ativo', true);
+
+        if (countError) {
+            console.error('[Dispositivo] Erro ao contar dispositivos:', countError);
+            dispositivosAtivosReais = 0;
+        }
+
+        console.log('[Dispositivo] Dispositivos ativos reais:', dispositivosAtivosReais, '/', assinatura.dispositivos_max);
+
         // 2. Verificar limite antes de registrar um novo
-        if (assinatura.dispositivos_usados >= assinatura.dispositivos_max) {
-            console.warn('[Dispositivo] ⚠️ Limite de dispositivos atingido! Não é possível registrar novo dispositivo.');
-            return false; // Bloqueia o registro para não estourar a tabela
+        if (dispositivosAtivosReais >= assinatura.dispositivos_max) {
+            console.warn('[Dispositivo] ⚠️ Limite de dispositivos atingido! (' + dispositivosAtivosReais + '/' + assinatura.dispositivos_max + ') Não é possível registrar novo dispositivo.');
+            return false;
         }
 
         // 3. Registrar novo dispositivo
@@ -80,16 +94,16 @@ async function registrarDispositivoAtual() {
         // 4. Atualizar o contador de dispositivos usados
         await supabaseClient
             .from('assinaturas')
-            .update({ dispositivos_usados: assinatura.dispositivos_usados + 1 })
+            .update({ dispositivos_usados: dispositivosAtivosReais + 1 })
             .eq('id', assinatura.id);
 
-        localStorage.setItem('kayla_pro_devices', (assinatura.dispositivos_usados + 1) + '/' + assinatura.dispositivos_max);
+        localStorage.setItem('kayla_pro_devices', (dispositivosAtivosReais + 1) + '/' + assinatura.dispositivos_max);
         console.log('[Dispositivo] ✅ Dispositivo registrado com sucesso!');
         return true;
 
     } catch(e) {
         console.error('[Dispositivo] Erro:', e);
-        return true; // Em caso de erro, permite acesso (não bloqueia o usuário)
+        return true;
     }
 }
 
@@ -101,7 +115,6 @@ async function verificarStatusPro() {
     }
     
     try {
-        // 1. Buscar assinatura ativa
         var result = await supabaseClient
             .from('assinaturas')
             .select('*')
@@ -122,7 +135,6 @@ async function verificarStatusPro() {
         
         var assinatura = result.data;
         
-        // 2. Verificar se não expirou
         if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
             LIMITES.proAtivo = false;
             localStorage.removeItem('kayla_pro');
@@ -138,7 +150,6 @@ async function verificarStatusPro() {
             return false;
         }
 
-        // 3. ✅ CONTAR DISPOSITIVOS ATIVOS NO BANCO
         var { count: dispositivosAtivos, error: countError } = await supabaseClient
             .from('dispositivos')
             .select('id', { count: 'exact', head: true })
@@ -152,25 +163,21 @@ async function verificarStatusPro() {
 
         console.log('[Pro] Dispositivos ativos:', dispositivosAtivos, '/', assinatura.dispositivos_max);
 
-        // 4. ✅ VERIFICAR SE ATINGIU O LIMITE
         if (dispositivosAtivos >= assinatura.dispositivos_max) {
             console.warn('[Pro] ⚠️ LIMITE DE DISPOSITIVOS ATINGIDO! (' + dispositivosAtivos + '/' + assinatura.dispositivos_max + ')');
             console.warn('[Pro] 🔒 Rebaixando para GRÁTIS neste dispositivo.');
             
-            // Rebaixar para GRÁTIS (mas NÃO remover a assinatura do banco!)
             LIMITES.proAtivo = false;
             localStorage.removeItem('kayla_pro');
             localStorage.removeItem('kayla_pro_key');
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
             
-            // Atualizar localStorage com info correta
             localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
             
-            return false; // Mantém login, mas sem PRO
+            return false;
         }
         
-        // 5. ✅ ATIVAR PRO (só se passou pela verificação)
         LIMITES.proAtivo = true;
         localStorage.setItem('kayla_pro', 'true');
         localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
@@ -245,7 +252,6 @@ async function cancelarAssinatura() {
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) { toast('Você não possui uma assinatura PRO ativa.', 'error'); return; }
 
-    // 🔍 Buscar créditos e dispositivos para exibir no resumo
     var resumoTexto = '';
     try {
         var { data: creditos } = await supabaseClient
@@ -273,7 +279,6 @@ async function cancelarAssinatura() {
         }
     } catch (e) { console.warn('Erro ao buscar dados para o resumo do cancelamento:', e); }
 
-    // 🔒 Confirmação com o modal do app
     confirmar('Cancelar Assinatura PRO', '⚠️ ATENÇÃO!\nVocê está prestes a CANCELAR sua assinatura PRO.\nIsso desativará todos os seus dispositivos e você perderá acesso aos recursos PRO.' + resumoTexto, async function(confirmed) {
         if (!confirmed) return;
         try {
@@ -299,7 +304,6 @@ async function cancelarAssinatura() {
 async function excluirConta() {
     if (!currentUser || !supabaseClient) { toast('Nenhum usuário logado.', 'error'); return; }
     
-    // 🔍 Buscar dados do usuário para exibir no resumo antes da exclusão
     var resumoTexto = '';
     try {
         var { data: creditos } = await supabaseClient
@@ -330,11 +334,9 @@ async function excluirConta() {
         }
     } catch (e) { console.warn('Erro ao buscar dados para o resumo da exclusão:', e); }
 
-    // 🔒 1ª Confirmação (Já com o resumo dos dados)
     confirmar('Excluir Conta', 'Ao confirmar, TODOS os seus dados (cadastro, clientes, produtos, pedidos e assinaturas) serão EXCLUÍDOS PERMANENTEMENTE.\n\nEsta ação é IRREVERSÍVEL de acordo com a LGPD.' + resumoTexto, async function(confirmou1) {
         if (!confirmou1) return;
 
-        // 🔒 2ª Confirmação (Última Chance)
         confirmar('Última Chance!', 'Você tem certeza absoluta que deseja deletar sua conta?\n\nNão há como recuperar essas informações.', async function(confirmou2) {
             if (!confirmou2) return;
             try {
@@ -522,14 +524,9 @@ if (typeof window !== 'undefined') {
     carregarConfigEmpresa();
 }
 
-// ============ MOSTRAR INFORMAÇÕES DA ASSINATURA ============
-
-// ====== REMOVIDO DUPLICIDADE COM PAYMENT COMPLETO ===========
-
 // ============ MOSTRAR AVISO DE LIMITE (CORRIGIDO) ============
 
 function mostrarAvisoLimite(tipo) {
-    // Fecha qualquer modal que esteja aberto
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('modal-body').innerHTML = '';
 
@@ -543,7 +540,6 @@ function mostrarAvisoLimite(tipo) {
     html += '<div style="font-size:13px;color:var(--text2)">Assine o plano PRO para ter clientes e produtos ilimitados.</div>';
     html += '</div>';
     
-    // Botão corrigido que leva para a tela de planos
     html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()" style="width:100%;margin-bottom:8px">🚀 Ver Planos PRO</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
     
