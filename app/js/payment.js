@@ -1,291 +1,105 @@
-// ============ ASSINATURAS E DISPOSITIVOS ============
+// ============ PAGAMENTOS E ATIVAÇÃO ============
 
-// Configurações de limites
-window.LIMITES = {
-    proAtivo: false,
-    maxClientes: 3,
-    maxProdutos: 10,
-    maxVendas: 3,
-    bloqueadoPorDispositivo: false // NOVO: Flag para modo somente leitura
+// Configurações do Mercado Pago
+window.MP_CONFIG = {
+    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+    accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
+    webhooksUrl: 'https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/webhook-mp'
 };
 
-// ============ FUNÇÃO DE REGISTRO DE DISPOSITIVO ============
-
-async function registrarDispositivoAtual() {
-    if (!currentUser || !supabaseClient || !isOnline) {
-        console.log('[Dispositivo] Não é possível registrar dispositivo (offline ou sem login)');
-        return true;
+// Configurações de planos
+window.PLANOS = {
+    mensal: {
+        id: 'mensal',
+        nome: 'Plano Mensal',
+        precoBase: 19.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 30,
+        tipo: 'mensal'
+    },
+    anual: {
+        id: 'anual',
+        nome: 'Plano Anual',
+        precoBase: 199.90,
+        precoPorDevice: 5.00,
+        dispositivosInclusos: 1,
+        dispositivosMax: 5,
+        duracaoDias: 365,
+        tipo: 'anual'
     }
+};
 
+// ============ VALIDAÇÃO E ATIVAÇÃO ============
+
+async function validarKeyBackend(keyCode) {
     try {
-        var deviceId = getDeviceId();
-        var deviceName = getDeviceName();
-        var deviceType = getDeviceType();
-        var assinatura = await getAssinaturaAtiva();
-
-        if (!assinatura) {
-            console.log('[Dispositivo] Usuário FREE - sem registro de dispositivo');
-            return true;
-        }
-
-        // 1. Verificar se o dispositivo já está registrado (mesmo que inativo)
-        var { data: dispositivoExistente, error: buscaError } = await supabaseClient
-            .from('dispositivos')
-            .select('id, ativo')
-            .eq('assinatura_id', assinatura.id)
-            .eq('device_id', deviceId)
-            .limit(1)
-            .maybeSingle();
-
-        if (buscaError && buscaError.code !== 'PGRST116') {
-            console.error('[Dispositivo] Erro ao buscar:', buscaError);
-            return true;
-        }
-
-        // Se encontrou o registro (mesmo que inativo)
-        if (dispositivoExistente) {
-            if (dispositivoExistente.ativo === true) {
-                console.log('[Dispositivo] Dispositivo já registrado e ativo, atualizando último acesso');
-                await supabaseClient
-                    .from('dispositivos')
-                    .update({ ultimo_acesso: new Date().toISOString() })
-                    .eq('id', dispositivoExistente.id);
-                return true;
-            } else {
-                // ✅ CORREÇÃO CRUCIAL: Reativa o dispositivo e ATUALIZA O CONTADOR
-                console.log('[Dispositivo] Dispositivo já registrado mas INATIVO. Reativando e atualizando contador...');
-                
-                // Pega a contagem atual
-                var { count: dispositivosAtivosReais, error: countError } = await supabaseClient
-                    .from('dispositivos')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('assinatura_id', assinatura.id)
-                    .eq('ativo', true);
-
-                if (countError) {
-                    console.error('[Dispositivo] Erro ao contar dispositivos:', countError);
-                    dispositivosAtivosReais = 0;
-                }
-
-                var novaContagem = dispositivosAtivosReais + 1;
-
-                // Atualiza a assinatura com a nova contagem
-                await supabaseClient
-                    .from('assinaturas')
-                    .update({ 
-                        dispositivos_usados: novaContagem,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', assinatura.id);
-
-                // Reativa o dispositivo
-                await supabaseClient
-                    .from('dispositivos')
-                    .update({ 
-                        ativo: true, 
-                        ultimo_acesso: new Date().toISOString(),
-                        device_name: deviceName,
-                        device_type: deviceType,
-                        user_agent: navigator.userAgent
-                    })
-                    .eq('id', dispositivoExistente.id);
-
-                localStorage.setItem('kayla_pro_devices', novaContagem + '/' + assinatura.dispositivos_max);
-                console.log('[Dispositivo] ✅ Dispositivo reativado e contador atualizado para ' + novaContagem);
-                return true;
-            }
-        }
-
-        // ✅ CORREÇÃO: Contar dispositivos ativos REAIS no banco
-        var { count: dispositivosAtivosReais, error: countError } = await supabaseClient
-            .from('dispositivos')
-            .select('id', { count: 'exact', head: true })
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true);
-
-        if (countError) {
-            console.error('[Dispositivo] Erro ao contar dispositivos:', countError);
-            dispositivosAtivosReais = 0;
-        }
-
-        console.log('[Dispositivo] Dispositivos ativos reais:', dispositivosAtivosReais, '/', assinatura.dispositivos_max);
-
-        // 2. Verificar limite antes de registrar um novo
-        if (dispositivosAtivosReais >= assinatura.dispositivos_max) {
-            console.warn('[Dispositivo] ⚠️ Limite de dispositivos atingido! (' + dispositivosAtivosReais + '/' + assinatura.dispositivos_max + ') Não é possível registrar novo dispositivo.');
-            return false;
-        }
-
-        // 3. Registrar novo dispositivo
-        var { error: insertError } = await supabaseClient
-            .from('dispositivos')
-            .insert({
-                assinatura_id: assinatura.id,
-                user_id: currentUser.id,
-                device_id: deviceId,
-                device_name: deviceName,
-                device_type: deviceType,
-                user_agent: navigator.userAgent,
-                primeiro_acesso: new Date().toISOString(),
-                ultimo_acesso: new Date().toISOString(),
-                ativo: true
-            });
-
-        if (insertError) {
-            console.error('[Dispositivo] Erro ao registrar:', insertError);
-            return false;
-        }
-
-        // 4. Atualizar o contador de dispositivos usados
-        await supabaseClient
-            .from('assinaturas')
-            .update({ dispositivos_usados: dispositivosAtivosReais + 1 })
-            .eq('id', assinatura.id);
-
-        localStorage.setItem('kayla_pro_devices', (dispositivosAtivosReais + 1) + '/' + assinatura.dispositivos_max);
-        console.log('[Dispositivo] ✅ Dispositivo registrado com sucesso!');
-        return true;
-
-    } catch(e) {
-        console.error('[Dispositivo] Erro:', e);
-        return true;
+        var response = await fetch(SUPABASE_EDGE_URL + '/validate-key', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + SUPABASE_KEY
+            },
+            body: JSON.stringify({
+                key_code: keyCode,
+                device_id: getDeviceId(),
+                device_name: getDeviceName()
+            })
+        });
+        
+        var data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Erro ao validar key:', error);
+        return { valid: false, message: 'Erro de conexão' };
     }
 }
 
-// ============ VERIFICAR STATUS PRO ============
-
-async function verificarStatusPro() {
-    if (!currentUser || !supabaseClient) {
-        return false;
+async function ativarPro() {
+    var chave = document.getElementById('pro-key').value.trim().toUpperCase();
+    if (!chave || !chave.startsWith('PRO-')) { 
+        toast('Chave inválida', 'error'); 
+        return; 
     }
     
-    try {
-        var result = await supabaseClient
-            .from('assinaturas')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .eq('status', 'ativa')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        
-        if (result.error || !result.data) {
-            LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
-            return false;
-        }
-        
-        var assinatura = result.data;
-        
-        if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
-            LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
-            
-            await supabaseClient
-                .from('assinaturas')
-                .update({ status: 'expirada' })
-                .eq('id', assinatura.id);
-            
-            return false;
-        }
-
-        var { count: dispositivosAtivos, error: countError } = await supabaseClient
-            .from('dispositivos')
-            .select('id', { count: 'exact', head: true })
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true);
-
-        if (countError) {
-            console.error('[Pro] Erro ao contar dispositivos:', countError);
-            dispositivosAtivos = 0;
-        }
-
-        console.log('[Pro] Dispositivos ativos:', dispositivosAtivos, '/', assinatura.dispositivos_max);
-
-        // 🔒 NOVA LÓGICA: Se atingiu o limite, NÃO rebaixar para GRÁTIS. Ativar modo SOMENTE LEITURA.
-        if (dispositivosAtivos >= assinatura.dispositivos_max) {
-            console.warn('[Pro] ⚠️ LIMITE DE DISPOSITIVOS ATINGIDO! (' + dispositivosAtivos + '/' + assinatura.dispositivos_max + ')');
-            console.warn('[Pro] 🔒 Modo SOMENTE LEITURA ativado neste dispositivo. Ações de escrita bloqueadas.');
-            
-            // Manter como PRO (para visualizar dados), mas bloquear ações
-            LIMITES.proAtivo = true;
-            LIMITES.bloqueadoPorDispositivo = true;
-            
-            localStorage.setItem('kayla_pro', 'true');
-            localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
-            localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-            localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
-            localStorage.setItem('kayla_pro_blocked', 'true');
-            
-            // Exibir o aviso para o usuário (será chamado pela UI)
-            // mostrarAvisoLimiteDispositivos(); <-- Pode ser chamado onde for verificado o estado
-            
-            return true;
-        }
-        
+    var btn = window.event ? window.event.target : null;
+    var texto = btn ? btn.innerText : 'Validando...';
+    if (btn) {
+        btn.innerText = 'Validando...';
+        btn.disabled = true;
+    }
+    
+    var resultado = await validarKeyBackend(chave);
+    
+    if (resultado.valid) {
         LIMITES.proAtivo = true;
-        LIMITES.bloqueadoPorDispositivo = false;
         localStorage.setItem('kayla_pro', 'true');
-        localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
-        localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-        localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
-        localStorage.removeItem('kayla_pro_blocked');
+        localStorage.setItem('kayla_pro_key', chave);
+        localStorage.setItem('kayla_pro_expires', resultado.expires_at || '');
+        localStorage.setItem('kayla_pro_devices', resultado.devices_used + '/' + resultado.max_devices);
         
-        console.log('[Pro] ✅ PRO ativado! Dispositivos:', dispositivosAtivos + '/' + assinatura.dispositivos_max);
-        return true;
-        
-    } catch(e) {
-        console.error('[Pro] Erro ao verificar status:', e);
-        return false;
-    }
-}
-
-// ============ FUNÇÕES AUXILIARES ============
-
-function atualizarBadgePlano() {
-    var badge = document.getElementById('plan-badge');
-    if (!badge) return;
-    
-    if (LIMITES.bloqueadoPorDispositivo) {
-        // Badge especial para modo apenas leitura
-        badge.textContent = 'PRO (LEITURA)';
-        badge.className = 'badge-pro badge-blocked';
-    } else if (LIMITES.proAtivo) {
-        badge.textContent = 'PRO';
-        badge.className = 'badge-pro';
+        toast('✅ Plano PRO ativado! ' + resultado.devices_used + '/' + resultado.max_devices + ' dispositivos', 'success');
+        fecharModal();
+        atualizarBadgePlano();
+        mudarAba('settings');
     } else {
-        badge.textContent = 'GRÁTIS';
-        badge.className = 'badge-free';
+        toast('❌ ' + resultado.message, 'error');
+    }
+    
+    if (btn) {
+        btn.innerText = texto;
+        btn.disabled = false;
     }
 }
 
-function verificarLimite(tipo) {
-    if (LIMITES.proAtivo) return true;
-    var limite = 0;
-    var atual = 0;
-    switch(tipo) {
-        case 'clientes': limite = LIMITES.maxClientes; atual = (window.clientes || []).length; break;
-        case 'produtos': limite = LIMITES.maxProdutos; atual = (window.produtos || []).length; break;
-        case 'vendas': limite = LIMITES.maxVendas; atual = (window.vendas || []).length; break;
-    }
-    if (atual >= limite) return false;
-    return true;
-}
+// ============ FUNÇÃO AUXILIAR ============
 
 async function getAssinaturaAtiva() {
     if (!currentUser || !supabaseClient) {
         return null;
     }
+    
     try {
         var result = await supabaseClient
             .from('assinaturas')
@@ -295,10 +109,12 @@ async function getAssinaturaAtiva() {
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+        
         if (result.error) {
             console.warn('[getAssinaturaAtiva] Erro:', result.error);
             return null;
         }
+        
         return result.data;
     } catch(e) {
         console.error('[getAssinaturaAtiva] Erro:', e);
@@ -306,466 +122,1054 @@ async function getAssinaturaAtiva() {
     }
 }
 
-// ============ CANCELAMENTO DE ASSINATURA PRO ============
+// ============ TELA DE PLANOS ============
 
-async function cancelarAssinatura() {
-    if (!currentUser) { toast('Faça login primeiro.', 'error'); return; }
+function mostrarPlanos() {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🚀 Escolha seu Plano</div>';
+    html += '<div class="modal-sub">Selecione o plano ideal para você</div>';
     
-    // 🚫 Bloqueio por dispositivo
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent)" onclick="selecionarPlano(\'mensal\')">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-weight:700;font-size:16px">📅 Mensal</div>';
+    html += '<span class="badge-pro">POPULAR</span>';
+    html += '</div>';
+    html += '<div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">R$ 19,90<span style="font-size:14px;color:var(--text2)">/mês</span></div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">Cancele quando quiser</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li>✅ 1 dispositivo incluso</li>';
+    html += '<li>✅ Clientes ilimitados</li>';
+    html += '<li>✅ Produtos ilimitados</li>';
+    html += '<li>✅ Geração de PDF</li>';
+    html += '<li>✅ Suporte prioritário</li>';
+    html += '</ul></div>';
+    
+    html += '<div class="card" style="background:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);padding:16px;margin-bottom:12px;cursor:pointer;border:2px solid var(--accent);position:relative" onclick="selecionarPlano(\'anual\')">';
+    html += '<div style="position:absolute;top:-10px;right:16px;background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700">ECONOMIA 17%</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-weight:700;font-size:16px;color:#fff">🎯 Anual</div>';
+    html += '<span style="background:rgba(255,255,255,0.2);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600">MELHOR VALOR</span>';
+    html += '</div>';
+    html += '<div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:4px">R$ 199,90<span style="font-size:14px;opacity:0.9">/ano</span></div>';
+    html += '<div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:12px">2 meses grátis!</div>';
+    html += '<ul style="padding-left:20px;font-size:12px;color:rgba(255,255,255,0.95);margin:0">';
+    html += '<li>✅ Tudo do plano mensal</li>';
+    html += '<li>✅ Economia de R$ 38,90</li>';
+    html += '<li>✅ Suporte VIP</li>';
+    html += '<li>✅ Recursos exclusivos</li>';
+    html += '</ul></div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:12px;margin-bottom:12px">';
+    html += '<div style="font-size:12px;color:var(--text2);text-align:center">';
+    html += '💡 <strong>Dispositivos adicionais:</strong> R$ 5,00/mês cada<br>';
+    html += 'Máximo de 5 dispositivos por conta';
+    html += '</div></div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+// Handler global
+window.confirmarPlanoHandler = function(planoId, numDispositivos) {
+    confirmarPlano(planoId, numDispositivos);
+};
+
+function selecionarPlano(planoId) {
+    var plano = PLANOS[planoId];
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Dispositivos</div>';
+    html += '<div class="modal-sub">Quantos dispositivos deseja usar?</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px;text-align:center">';
+    html += 'Selecione o número de dispositivos que terão acesso ao plano PRO';
+    html += '</div>';
+    
+    for (var i = 1; i <= 5; i++) {
+        var dispositivosExtras = Math.max(0, i - plano.dispositivosInclusos);
+        var precoTotal = planoId === 'anual' 
+            ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
+            : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+        
+        var destaque = i === 1 ? 'border:2px solid var(--accent);' : '';
+        var descricaoExtra = i === 1 
+            ? '<div class="item-detail">Incluso no plano</div>'
+            : '<div class="item-detail">+R$ ' + (dispositivosExtras * plano.precoPorDevice).toFixed(2).replace('.', ',') + '/mês extra</div>';
+        
+        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="window.confirmarPlanoHandler(\'' + planoId + '\', ' + i + ')">';
+        html += '<div class="item-info">';
+        html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
+        html += descricaoExtra;
+        html += '</div>';
+        html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + precoTotal.toFixed(2).replace('.', ',') + '</div>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    html += '<button class="btn btn-outline" onclick="mostrarPlanos()">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+function confirmarPlano(planoId, numDispositivos) {
+    var plano = PLANOS[planoId];
+    var dispositivosExtras = Math.max(0, numDispositivos - plano.dispositivosInclusos);
+    var precoTotal = planoId === 'anual' 
+        ? plano.precoBase + (dispositivosExtras * plano.precoPorDevice * 12)
+        : plano.precoBase + (dispositivosExtras * plano.precoPorDevice);
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">💳 Pagamento</div>';
+    html += '<div class="modal-sub">' + plano.nome + '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Plano:</span><strong>' + plano.nome + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Dispositivos:</span><strong>' + numDispositivos + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Duração:</span><strong>' + (planoId === 'anual' ? '12 meses' : '1 mês') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border);margin-top:12px"><span style="font-size:16px">Total:</span><strong style="color:var(--accent);font-size:20px">R$ ' + precoTotal.toFixed(2).replace('.', ',') + '</strong></div>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
+    
+    // PIX
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:2px solid var(--success)" onclick="selecionarMetodoPagamento(\'pix\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">📱</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">PIX</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação instantânea</div>';
+    html += '</div>';
+    html += '<div style="background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">RECOMENDADO</div>';
+    html += '</div></div>';
+    
+    // Cartão de Crédito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'cartao\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Crédito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Parcele em até 12x</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    // Débito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="selecionarMetodoPagamento(\'debito\', \'' + planoId + '\', ' + numDispositivos + ', ' + precoTotal + ')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Débito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação imediata</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+// ============ SELEÇÃO DE MÉTODO DE PAGAMENTO ============
+
+function selecionarMetodoPagamento(metodo, planoId, numDispositivos, valor) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">💳 Confirmar Pagamento</div>';
+    
+    var metodoNome = metodo === 'pix' ? 'PIX' : (metodo === 'cartao' ? 'Cartão de Crédito' : 'Cartão de Débito');
+    var metodoIcon = metodo === 'pix' ? '📱' : '💳';
+    var metodoCor = metodo === 'pix' ? 'var(--success)' : 'var(--accent)';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+    html += '<div style="font-size:48px;margin-bottom:12px">' + metodoIcon + '</div>';
+    html += '<div style="font-size:18px;font-weight:700;color:' + metodoCor + '">' + metodoNome + '</div>';
+    html += '<div style="font-size:14px;color:var(--text2);margin-top:8px">Você será redirecionado para o Mercado Pago</div>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">';
+    if (metodo === 'pix') {
+        html += '✅ <strong>Aprovação instantânea</strong><br>';
+        html += '✅ <strong>Escaneie o QR Code</strong> ou copie o código<br>';
+        html += '✅ <strong>Disponível 24 horas</strong>';
+    } else if (metodo === 'cartao') {
+        html += '✅ <strong>Parcele em até 12x</strong><br>';
+        html += '✅ <strong>Aceita todos os cartões</strong><br>';
+        html += '✅ <strong>Aprovação em segundos</strong>';
+    } else {
+        html += '✅ <strong>Aprovação imediata</strong><br>';
+        html += '✅ <strong>Débito direto da conta</strong><br>';
+        html += '✅ <strong>Seguro e prático</strong>';
+    }
+    html += '</div></div>';
+    
+    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + valor + ', \'' + metodo + '\')" style="width:100%">🚀 Continuar para Pagamento</button>';
+    html += '<button class="btn btn-outline" onclick="confirmarPlano(\'' + planoId + '\', ' + numDispositivos + ')" style="margin-top:8px;width:100%">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+// ============ PAGAMENTO MERCADO PAGO ============
+
+async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagamento) {
+    metodoPagamento = metodoPagamento || 'pix';
+    
+    if (!currentUser) {
+        toast('Faça login primeiro', 'error');
         return;
     }
-
-    var assinatura = await getAssinaturaAtiva();
-    if (!assinatura) { toast('Você não possui uma assinatura PRO ativa.', 'error'); return; }
-
-    var resumoTexto = '';
+    
+    toast('Processando...', 'warning');
+    
     try {
-        var { data: creditos } = await supabaseClient
-            .from('creditos')
-            .select('valor')
-            .eq('user_id', currentUser.id)
-            .eq('utilizado', false);
-        var totalCredito = 0;
-        if (creditos && creditos.length > 0) {
-            creditos.forEach(function(cred) { totalCredito += parseFloat(cred.valor || 0); });
+        // Registrar pagamento no banco
+        var planoResult = await supabaseClient
+            .from('planos')
+            .select('id')
+            .eq('id', planoId)
+            .single();
+        
+        var planoUUID = planoId;
+        if (planoResult.error || !planoResult.data) {
+            var buscaPlano = await supabaseClient
+                .from('planos')
+                .select('id')
+                .eq('tipo', planoId)
+                .limit(1)
+                .single();
+            
+            if (buscaPlano.data) {
+                planoUUID = buscaPlano.data.id;
+            } else {
+                toast('Plano não encontrado', 'error');
+                return;
+            }
+        } else {
+            planoUUID = planoResult.data.id;
         }
-        var { count: deviceCount } = await supabaseClient
-            .from('dispositivos')
-            .select('id', { count: 'exact', head: true })
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true);
-        var dispositivosAtivos = deviceCount || 0;
-
-        if (totalCredito > 0 || assinatura || dispositivosAtivos > 0) {
-            resumoTexto += '\n\n🔍 Dados encontrados na sua assinatura:';
-            if (totalCredito > 0) resumoTexto += '\n   💰 Créditos: R$ ' + totalCredito.toFixed(2).replace('.', ',');
-            if (assinatura) resumoTexto += '\n   💎 Plano PRO: Válido até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
-            if (dispositivosAtivos > 0) resumoTexto += '\n   📱 Dispositivos ativos: ' + dispositivosAtivos;
-            resumoTexto += '\n\nIsso será desativado ao cancelar a assinatura.';
+        
+        // Registrar pagamento
+        var registroPagamento = await supabaseClient
+            .from('pagamentos')
+            .insert({
+                user_id: currentUser.id,
+                plano_id: planoUUID,
+                valor: valor,
+                metodo_pagamento: metodoPagamento,
+                status: 'pendente'
+            })
+            .select()
+            .single();
+        
+        if (registroPagamento.error) {
+            toast('Erro ao iniciar pagamento', 'error');
+            return;
         }
-    } catch (e) { console.warn('Erro ao buscar dados para o resumo do cancelamento:', e); }
+        
+        var pagamentoId = registroPagamento.data.id;
+        
+        var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + SUPABASE_KEY
+            },
+            body: JSON.stringify({
+                titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
+                valor: valor,
+                email: currentUser.email,
+                user_id: currentUser.id,
+                plano_id: planoUUID,
+                num_dispositivos: numDispositivos,
+                pagamento_id: pagamentoId,
+                metodo_pagamento: metodoPagamento
+            })
+        });
+        
+        var resultado = await response.json();
+        
+        console.log('[MP] Resultado:', resultado);
+        
+        // Se for PIX, mostrar QR Code na tela
+        if (resultado.payment_method === 'pix' && resultado.qr_code) {
+            mostrarQRCodePIX(resultado, pagamentoId);
+            return;
+        }
+        
+        // Se for Cartão/Débito, redirecionar para MP
+        if (resultado.init_point) {
+            localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                preference_id: resultado.id,
+                pagamento_id: pagamentoId,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos,
+                valor: valor,
+                metodo: metodoPagamento
+            }));
+            
+            window.location.href = resultado.init_point;
+        } else {
+            toast('Erro: ' + (resultado.error || 'Tente novamente'), 'error');
+        }
+        
+    } catch(error) {
+        console.error('[MP] Erro:', error);
+        toast('Erro de conexão: ' + error.message, 'error');
+    }
+}
 
-    confirmar('Cancelar Assinatura PRO', '⚠️ ATENÇÃO!\nVocê está prestes a CANCELAR sua assinatura PRO.\nIsso desativará todos os seus dispositivos e você perderá acesso aos recursos PRO.' + resumoTexto, async function(confirmed) {
-        if (!confirmed) return;
-        try {
-            await supabaseClient.from('assinaturas').update({ status: 'cancelada' }).eq('id', assinatura.id);
-            await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
+// ============ QR CODE PIX ============
+
+function mostrarQRCodePIX(dados, pagamentoId) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Pagamento PIX</div>';
+    html += '<div class="modal-sub">Escaneie o QR Code ou copie o código</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
+    
+    // Verificar se tem QR Code base64
+    if (dados.qr_code_base64 && dados.qr_code_base64.length > 100) {
+        html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
+        html += '<img src="' + dados.qr_code_base64 + '" alt="QR Code PIX" style="width:250px;height:250px">';
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--success);margin-bottom:16px">✅ QR Code gerado com sucesso!</div>';
+    } else {
+        // Se não tem base64, mostrar mensagem e botão para abrir no MP
+        html += '<div style="background:var(--bg2);padding:20px;border-radius:8px;margin-bottom:16px">';
+        html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
+        html += '<div style="font-size:14px;color:var(--text2);margin-bottom:12px">';
+        html += 'O QR Code será gerado no app do seu banco<br>';
+        html += 'ou você pode abrir no Mercado Pago';
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    // Código Copia e Cola
+    if (dados.qr_code) {
+        html += '<div style="margin-bottom:16px">';
+        html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
+        html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
+        html += '</div>';
+        
+        // Botão Copiar
+        html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
+    }
+    
+    // Link de pagamento (sempre mostrar)
+    if (dados.ticket_url) {
+        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🔗 Abrir QR Code no App do Banco</a>';
+    }
+    
+    // Se tiver payment_url (fallback)
+    if (dados.payment_url || dados.init_point) {
+        var url = dados.payment_url || dados.init_point;
+        html += '<a href="' + url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🌐 Ver no Mercado Pago</a>';
+    }
+    
+    html += '</div>';
+    
+    // Instruções
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
+    html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
+    html += '<li style="margin-bottom:8px">Abra o app do seu banco</li>';
+    html += '<li style="margin-bottom:8px">Escolha pagar com PIX</li>';
+    html += '<li style="margin-bottom:8px">Escaneie o QR Code ou copie o código</li>';
+    html += '<li style="margin-bottom:8px">Confirme o pagamento</li>';
+    html += '<li>Aprovação é instantânea!</li>';
+    html += '</ol>';
+    html += '</div>';
+    
+    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
+    html += '⏱️ Este QR Code expira em 24 horas';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+function copiarCodigoPIX() {
+    var codigo = document.getElementById('pix-codigo');
+    codigo.select();
+    codigo.setSelectionRange(0, 99999);
+    
+    try {
+        document.execCommand('copy');
+        toast('✅ Código PIX copiado!', 'success');
+    } catch(err) {
+        // Fallback para navegadores modernos
+        navigator.clipboard.writeText(codigo.value).then(function() {
+            toast('✅ Código PIX copiado!', 'success');
+        }).catch(function() {
+            toast('❌ Erro ao copiar. Selecione manualmente.', 'error');
+        });
+    }
+}
+
+// ============ RESTO DAS FUNÇÕES (Upgrade, Dispositivos, etc) ============
+
+async function criarRegistroPagamento(planoId, numDispositivos, valor, metodo) {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return null;
+    }
+    
+    try {
+        var pagamentoData = {
+            user_id: currentUser.id,
+            valor: valor,
+            metodo_pagamento: metodo,
+            status: 'pendente'
+        };
+        
+        var result = await supabaseClient
+            .from('pagamentos')
+            .insert(pagamentoData)
+            .select()
+            .single();
+        
+        if (result.error) {
+            console.error('Erro ao criar pagamento:', result.error);
+            toast('Erro ao iniciar pagamento', 'error');
+            return null;
+        }
+        
+        return result.data;
+    } catch(e) {
+        console.error('Erro no pagamento:', e);
+        toast('Erro de conexão', 'error');
+        return null;
+    }
+}
+
+async function verificarStatusPagamento(pagamentoId) {
+    toast('Verificando pagamento...', 'warning');
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">✅ Confirmar Pagamento</div>';
+    html += '<div class="modal-sub">Insira o código da transação</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">';
+    html += 'Após pagar, você receberá um código de confirmação. Insira-o abaixo:';
+    html += '</div>';
+    html += '<input type="text" class="form-input" id="codigo-transacao" placeholder="Código da transação">';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="confirmarPagamentoManual(\'' + pagamentoId + '\')">✅ Confirmar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+async function confirmarPagamentoManual(pagamentoId) {
+    var codigo = document.getElementById('codigo-transacao').value.trim();
+    if (!codigo) {
+        toast('Digite o código da transação', 'warning');
+        return;
+    }
+    
+    toast('Pagamento em análise. Aguarde aprovação.', 'warning');
+    fecharModal();
+}
+
+function calcularUpgradeProporcional(assinaturaAtual, novosDispositivos) {
+    var dataFim = new Date(assinaturaAtual.data_fim);
+    var hoje = new Date();
+    
+    var mesesRestantes = 1; 
+    
+    var dispositivosExtras = novosDispositivos - assinaturaAtual.dispositivos_max;
+    
+    if (dispositivosExtras <= 0) {
+        return {
+            dispositivosExtras: 0,
+            valorPorMes: 0,
+            valorPorDispositivo: 0,
+            mesesRestantes: mesesRestantes,
+            valorTotal: 0,
+            novaDataFim: dataFim.toISOString()
+        };
+    }
+    
+    var valorPorMes = 5.00;
+    var valorPorDispositivo = 5.00;
+    var valorTotal = dispositivosExtras * valorPorMes;
+    
+    return {
+        dispositivosExtras: dispositivosExtras,
+        valorPorMes: valorPorMes,
+        valorPorDispositivo: valorPorDispositivo,
+        mesesRestantes: mesesRestantes,
+        valorTotal: valorTotal,
+        novaDataFim: dataFim.toISOString()
+    };
+}
+
+// ============ GERENCIAR DISPOSITIVOS E UPGRADES ============
+
+async function fazerUpgradeDispositivos() {
+    if (!currentUser) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) {
+        toast('Nenhuma assinatura ativa encontrada', 'error');
+        mostrarPlanos();
+        return;
+    }
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⬆️ Upgrade de Dispositivos</div>';
+    html += '<div class="modal-sub">Adicione mais dispositivos ao seu plano</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:14px;color:var(--text2)">Dispositivos atuais: <strong>' + assinatura.dispositivos_max + '</strong></div>';
+    html += '</div>';
+    
+    for (var i = assinatura.dispositivos_max + 1; i <= 5; i++) {
+        var calculo = calcularUpgradeProporcional(assinatura, i);
+        
+        html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="confirmarUpgradeDispositivos(' + i + ', ' + calculo.valorTotal + ')">';
+        html += '<div class="item-info">';
+        html += '<div class="item-name">' + i + ' dispositivo' + (i > 1 ? 's' : '') + '</div>';
+        html += '<div class="item-detail">+' + (i - assinatura.dispositivos_max) + ' dispositivo(s) extra(s)</div>';
+        html += '</div>';
+        html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</div>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function confirmarUpgradeDispositivos(novosDispositivos, valor) {
+    if (!currentUser) return;
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    var calculo = calcularUpgradeProporcional(assinatura, novosDispositivos);
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⬆️ Confirmar Upgrade</div>';
+    html += '<div class="modal-sub">Escolha a forma de pagamento</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="text-align:center;margin-bottom:16px">';
+    html += '<div style="font-size:14px;color:var(--text2)">De ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ' dispositivo(s)</div>';
+    html += '<div style="font-size:12px;color:var(--text2);margin-top:8px">Válido até: <strong>' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + '</strong></div>';
+    html += '</div>';
+    
+    html += '<div style="background:var(--bg2);padding:12px;border-radius:8px;margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:12px;color:var(--text2)">Dispositivos extras:</span>';
+    html += '<strong>' + calculo.dispositivosExtras + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:12px;color:var(--text2)">Valor por dispositivo:</span>';
+    html += '<strong>R$ ' + calculo.valorPorDispositivo.toFixed(2).replace('.', ',') + '</strong>';
+    html += '</div>';
+    html += '<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:space-between">';
+    html += '<span style="font-size:16px;font-weight:700">Total:</span>';
+    html += '<strong style="color:var(--accent);font-size:20px">R$ ' + calculo.valorTotal.toFixed(2).replace('.', ',') + '</strong>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
+    html += '💡 Os dispositivos extras ficarão ativos até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-weight:600;margin-bottom:12px">Escolha a forma de pagamento:</div>';
+    
+    // PIX
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:2px solid var(--success)" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ', \'pix\')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">📱</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">PIX</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Aprovação instantânea</div>';
+    html += '</div>';
+    html += '<div style="background:var(--success);color:#fff;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:600">RECOMENDADO</div>';
+    html += '</div></div>';
+    
+    // Cartão de Crédito
+    html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer" onclick="processarUpgradeDispositivos(' + novosDispositivos + ', ' + calculo.valorTotal + ', \'cartao\')">';
+    html += '<div style="display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:32px">💳</div>';
+    html += '<div style="flex:1">';
+    html += '<div style="font-weight:700;font-size:16px">Cartão de Crédito</div>';
+    html += '<div style="font-size:12px;color:var(--text2)">Parcele em até 12x</div>';
+    html += '</div>';
+    html += '</div></div>';
+    
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()">← Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPagamento) {
+    if (!currentUser) return;
+    metodoPagamento = metodoPagamento || 'pix';
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    try {
+        console.log('[Upgrade] Registrando pagamento no banco...');
+        
+        var registroPagamento = await supabaseClient
+            .from('pagamentos')
+            .insert({
+                user_id: currentUser.id,
+                plano_id: assinatura.plano_id,
+                valor: valor,
+                metodo_pagamento: metodoPagamento,
+                status: 'pendente',
+                metadata: {
+                    tipo: 'upgrade',
+                    assinatura_id: assinatura.id,
+                    novos_dispositivos: novosDispositivos
+                }
+            })
+            .select()
+            .single();
+        
+        if (registroPagamento.error) {
+            console.error('[Upgrade] Erro ao registrar:', registroPagamento.error);
+            toast('Erro ao iniciar upgrade', 'error');
+            return;
+        }
+        
+        var pagamentoId = registroPagamento.data.id;
+        console.log('[Upgrade] Pagamento registrado:', pagamentoId);
+        
+        console.log('[Upgrade] Criando preferência...');
+        
+        var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + SUPABASE_KEY
+            },
+            body: JSON.stringify({
+                titulo: 'Kayla PRO - Upgrade de Dispositivos',
+                valor: valor,
+                email: currentUser.email,
+                user_id: currentUser.id,
+                plano_id: assinatura.plano_id,
+                num_dispositivos: novosDispositivos,
+                pagamento_id: pagamentoId,
+                tipo: 'upgrade',
+                assinatura_id: assinatura.id,
+                metodo_pagamento: metodoPagamento
+            })
+        });
+        
+        var resultado = await response.json();
+        
+        console.log('[Upgrade] Resultado:', resultado);
+        
+        if (metodoPagamento === 'pix' && resultado.qr_code_base64 && resultado.qr_code) {
+            console.log('[Upgrade] Exibindo PIX na tela.');
+            mostrarQRCodePIX(resultado, pagamentoId);
+            return;
+        }
+        
+        if (resultado.init_point) {
+            localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                preference_id: resultado.id,
+                pagamento_id: pagamentoId,
+                plano_id: assinatura.plano_id,
+                num_dispositivos: novosDispositivos,
+                valor: valor,
+                metodo: metodoPagamento
+            }));
+            
+            console.log('[Upgrade] Redirecionando para:', resultado.init_point);
+            window.location.href = resultado.init_point;
+        } else {
+            console.error('[Upgrade] Erro: Resposta inesperada:', resultado);
+            toast('Erro ao criar pagamento', 'error');
+        }
+        
+    } catch(e) {
+        console.error('[Upgrade] Erro:', e);
+        toast('Erro ao processar upgrade', 'error');
+    }
+}
+
+async function confirmarUpgradePago(pagamentoId, novosDispositivos) {
+    if (!currentUser) return;
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) return;
+    
+    try {
+        await supabaseClient
+            .from('assinaturas')
+            .update({
+                dispositivos_max: novosDispositivos,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', assinatura.id);
+        
+        await supabaseClient
+            .from('pagamentos')
+            .update({
+                status: 'aprovado',
+                data_pagamento: new Date().toISOString()
+            })
+            .eq('id', pagamentoId);
+        
+        localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + novosDispositivos);
+        
+        toast('✅ Upgrade realizado! Dispositivos adicionados.', 'success');
+        fecharModal();
+        atualizarBadgePlano();
+        
+    } catch(e) {
+        console.error('Erro ao confirmar upgrade:', e);
+        toast('Erro ao processar', 'error');
+    }
+}
+
+// ============ GERENCIAR DISPOSITIVOS (MODAL) ============
+
+async function gerenciarDispositivos() {
+    var modalBody = document.getElementById('modal-body');
+    if (modalBody) modalBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text2)">Carregando...</div>';
+    
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    var assinatura = await getAssinaturaAtiva();
+    if (!assinatura) {
+        toast('Nenhuma assinatura ativa', 'error');
+        return;
+    }
+    
+    try {
+        // A função gerarHtmlListaDispositivos está no config.js e já trata a lista e o botão de ativar
+        if (typeof gerarHtmlListaDispositivos === 'undefined') {
+             // Fallback caso o config.js não esteja disponivel
+            toast('Erro interno: função de lista não encontrada.', 'error');
+            return;
+        }
+
+        var dispositivosHtml = await gerarHtmlListaDispositivos();
+        
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">📱 Dispositivos</div>';
+        html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        
+        html += dispositivosHtml;
+        
+        if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Adicionar Dispositivo</button>';
+        } else {
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Fazer Upgrade</button>';
+        }
+        
+        html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:8px">Fechar</button>';
+        
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
+        
+    } catch(e) {
+        console.error('Erro ao buscar dispositivos:', e);
+        toast('Erro ao carregar dispositivos', 'error');
+    }
+}
+
+// ============ DEMAIS FUNÇÕES DO MENU CONFIG ============
+
+async function mostrarInfoAssinatura() {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    
+    var result = await supabaseClient
+        .from('assinaturas')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('status', 'ativa')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+    
+    if (result.error || !result.data) {
+        if (localStorage.getItem('kayla_pro')) {
             localStorage.removeItem('kayla_pro');
             localStorage.removeItem('kayla_pro_key');
             localStorage.removeItem('kayla_pro_expires');
             localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
             LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
-            atualizarBadgePlano();
-            if (typeof mudarAba === 'function') mudarAba('settings');
-            toast('✅ Assinatura PRO cancelada com sucesso!', 'success');
-        } catch(e) {
-            toast('❌ Erro ao cancelar assinatura', 'error');
-            console.error('Erro ao cancelar assinatura:', e);
         }
-    });
-}
-
-// ============ EXCLUSÃO DEFINITIVA DE CONTA (LGPD) ============
-
-async function excluirConta() {
-    if (!currentUser || !supabaseClient) { toast('Nenhum usuário logado.', 'error'); return; }
-    
-    // 🚫 Bloqueio por dispositivo
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">📋 Minha Assinatura</div>';
+        html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
+        html += '<div style="font-size:48px;margin-bottom:12px">🆓</div>';
+        html += '<div style="font-size:16px;font-weight:700;margin-bottom:8px">Plano Gratuito</div>';
+        html += '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">';
+        html += 'Você está usando o plano gratuito com limitações.';
+        html += '</div>';
+        html += '</div>';
+        html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()">🚀 Assinar PRO</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
         return;
     }
     
-    var resumoTexto = '';
+    var assinatura = result.data;
+    var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
+    var diasRestantes = Math.floor((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
+
+    var saldoCredito = 0;
     try {
+        var { data: creditos, error: credError } = await supabaseClient
+            .from('creditos')
+            .select('valor')
+            .eq('user_id', currentUser.id)
+            .eq('utilizado', false);
+        if (!credError && creditos && creditos.length > 0) {
+            creditos.forEach(function(cred) { saldoCredito += cred.valor; });
+        }
+    } catch(e) { console.warn('Erro ao buscar créditos:', e); }
+    
+    localStorage.setItem('kayla_pro', 'true');
+    localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
+    localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
+    localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
+    LIMITES.proAtivo = true;
+    atualizarBadgePlano();
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📋 Minha Assinatura</div>';
+
+    if (saldoCredito > 0) {
+        html += '<div style="background:#15803d;color:#fff;padding:12px;border-radius:8px;text-align:center;margin-bottom:12px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">';
+        html += '💰 Você tem <strong>R$ ' + saldoCredito.toFixed(2).replace('.', ',') + '</strong> em crédito disponível para sua próxima renovação!';
+        html += '</div>';
+    }
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Status:</span>';
+    html += '<span class="badge-pro">ATIVA</span>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Key:</span>';
+    html += '<strong style="font-family:monospace;font-size:12px">' + (assinatura.key_ativacao || 'N/A') + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Dispositivos:</span>';
+    html += '<strong>' + assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
+    html += '<span style="color:var(--text2)">Validade:</span>';
+    html += '<strong>' + dataFim + '</strong>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between">';
+    html += '<span style="color:var(--text2)">Dias restantes:</span>';
+    html += '<strong style="color:' + (diasRestantes <= 7 ? 'var(--warning)' : 'var(--success)') + '">' + diasRestantes + ' dias</strong>';
+    html += '</div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+// ============ INICIAR CANCELAMENTO E RENOVAÇÃO ============
+
+function iniciarCancelamentoDispositivos() {
+    if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
+    getAssinaturaAtiva().then(function(assinatura) {
+        if (!assinatura || assinatura.dispositivos_max <= 1) { toast('Você já está no mínimo de 1 dispositivo.', 'warning'); return; }
+        
+        var html = '<div class="modal-handle"></div><div class="modal-title">📉 Reduzir Dispositivos</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div><div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+        for (var i = 1; i < assinatura.dispositivos_max; i++) {
+            var qtdRemovida = assinatura.dispositivos_max - i;
+            var economizando = qtdRemovida * 5;
+            html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:1px solid var(--border)" onclick="cancelarDispositivos(' + i + ')">';
+            html += '<div class="item-info"><div class="item-name">' + i + ' dispositivo(s)</div>';
+            html += '<div class="item-detail">Remover <strong>' + qtdRemovida + '</strong> dispositivo(s) • Economia de R$ ' + economizando.toFixed(2).replace('.', ',') + '/mês</div></div>';
+            html += '<div style="font-weight:700;color:var(--accent)">Selecionar →</div></div>';
+        }
+        html += '</div><button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+        document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
+    });
+}
+
+function iniciarRenovacao() {
+    if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
+    getAssinaturaAtiva().then(async function(assinatura) {
+        if (!assinatura) { toast('Nenhuma assinatura ativa para renovar', 'error'); return; }
+        if (Math.ceil((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24)) > 15) { toast('⚠️ Renove apenas quando faltar menos de 15 dias.', 'warning'); return; }
+        
         var { data: creditos } = await supabaseClient
             .from('creditos')
             .select('valor')
             .eq('user_id', currentUser.id)
             .eq('utilizado', false);
-        var totalCredito = 0;
+        var saldoCredito = 0;
         if (creditos && creditos.length > 0) {
-            creditos.forEach(function(cred) { totalCredito += parseFloat(cred.valor || 0); });
+            creditos.forEach(function(cred) { saldoCredito += cred.valor; });
         }
-        var assinatura = await getAssinaturaAtiva();
-        var dispositivosAtivos = 0;
-        if (assinatura) {
-            var { count: deviceCount } = await supabaseClient
-                .from('dispositivos')
-                .select('id', { count: 'exact', head: true })
-                .eq('assinatura_id', assinatura.id)
-                .eq('ativo', true);
-            dispositivosAtivos = deviceCount || 0;
-        }
-        if (totalCredito > 0 || assinatura || dispositivosAtivos > 0) {
-            resumoTexto += '\n\n🔍 Dados encontrados na sua conta:';
-            if (totalCredito > 0) resumoTexto += '\n   💰 Créditos: R$ ' + totalCredito.toFixed(2).replace('.', ',');
-            if (assinatura) resumoTexto += '\n   💎 Plano PRO: Ativo (válido até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + ')';
-            if (dispositivosAtivos > 0) resumoTexto += '\n   📱 Dispositivos ativos: ' + dispositivosAtivos;
-            resumoTexto += '\n\nTodos esses dados serão excluídos permanentemente.';
-        }
-    } catch (e) { console.warn('Erro ao buscar dados para o resumo da exclusão:', e); }
 
-    confirmar('Excluir Conta', 'Ao confirmar, TODOS os seus dados (cadastro, clientes, produtos, pedidos e assinaturas) serão EXCLUÍDOS PERMANENTEMENTE.\n\nEsta ação é IRREVERSÍVEL de acordo com a LGPD.' + resumoTexto, async function(confirmou1) {
-        if (!confirmou1) return;
-
-        confirmar('Última Chance!', 'Você tem certeza absoluta que deseja deletar sua conta?\n\nNão há como recuperar essas informações.', async function(confirmou2) {
-            if (!confirmou2) return;
-            try {
-                var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/delete-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
-                    body: JSON.stringify({ userId: currentUser.id })
-                });
-                var resultado = await response.json();
-                
-                if (resultado.success) {
-                    await supabaseClient.auth.signOut();
-                    localStorage.clear();
-                    currentUser = null;
-                    LIMITES.proAtivo = false;
-                    LIMITES.bloqueadoPorDispositivo = false;
-                    mostrarTelaSelecao();
-                    toast('✅ Dados excluídos com sucesso!', 'success');
-                } else {
-                    toast('❌ Erro: ' + resultado.error, 'error');
-                }
-            } catch (e) {
-                toast('Erro de conexão.', 'error');
+        var html = '<div class="modal-handle"></div><div class="modal-title">🔄 Renovar Assinatura</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div>';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px"><div style="font-size:13px;color:var(--text2);margin-bottom:12px;text-align:center">Escolha quantos dispositivos deseja renovar:</div>';
+        
+        for (var i = 1; i <= 5; i++) {
+            var precoFinal = 19.90 + ((i - 1) * 5);
+            var precoComDesconto = Math.max(0, precoFinal - saldoCredito);
+            var destaque = i === assinatura.dispositivos_max ? 'border:2px solid var(--accent);' : '';
+            
+            html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;' + destaque + '" onclick="confirmarRenovacao(' + i + ', ' + precoComDesconto + ')">';
+            html += '<div class="item-info"><div class="item-name">' + i + ' dispositivo(s)</div>';
+            if (saldoCredito > 0) {
+                html += '<div class="item-detail" style="color:var(--success)">💰 Desconto de R$ ' + saldoCredito.toFixed(2).replace('.', ',') + ' aplicado!</div>';
             }
-        });
+            html += '</div><div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + precoComDesconto.toFixed(2).replace('.', ',') + '</div></div>';
+        }
+        html += '</div><button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+        document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
     });
 }
 
-// ============ BACKUP E RESTAURAÇÃO ============
-
-function exportarBackup() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    try {
-        var backup = {
-            versao: '5.4.0',
-            data: new Date().toISOString(),
-            clientes: window.clientes || [],
-            produtos: window.produtos || [],
-            vendas: window.vendas || [],
-            pedidos: window.pedidos || [],
-            config: window.configEmpresa || {}
-        };
-        var json = JSON.stringify(backup, null, 2);
-        var blob = new Blob([json], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'kayla-backup-' + new Date().toISOString().split('T')[0] + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('✅ Backup exportado com sucesso!', 'success');
-    } catch(e) {
-        console.error('[Backup] Erro ao exportar:', e);
-        toast('Erro ao exportar backup', 'error');
-    }
-}
-
-function importarBackup() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                var backup = JSON.parse(event.target.result);
-                if (!backup.versao || !backup.data) {
-                    toast('Arquivo de backup inválido', 'error');
-                    return;
-                }
-                var confirmar = confirm('⚠️ ATENÇÃO!\n\nIsso irá SUBSTITUIR todos os dados atuais.\n\nDeseja continuar?');
-                if (!confirmar) return;
-                if (backup.clientes) window.clientes = backup.clientes;
-                if (backup.produtos) window.produtos = backup.produtos;
-                if (backup.vendas) window.vendas = backup.vendas;
-                if (backup.pedidos) window.pedidos = backup.pedidos;
-                if (backup.config) window.configEmpresa = backup.config;
-                if (window.clientes) localStorage.setItem('kayla_clientes', JSON.stringify(window.clientes));
-                if (window.produtos) localStorage.setItem('kayla_produtos', JSON.stringify(window.produtos));
-                if (window.vendas) localStorage.setItem('kayla_vendas', JSON.stringify(window.vendas));
-                if (window.pedidos) localStorage.setItem('kayla_pedidos', JSON.stringify(window.pedidos));
-                if (window.configEmpresa) localStorage.setItem('kayla_config_empresa', JSON.stringify(window.configEmpresa));
-                toast('✅ Backup importado com sucesso!', 'success');
-                if (typeof renderizarConteudo === 'function') {
-                    renderizarConteudo();
-                }
-            } catch(err) {
-                console.error('[Backup] Erro ao importar:', err);
-                toast('Erro ao importar backup', 'error');
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-// ============ CONFIGURAÇÃO DA EMPRESA ============
-
-function configurarEmpresa() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    var config = window.configEmpresa || {};
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">⚙️ Dados da Empresa</div>';
-    html += '<div class="modal-sub">Configure as informações que aparecerão nos recibos</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Nome da Empresa</label>';
-    html += '<input type="text" class="form-input" id="emp-nome" value="' + (config.nome || '') + '" placeholder="Sua Empresa Ltda">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">CNPJ</label>';
-    html += '<input type="text" class="form-input" id="emp-cnpj" value="' + (config.cnpj || '') + '" placeholder="00.000.000/0000-00">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Telefone</label>';
-    html += '<input type="text" class="form-input" id="emp-telefone" value="' + (config.telefone || '') + '" placeholder="(00) 00000-0000">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Endereço</label>';
-    html += '<input type="text" class="form-input" id="emp-endereco" value="' + (config.endereco || '') + '" placeholder="Rua, Número - Cidade/UF">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Email</label>';
-    html += '<input type="email" class="form-input" id="emp-email" value="' + (config.email || '') + '" placeholder="contato@empresa.com">';
-    html += '</div>';
-    html += '<button class="btn btn-primary" onclick="salvarConfigEmpresa()" style="width:100%;margin-bottom:8px"> Salvar Configurações</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-function salvarConfigEmpresa() {
-    // 🚫 Bloqueio duplo por segurança
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        fecharModal();
-        return;
-    }
-    var config = {
-        nome: document.getElementById('emp-nome').value.trim(),
-        cnpj: document.getElementById('emp-cnpj').value.trim(),
-        telefone: document.getElementById('emp-telefone').value.trim(),
-        endereco: document.getElementById('emp-endereco').value.trim(),
-        email: document.getElementById('emp-email').value.trim()
-    };
-    window.configEmpresa = config;
-    localStorage.setItem('kayla_config_empresa', JSON.stringify(config));
-    toast('✅ Configurações salvas!', 'success');
-    fecharModal();
-}
-
-// ============ SUPORTE WHATSAPP ============
-
-function abrirSuporteWhatsApp() {
-    var mensagem = 'Olá! Preciso de suporte com o Kayla App.';
-    if (currentUser) {
-        mensagem += '\n\nUsuário: ' + currentUser.email;
-        mensagem += '\nPlano: ' + (LIMITES.proAtivo ? 'PRO' : 'GRÁTIS');
-        mensagem += '\nVersão: 5.4.0';
-    }
-    var url = 'https://wa.me/5541996427444?text=' + encodeURIComponent(mensagem);
-    window.open(url, '_blank');
-}
-
-// ============ INICIALIZAÇÃO ============
-
-function carregarConfigEmpresa() {
-    try {
-        var config = localStorage.getItem('kayla_config_empresa');
-        if (config) {
-            window.configEmpresa = JSON.parse(config);
-        } else {
-            window.configEmpresa = {};
-        }
-    } catch(e) {
-        console.error('[Config] Erro ao carregar:', e);
-        window.configEmpresa = {};
-    }
-}
-if (typeof window !== 'undefined') {
-    carregarConfigEmpresa();
-}
-
-// ============ MODAIS DE AVISO ============
-
-// Aviso original para limite de itens do GRÁTIS
-function mostrarAvisoLimite(tipo) {
-    document.getElementById('modal-overlay').classList.remove('show');
-    document.getElementById('modal-body').innerHTML = '';
-
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">🔒 Limite Atingido</div>';
-    html += '<div class="modal-sub">Você atingiu o limite de <strong>' + tipo + '</strong> para o plano GRÁTIS.</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px;margin-bottom:12px">🚀</div>';
-    html += '<div style="font-size:16px;font-weight:600;color:var(--warning);margin-bottom:8px">Aumente seus limites!</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Assine o plano PRO para ter clientes e produtos ilimitados.</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()" style="width:100%;margin-bottom:8px">🚀 Ver Planos PRO</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-// NOVO: Aviso específico para Limite de Dispositivos (Modo Somente Leitura)
-function mostrarAvisoLimiteDispositivos() {
-    document.getElementById('modal-overlay').classList.remove('show');
-    document.getElementById('modal-body').innerHTML = '';
-
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📱 Limite de Dispositivos Atingido</div>';
-    html += '<div class="modal-sub">Você está no modo <strong>SOMENTE LEITURA</strong>.</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px;margin-bottom:12px">👁️</div>';
-    html += '<div style="font-size:15px;font-weight:500;color:var(--warning);margin-bottom:8px">Você pode ver todos os dados, mas não pode alterá-los.</div>';
-    html += '<div style="font-size:13px;color:var(--text2);line-height:1.6">';
-    html += 'Para voltar a adicionar, editar ou gerar PDFs, você deve:<br>';
-    html += '1️⃣ <strong>Desativar</strong> um dispositivo antigo na aba "Config".<br>';
-    html += '2️⃣ Ou <strong>Adquirir mais licenças</strong> para o seu plano PRO.';
-    html += '</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal()" style="width:100%;margin-bottom:8px">Entendi, continuar visualizando</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal(); mudarAba(\'settings\')" style="width:100%">Ir para Configurações</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-
-// ====================================================================
-// 🆕 NOVAS FUNÇÕES PARA GERENCIAR DISPOSITIVOS (CHAMADAS PELA CONFIG)
-// ====================================================================
-
-// 1. Listar todos os dispositivos ativos do usuário
-async function listarDispositivosAtivos() {
-    if (!currentUser) return [];
+async function confirmarRenovacao(novosDispositivos, valorPagar) {
+    if (!currentUser || !supabaseClient) { toast('Erro de autenticação', 'error'); return; }
     try {
         var assinatura = await getAssinaturaAtiva();
-        if (!assinatura) return [];
+        if (!assinatura) { toast('Assinatura não encontrada', 'error'); return; }
         
-        var { data, error } = await supabaseClient
-            .from('dispositivos')
-            .select('id, device_name, device_type, ultimo_acesso, user_agent')
-            .eq('assinatura_id', assinatura.id)
-            .eq('ativo', true)
-            .order('ultimo_acesso', { ascending: false });
+        await supabaseClient
+            .from('creditos')
+            .update({ utilizado: true })
+            .eq('user_id', currentUser.id)
+            .eq('utilizado', false);
 
-        if (error) {
-            console.error('[Dispositivos] Erro ao listar:', error);
-            return [];
-        }
-        return data || [];
-    } catch(e) {
-        console.error('[Dispositivos] Erro na listagem:', e);
-        return [];
-    }
+        var novaDataFim = new Date(); novaDataFim.setDate(novaDataFim.getDate() + 30);
+        await supabaseClient.from('assinaturas').update({ 
+            data_fim: novaDataFim.toISOString(), 
+            dispositivos_max: novosDispositivos, 
+            updated_at: new Date().toISOString() 
+        }).eq('id', assinatura.id);
+        
+        localStorage.setItem('kayla_pro_expires', novaDataFim.toISOString());
+        localStorage.setItem('kayla_pro_devices', Math.min(assinatura.dispositivos_usados, novosDispositivos) + '/' + novosDispositivos);
+        fecharModal(); if (typeof mudarAba === 'function') mudarAba('settings');
+        toast('✅ Assinatura renovada com sucesso!', 'success');
+    } catch(e) { toast('Erro ao renovar', 'error'); }
 }
 
-// 2. Desativar um dispositivo específico
-async function desativarDispositivo(deviceId) {
-    if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
-    if (!deviceId) { toast('ID do dispositivo inválido.', 'error'); return false; }
+// ============ VERIFICAÇÃO DE RETORNO DE PAGAMENTO ============
 
-    try {
-        var { error } = await supabaseClient
-            .from('dispositivos')
-            .update({ ativo: false })
-            .eq('id', deviceId)
-            .eq('user_id', currentUser.id);
-
-        if (error) {
-            console.error('[Dispositivo] Erro ao desativar:', error);
-            toast('Erro ao desativar o dispositivo.', 'error');
-            return false;
-        }
-
-        toast('✅ Dispositivo removido com sucesso!', 'success');
+function verificarRetornoPagamento() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var collectionStatus = urlParams.get('collection_status');
+    var paymentId = urlParams.get('payment_id');
+    var preferenceId = urlParams.get('preference_id');
+    var externalReference = urlParams.get('external_reference');
+    
+    console.log('[Pagamento] Retorno detectado:', { 
+        collectionStatus, 
+        paymentId, 
+        preferenceId, 
+        externalReference 
+    });
+    
+    if (collectionStatus || paymentId || preferenceId) {
+        console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
         
-        // Atualiza o status local imediatamente
-        await verificarStatusPro();
-        atualizarBadgePlano();
+        localStorage.removeItem('kayla_pro');
+        localStorage.removeItem('kayla_pro_key');
+        localStorage.removeItem('kayla_pro_expires');
+        localStorage.removeItem('kayla_pro_devices');
+        LIMITES.proAtivo = false;
         
-        // Se a UI tiver uma função de re-renderização, chame-a para mostrar o botão de ativar
-        if (typeof renderizarConteudo === 'function') renderizarConteudo();
+        toast('✅ Pagamento detectado! Verificando status...', 'success');
         
-        return true;
-    } catch(e) {
-        console.error('[Dispositivo] Erro na desativação:', e);
-        toast('Erro de conexão ao desativar.', 'error');
-        return false;
-    }
-}
-
-// 3. Forçar a ativação do dispositivo ATUAL (para usar após desativar um antigo)
-async function ativarDispositivoAtual() {
-    if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
-
-    try {
-        var resultado = await registrarDispositivoAtual();
-        
-        if (resultado === true) {
-            // Reavalia o status (o verificarStatusPro vai ver que agora tem vaga e destravar)
-            await verificarStatusPro();
-            atualizarBadgePlano();
+        setTimeout(async function() {
+            console.log('[Pagamento] Chamando verificarStatusPro()...');
             
-            if (!LIMITES.bloqueadoPorDispositivo) {
-                toast('✅ Dispositivo ativado com sucesso! Plano PRO liberado.', 'success');
-                if (typeof renderizarConteudo === 'function') renderizarConteudo();
-                return true;
+            await verificarStatusPro();
+            
+            if (LIMITES.proAtivo) {
+                toast('🎉 Plano PRO ativado com sucesso!', 'success');
+                atualizarBadgePlano();
+                
+                if (typeof mudarAba === 'function') {
+                    mudarAba('settings');
+                }
             } else {
-                toast('⚠️ Dispositivo registrado, mas o limite ainda não foi liberado.', 'warning');
-                return false;
+                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
+                
+                setTimeout(async function() {
+                    await verificarStatusPro();
+                    if (LIMITES.proAtivo) {
+                        toast('🎉 Plano PRO ativado!', 'success');
+                        atualizarBadgePlano();
+                        if (typeof mudarAba === 'function') {
+                            mudarAba('settings');
+                        }
+                    }
+                }, 10000);
             }
-        } else {
-            toast('❌ Não foi possível ativar este dispositivo. Verifique o limite.', 'error');
-            return false;
-        }
-    } catch(e) {
-        console.error('[Dispositivo] Erro ao ativar atual:', e);
-        toast('Erro de conexão ao ativar.', 'error');
-        return false;
+        }, 3000);
+        
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
 
-console.log('✅ Subscription.js carregado (Versão Final com Gerenciamento de Dispositivos e Correção do Erro 409)');
+if (typeof window !== 'undefined') {
+    verificarRetornoPagamento();
+    
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(verificarRetornoPagamento, 500);
+    });
+}
+
+// ========================================================================
+// ✅ CORREÇÃO DOS ERROS "is not defined": EXPOSIÇÃO GLOBAL DAS FUNÇÕES
+// ========================================================================
+window.mostrarPlanos = mostrarPlanos;
+window.selecionarPlano = selecionarPlano;
+window.confirmarPlano = confirmarPlano;
+window.selecionarMetodoPagamento = selecionarMetodoPagamento;
+window.pagarComMercadoPago = pagarComMercadoPago;
+window.mostrarQRCodePIX = mostrarQRCodePIX;
+window.copiarCodigoPIX = copiarCodigoPIX;
+window.verificarRetornoPagamento = verificarRetornoPagamento;
+
+window.mostrarInfoAssinatura = mostrarInfoAssinatura;
+window.gerenciarDispositivos = gerenciarDispositivos;
+window.fazerUpgradeDispositivos = fazerUpgradeDispositivos;
+window.iniciarCancelamentoDispositivos = iniciarCancelamentoDispositivos;
+window.iniciarRenovacao = iniciarRenovacao;
+window.confirmarUpgradeDispositivos = confirmarUpgradeDispositivos;
+window.processarUpgradeDispositivos = processarUpgradeDispositivos;
+window.cancelarDispositivos = cancelarDispositivos;
+window.confirmarRenovacao = confirmarRenovacao;
+
+console.log('✅ Payments.js carregado e funções exportadas globalmente');
