@@ -625,5 +625,287 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
     }
 }
 
-// (O resto das funções auxiliares: confirmarDevolucao, verPedido, carregarItensParaVerPedido, gerarPDFPedidoPorId, renderizarHistorico, verPedidosCliente, verDetalhesPedidoHistorico permanecem iguais ao original)
+// ============ HISTÓRICO ============
+
+function renderizarHistorico() {
+    var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
+    
+    // Contar itens devolvidos
+    var totalItensDevolvidos = 0;
+    pedidos.forEach(function(p) {
+        if (p.historico_devolucoes) {
+            try {
+                var historico = JSON.parse(p.historico_devolucoes);
+                if (historico) {
+                    historico.forEach(function(dev) {
+                        if (dev.itens) {
+                            dev.itens.forEach(function(item) {
+                                totalItensDevolvidos += (item.qtd || 0);
+                            });
+                        }
+                    });
+                }
+            } catch(e) {}
+        }
+    });
+    
+    var html = '<div class="card"><div class="card-title">📊 Resumo</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--success)">' + finalizados.length + '</div><div style="font-size:12px;color:var(--text2)">Vendas</div></div>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--warning)">' + totalItensDevolvidos + '</div><div style="font-size:12px;color:var(--text2)">Itens Devolvidos</div></div>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">' + pedidos.length + '</div><div style="font-size:12px;color:var(--text2)">Total Pedidos</div></div>';
+    html += '</div></div>';
+    
+    var totalGeral = 0;
+    finalizados.forEach(function(p) { totalGeral += parseFloat(p.total); });
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px"><div style="display:flex;justify-content:space-between"><span>Faturamento:</span><strong style="color:var(--accent);font-size:18px">R$ ' + totalGeral.toFixed(2).replace('.',',') + '</strong></div></div>';
+    
+    // Agrupar pedidos por cliente
+    var pedidosPorCliente = {};
+    pedidos.forEach(function(p) {
+        if (!pedidosPorCliente[p.cliente_nome]) {
+            pedidosPorCliente[p.cliente_nome] = [];
+        }
+        pedidosPorCliente[p.cliente_nome].push(p);
+    });
+    
+    html += '<div class="card"><div class="card-title">👥 Clientes</div>';
+    if (Object.keys(pedidosPorCliente).length === 0) {
+        html += '<div class="empty-state">Nenhum cliente</div>';
+    } else {
+        html += '<div class="item-list">';
+        
+        var clientesOrdenados = Object.keys(pedidosPorCliente).sort();
+        
+        clientesOrdenados.forEach(function(nomeCliente) {
+            var pedidosDoCliente = pedidosPorCliente[nomeCliente];
+            var totalItensCliente = 0;
+            var totalValorCliente = 0;
+            var totalDevolvidoCliente = 0;
+            
+            pedidosDoCliente.forEach(function(p) {
+                totalItensCliente += parseInt(p.itens) || 0;
+                totalValorCliente += parseFloat(p.total) || 0;
+                
+                if (p.historico_devolucoes) {
+                    try {
+                        var historico = JSON.parse(p.historico_devolucoes);
+                        if (historico) {
+                            historico.forEach(function(dev) {
+                                if (dev.itens) {
+                                    dev.itens.forEach(function(item) {
+                                        totalDevolvidoCliente += (item.qtd || 0);
+                                    });
+                                }
+                            });
+                        }
+                    } catch(e) {}
+                }
+            });
+            
+            // Card compacto do cliente - CLICÁVEL
+            html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\\'")+'\'" style="cursor:pointer">';
+            html += '<div class="item-info">';
+            html += '<div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + nomeCliente + '</div>';
+            html += '<div class="item-detail">' + pedidosDoCliente.length + ' pedido(s) • ' + totalItensCliente + ' itens • ' + totalDevolvidoCliente + ' devolvidos</div>';
+            html += '</div>';
+            html += '<div style="font-weight:700;color:var(--accent);font-size:16px">R$ ' + totalValorCliente.toFixed(2).replace('.',',') + '</div>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    return html;
+}
+
+function verPedidosCliente(nomeCliente) {
+    var pedidosDoCliente = pedidos.filter(function(p) { return p.cliente_nome === nomeCliente; });
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📋 Pedidos de ' + nomeCliente + '</div>';
+    html += '<div class="modal-sub">' + pedidosDoCliente.length + ' pedido(s)</div>';
+    
+    html += '<div class="item-list">';
+    pedidosDoCliente.forEach(function(p) {
+        var data = new Date(p.created_at).toLocaleDateString('pt-BR');
+        var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizado' ? 'var(--success)' : 'var(--error)');
+        var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
+        
+        html += '<div class="item-card" onclick="verDetalhesPedidoHistorico(\'' + p.id + '\')" style="cursor:pointer">';
+        html += '<div class="item-info">';
+        html += '<div class="item-name">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '</div>';
+        html += '<div class="item-detail">' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div>';
+        html += '</div>';
+        html += '<span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span>';
+        html += '</div>';
+    });
+    html += '</div>';
+    
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+async function verDetalhesPedidoHistorico(pedidoId) {
+    var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+    if (!pedido) return;
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📋 Detalhes do Pedido</div>';
+    html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
+    html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
+    
+    // Informações básicas
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+    html += '<div><div style="font-size:12px;color:var(--text2)">Data</div><div style="font-weight:600">' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div></div>';
+    html += '<div><div style="font-size:12px;color:var(--text2)">Status</div><div style="font-weight:600;color:' + (pedido.status === 'finalizado' ? 'var(--success)' : 'var(--error)') + '">' + pedido.status.toUpperCase() + '</div></div>';
+    html += '<div><div style="font-size:12px;color:var(--text2)">Total</div><div style="font-weight:700;color:var(--accent);font-size:18px">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</div></div>';
+    html += '<div><div style="font-size:12px;color:var(--text2)">Itens</div><div style="font-weight:600">' + pedido.itens + ' unidades</div></div>';
+    html += '</div></div>';
+    
+    // Carregar itens vendidos
+    var itensVendidos = [];
+    var historicoDevolucoes = [];
+    
+    if (isOnline && supabaseClient) {
+        try {
+            var result = await supabaseClient
+                .from('pedido_itens')
+                .select('*')
+                .eq('pedido_id', pedidoId)
+                .order('created_at', { ascending: true });
+            
+            if (result.data) {
+                itensVendidos = result.data;
+            }
+            
+            if (pedido.historico_devolucoes) {
+                historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+            }
+        } catch(e) {
+            console.error('Erro ao buscar detalhes:', e);
+        }
+    }
+    
+    // Calcular totais de devolução - USANDO CÓDIGO E NOME
+    var totalDevolvido = 0;
+    var itensDevolvidosMap = {};
+    
+    historicoDevolucoes.forEach(function(dev) {
+        if (dev.itens) {
+            dev.itens.forEach(function(itemDev) {
+                // Criar chave com código E nome para garantir correspondência
+                var codigoKey = 'cod_' + (itemDev.codigo || '');
+                var nomeKey = 'nome_' + (itemDev.nome || '').toLowerCase().trim();
+                var produtoIdKey = 'id_' + (itemDev.produto_id || '');
+                
+                if (!itensDevolvidosMap[codigoKey]) itensDevolvidosMap[codigoKey] = 0;
+                if (!itensDevolvidosMap[nomeKey]) itensDevolvidosMap[nomeKey] = 0;
+                if (!itensDevolvidosMap[produtoIdKey]) itensDevolvidosMap[produtoIdKey] = 0;
+                
+                itensDevolvidosMap[codigoKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[nomeKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[produtoIdKey] += (itemDev.qtd || 0);
+                
+                totalDevolvido += parseFloat(itemDev.total || 0);
+            });
+        }
+    });
+    
+    console.log('🔍 Itens devolvidos map:', itensDevolvidosMap);
+    
+    // Mostrar itens vendidos
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="margin-bottom:12px"><strong>📦 Itens Vendidos (' + itensVendidos.length + ')</strong></div>';
+    
+    if (itensVendidos.length === 0) {
+        html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item encontrado</p>';
+    } else {
+        html += '<div class="item-list">';
+        itensVendidos.forEach(function(item) {
+            var qtdVendida = parseInt(item.qtd) || 0;
+            
+            // Buscar quantidade devolvida usando múltiplas chaves
+            var qtdDevolvida = 0;
+            qtdDevolvida += (itensDevolvidosMap['cod_' + (item.codigo || '')] || 0);
+            qtdDevolvida += (itensDevolvidosMap['nome_' + (item.nome || '').toLowerCase().trim()] || 0);
+            qtdDevolvida += (itensDevolvidosMap['id_' + (item.produto_id || '')] || 0);
+            
+            // Evitar contar duplicado se as chaves forem iguais
+            if (qtdDevolvida > qtdVendida) qtdDevolvida = qtdVendida;
+            
+            var qtdRestante = qtdVendida - qtdDevolvida;
+            var itemTotal = parseFloat(item.total) || (parseFloat(item.preco) * qtdVendida) || 0;
+            
+            console.log('📊 Item:', item.nome, '| Vendido:', qtdVendida, '| Devolvido:', qtdDevolvida, '| Restante:', qtdRestante);
+            
+            html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
+            html += '<div style="font-weight:600;font-size:14px;margin-bottom:4px">' + (item.nome || 'Sem nome') + '</div>';
+            html += '<div style="font-size:12px;color:#a0a0b0;margin-bottom:8px">Código: ' + (item.codigo || 'N/A') + '</div>';
+            
+            html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">';
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Vendido</div>';
+            html += '<div style="font-weight:700;color:var(--success);font-size:16px">' + qtdVendida + 'x</div>';
+            html += '</div>';
+            
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Devolvido</div>';
+            html += '<div style="font-weight:700;color:' + (qtdDevolvida > 0 ? 'var(--warning)' : 'var(--text2)') + ';font-size:16px">' + qtdDevolvida + 'x</div>';
+            html += '</div>';
+            
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
+            html += '<div style="font-size:11px;color:var(--text2)">Restante</div>';
+            html += '<div style="font-weight:700;color:var(--accent);font-size:16px">' + qtdRestante + 'x</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            html += '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+            html += '<div style="font-size:12px;color:var(--text2)">R$ ' + parseFloat(item.preco || 0).toFixed(2).replace('.',',') + ' un</div>';
+            html += '<div style="font-weight:700;color:var(--accent)">R$ ' + itemTotal.toFixed(2).replace('.',',') + '</div>';
+            html += '</div>';
+            
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    // Mostrar histórico de devoluções
+    if (historicoDevolucoes.length > 0) {
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+        html += '<div style="margin-bottom:12px"><strong>↩️ Histórico de Devoluções (' + historicoDevolucoes.length + ' itens)</strong></div>';
+        historicoDevolucoes.forEach(function(dev, idx) {
+            var data = new Date(dev.data).toLocaleString('pt-BR');
+            html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
+            html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">' + data + (dev.motivo ? ' • ' + dev.motivo : '') + '</div>';
+            if (dev.itens) {
+                dev.itens.forEach(function(item) {
+                    html += '<div style="font-size:13px;margin:4px 0;color:var(--warning)">• ' + item.nome + ' (Qtd: ' + item.qtd + ' • R$ ' + parseFloat(item.total || 0).toFixed(2).replace('.',',') + ')</div>';
+                });
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    
+    // Resumo final
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Vendido:</span><strong style="color:var(--success)">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Devolvido:</span><strong style="color:var(--warning)">R$ ' + totalDevolvido.toFixed(2).replace('.',',') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid var(--border)"><span>Líquido:</span><strong style="color:var(--accent);font-size:18px">R$ ' + (parseFloat(pedido.total) - totalDevolvido).toFixed(2).replace('.',',') + '</strong></div>';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="gerarPDFPedidoPorId(\'' + pedidoId + '\')" style="margin-bottom:8px;width:100%">📄 Gerar PDF</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
 console.log('✅ Orders.js carregado (Modo Somente Leitura Ativo)');
