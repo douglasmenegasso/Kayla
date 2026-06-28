@@ -28,7 +28,7 @@ async function registrarDispositivoAtual() {
             return true;
         }
 
-        // ✅ CORREÇÃO DO ERRO 409: Buscar dispositivo MESMO QUE ESTEJA INATIVO (remove o .eq('ativo', true))
+        // 1. Verificar se o dispositivo já está registrado (mesmo que inativo)
         var { data: dispositivoExistente, error: buscaError } = await supabaseClient
             .from('dispositivos')
             .select('id, ativo')
@@ -52,8 +52,33 @@ async function registrarDispositivoAtual() {
                     .eq('id', dispositivoExistente.id);
                 return true;
             } else {
-                // ✅ Reativa o dispositivo que estava inativo, evitando o Erro 409 de chave duplicada!
-                console.log('[Dispositivo] Dispositivo já registrado mas INATIVO. Reativando...');
+                // ✅ CORREÇÃO CRUCIAL: Reativa o dispositivo e ATUALIZA O CONTADOR
+                console.log('[Dispositivo] Dispositivo já registrado mas INATIVO. Reativando e atualizando contador...');
+                
+                // Pega a contagem atual
+                var { count: dispositivosAtivosReais, error: countError } = await supabaseClient
+                    .from('dispositivos')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('assinatura_id', assinatura.id)
+                    .eq('ativo', true);
+
+                if (countError) {
+                    console.error('[Dispositivo] Erro ao contar dispositivos:', countError);
+                    dispositivosAtivosReais = 0;
+                }
+
+                var novaContagem = dispositivosAtivosReais + 1;
+
+                // Atualiza a assinatura com a nova contagem
+                await supabaseClient
+                    .from('assinaturas')
+                    .update({ 
+                        dispositivos_usados: novaContagem,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', assinatura.id);
+
+                // Reativa o dispositivo
                 await supabaseClient
                     .from('dispositivos')
                     .update({ 
@@ -64,11 +89,14 @@ async function registrarDispositivoAtual() {
                         user_agent: navigator.userAgent
                     })
                     .eq('id', dispositivoExistente.id);
+
+                localStorage.setItem('kayla_pro_devices', novaContagem + '/' + assinatura.dispositivos_max);
+                console.log('[Dispositivo] ✅ Dispositivo reativado e contador atualizado para ' + novaContagem);
                 return true;
             }
         }
 
-        // ✅ CORREÇÃO: Contar dispositivos ativos REAIS no banco (não confiar no campo dispositivos_usados)
+        // ✅ CORREÇÃO: Contar dispositivos ativos REAIS no banco
         var { count: dispositivosAtivosReais, error: countError } = await supabaseClient
             .from('dispositivos')
             .select('id', { count: 'exact', head: true })
@@ -199,9 +227,6 @@ async function verificarStatusPro() {
             localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
             localStorage.setItem('kayla_pro_blocked', 'true');
             
-            // Exibir o aviso para o usuário (será chamado pela UI)
-            // mostrarAvisoLimiteDispositivos(); <-- Pode ser chamado onde for verificado o estado
-            
             return true;
         }
         
@@ -229,7 +254,6 @@ function atualizarBadgePlano() {
     if (!badge) return;
     
     if (LIMITES.bloqueadoPorDispositivo) {
-        // Badge especial para modo apenas leitura
         badge.textContent = 'PRO (LEITURA)';
         badge.className = 'badge-pro badge-blocked';
     } else if (LIMITES.proAtivo) {
@@ -283,11 +307,7 @@ async function getAssinaturaAtiva() {
 async function cancelarAssinatura() {
     if (!currentUser) { toast('Faça login primeiro.', 'error'); return; }
     
-    // 🚫 Bloqueio por dispositivo
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
+    // ✅ CORREÇÃO: Removido o bloqueio por dispositivo. Usuário pode cancelar sempre!
 
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) { toast('Você não possui uma assinatura PRO ativa.', 'error'); return; }
@@ -346,12 +366,8 @@ async function cancelarAssinatura() {
 async function excluirConta() {
     if (!currentUser || !supabaseClient) { toast('Nenhum usuário logado.', 'error'); return; }
     
-    // 🚫 Bloqueio por dispositivo
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    
+    // ✅ CORREÇÃO: Removido o bloqueio por dispositivo. Usuário pode excluir sempre!
+
     var resumoTexto = '';
     try {
         var { data: creditos } = await supabaseClient
@@ -596,7 +612,6 @@ if (typeof window !== 'undefined') {
 
 // ============ MODAIS DE AVISO ============
 
-// Aviso original para limite de itens do GRÁTIS
 function mostrarAvisoLimite(tipo) {
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('modal-body').innerHTML = '';
@@ -618,7 +633,6 @@ function mostrarAvisoLimite(tipo) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
-// NOVO: Aviso específico para Limite de Dispositivos (Modo Somente Leitura)
 function mostrarAvisoLimiteDispositivos() {
     document.getElementById('modal-overlay').classList.remove('show');
     document.getElementById('modal-body').innerHTML = '';
@@ -644,12 +658,8 @@ function mostrarAvisoLimiteDispositivos() {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ============ LISTAR DISPOSITIVOS (GERENCIAMENTO) ============
 
-// ====================================================================
-// 🆕 NOVAS FUNÇÕES PARA GERENCIAR DISPOSITIVOS (CHAMADAS PELA CONFIG)
-// ====================================================================
-
-// 1. Listar todos os dispositivos ativos do usuário
 async function listarDispositivosAtivos() {
     if (!currentUser) return [];
     try {
@@ -674,7 +684,6 @@ async function listarDispositivosAtivos() {
     }
 }
 
-// 2. Desativar um dispositivo específico
 async function desativarDispositivo(deviceId) {
     if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
     if (!deviceId) { toast('ID do dispositivo inválido.', 'error'); return false; }
@@ -694,12 +703,8 @@ async function desativarDispositivo(deviceId) {
 
         toast('✅ Dispositivo removido com sucesso!', 'success');
         
-        // Atualiza o status local imediatamente
         await verificarStatusPro();
         atualizarBadgePlano();
-        
-        // Se a UI tiver uma função de re-renderização, chame-a para mostrar o botão de ativar
-        if (typeof renderizarConteudo === 'function') renderizarConteudo();
         
         return true;
     } catch(e) {
@@ -709,7 +714,6 @@ async function desativarDispositivo(deviceId) {
     }
 }
 
-// 3. Forçar a ativação do dispositivo ATUAL (para usar após desativar um antigo)
 async function ativarDispositivoAtual() {
     if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
 
@@ -717,13 +721,11 @@ async function ativarDispositivoAtual() {
         var resultado = await registrarDispositivoAtual();
         
         if (resultado === true) {
-            // Reavalia o status (o verificarStatusPro vai ver que agora tem vaga e destravar)
             await verificarStatusPro();
             atualizarBadgePlano();
             
             if (!LIMITES.bloqueadoPorDispositivo) {
                 toast('✅ Dispositivo ativado com sucesso! Plano PRO liberado.', 'success');
-                if (typeof renderizarConteudo === 'function') renderizarConteudo();
                 return true;
             } else {
                 toast('⚠️ Dispositivo registrado, mas o limite ainda não foi liberado.', 'warning');
@@ -740,4 +742,4 @@ async function ativarDispositivoAtual() {
     }
 }
 
-console.log('✅ Subscription.js carregado (Versão Final com Gerenciamento de Dispositivos e Correção do Erro 409)');
+console.log('✅ Subscription.js carregado (Com gerenciamento de dispositivos e remoção de bloqueio em ações críticas)');
