@@ -28,13 +28,12 @@ async function registrarDispositivoAtual() {
             return true;
         }
 
-        // 1. Verificar se o dispositivo já está registrado e ativo
+        // ✅ CORREÇÃO DO ERRO 409: Buscar dispositivo MESMO QUE ESTEJA INATIVO (remove o .eq('ativo', true))
         var { data: dispositivoExistente, error: buscaError } = await supabaseClient
             .from('dispositivos')
-            .select('id')
+            .select('id, ativo')
             .eq('assinatura_id', assinatura.id)
             .eq('device_id', deviceId)
-            .eq('ativo', true)
             .limit(1)
             .maybeSingle();
 
@@ -43,13 +42,30 @@ async function registrarDispositivoAtual() {
             return true;
         }
 
+        // Se encontrou o registro (mesmo que inativo)
         if (dispositivoExistente) {
-            console.log('[Dispositivo] Dispositivo já registrado, atualizando último acesso');
-            await supabaseClient
-                .from('dispositivos')
-                .update({ ultimo_acesso: new Date().toISOString() })
-                .eq('id', dispositivoExistente.id);
-            return true;
+            if (dispositivoExistente.ativo === true) {
+                console.log('[Dispositivo] Dispositivo já registrado e ativo, atualizando último acesso');
+                await supabaseClient
+                    .from('dispositivos')
+                    .update({ ultimo_acesso: new Date().toISOString() })
+                    .eq('id', dispositivoExistente.id);
+                return true;
+            } else {
+                // ✅ Reativa o dispositivo que estava inativo, evitando o Erro 409 de chave duplicada!
+                console.log('[Dispositivo] Dispositivo já registrado mas INATIVO. Reativando...');
+                await supabaseClient
+                    .from('dispositivos')
+                    .update({ 
+                        ativo: true, 
+                        ultimo_acesso: new Date().toISOString(),
+                        device_name: deviceName,
+                        device_type: deviceType,
+                        user_agent: navigator.userAgent
+                    })
+                    .eq('id', dispositivoExistente.id);
+                return true;
+            }
         }
 
         // ✅ CORREÇÃO: Contar dispositivos ativos REAIS no banco (não confiar no campo dispositivos_usados)
@@ -724,4 +740,4 @@ async function ativarDispositivoAtual() {
     }
 }
 
-console.log('✅ Subscription.js carregado (Versão Final com Gerenciamento de Dispositivos)');
+console.log('✅ Subscription.js carregado (Versão Final com Gerenciamento de Dispositivos e Correção do Erro 409)');
