@@ -862,16 +862,15 @@ async function gerenciarDispositivos() {
     }
     
     try {
-        // ✅ Usa a função criada no config.js que já possui a lógica de renderizar o botão "Ativar este dispositivo" automaticamente
         var dispositivosHtml = await gerarHtmlListaDispositivos();
         
         var html = '<div class="modal-handle"></div>';
         html += '<div class="modal-title">📱 Dispositivos</div>';
+        // ✅ CORREÇÃO 3: Título dinâmico com dados atualizados da assinatura
         html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
         
         html += dispositivosHtml;
         
-        // Botões auxiliares
         if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Adicionar Dispositivo</button>';
         } else {
