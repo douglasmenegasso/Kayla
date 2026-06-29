@@ -66,6 +66,10 @@ async function desativarDispositivo(deviceId) {
         if (typeof verificarStatusPro === 'function') await verificarStatusPro();
         var modalBody = document.getElementById('modal-body');
         if (modalBody) modalBody.innerHTML = await gerarHtmlListaDispositivos();
+        
+        // CORREÇÃO: Forçar atualização da tela de configurações para refletir mudanças Pro/Grátis
+        if (typeof mudarAba === 'function') mudarAba('settings');
+        
         return true;
     } catch(e) { return false; }
 }
@@ -79,6 +83,10 @@ async function ativarDispositivoAtual() {
                 if (typeof verificarStatusPro === 'function') await verificarStatusPro();
                 var modalBody = document.getElementById('modal-body');
                 if (modalBody) modalBody.innerHTML = await gerarHtmlListaDispositivos();
+                
+                // CORREÇÃO: Forçar atualização da tela de configurações para refletir mudanças Pro/Grátis
+                if (typeof mudarAba === 'function') mudarAba('settings');
+                
                 toast('✅ Dispositivo ativado!', 'success');
                 return true;
             }
@@ -152,3 +160,4 @@ async function gerarHtmlListaDispositivos() {
 }
 
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas');
+// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-28
