@@ -324,7 +324,11 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     toast('Processando...', 'warning');
     
     try {
-        // ✅ USAR PHP (como no app de teste que funciona)
+        console.log('[MP] Iniciando pagamento...');
+        console.log('[MP] Plano:', planoId);
+        console.log('[MP] Valor:', valor);
+        console.log('[MP] Método:', metodoPagamento);
+        
         var response = await fetch('app/api/criar-pagamento.php', {
             method: 'POST',
             headers: {
@@ -341,27 +345,41 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
             })
         });
         
-        var preference = await response.json();
-        console.log('[MP] Resposta:', preference);
+        console.log('[MP] Status HTTP:', response.status);
+        console.log('[MP] Content-Type:', response.headers.get('content-type'));
         
-        if (preference.id && preference.init_point) {
-            localStorage.setItem('kayla_pending_payment', JSON.stringify({
-                preference_id: preference.id,
-                plano_id: planoId,
-                num_dispositivos: numDispositivos,
-                valor: valor,
-                metodo: metodoPagamento
-            }));
+        // ✅ LER A RESPOSTA COMO TEXTO PRIMEIRO
+        var responseText = await response.text();
+        console.log('[MP] Resposta bruta:', responseText);
+        
+        // ✅ TENTAR PARSEAR COMO JSON
+        try {
+            var preference = JSON.parse(responseText);
             
-            console.log('[MP] Redirecionando:', preference.init_point);
-            window.location.href = preference.init_point;
-        } else {
-            console.error('[MP] Erro:', preference);
-            toast('Erro: ' + (preference.message || 'Tente novamente'), 'error');
+            if (preference.id && preference.init_point) {
+                localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                    preference_id: preference.id,
+                    plano_id: planoId,
+                    num_dispositivos: numDispositivos,
+                    valor: valor,
+                    metodo: metodoPagamento
+                }));
+                
+                console.log('[MP] ✅ Redirecionando para:', preference.init_point);
+                window.location.href = preference.init_point;
+            } else {
+                console.error('[MP] ❌ Erro na resposta:', preference);
+                toast('Erro: ' + (preference.message || 'Resposta inválida do servidor'), 'error');
+            }
+            
+        } catch (parseError) {
+            console.error('[MP] ❌ Erro ao fazer parse do JSON:', parseError);
+            console.error('[MP] ❌ Resposta recebida:', responseText.substring(0, 500));
+            toast('Erro no servidor. Verifique o console para detalhes.', 'error');
         }
         
     } catch(error) {
-        console.error('[MP] Erro:', error);
+        console.error('[MP] ❌ Erro na requisição:', error);
         toast('Erro de conexão: ' + error.message, 'error');
     }
 }
