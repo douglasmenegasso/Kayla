@@ -108,17 +108,20 @@ async function desativarDispositivo(deviceId) {
 
         toast('✅ Dispositivo removido com sucesso!', 'success');
         
-        // Atualiza o status local imediatamente
+        // 1. Atualizar status PRO e contador local imediatamente
         if (typeof verificarStatusPro === 'function') {
             await verificarStatusPro();
         }
-        if (typeof atualizarBadgePlano === 'function') {
-            atualizarBadgePlano();
+        
+        // 2. RE-RENDERIZAR A LISTA NA HORA (Sem fechar o modal)
+        var modalBody = document.getElementById('modal-body');
+        if (modalBody) {
+            modalBody.innerHTML = await gerarHtmlListaDispositivos();
         }
         
-        // Re-renderiza a UI de dispositivos se existir
-        if (typeof renderizarListaDispositivosConfig === 'function') {
-            renderizarListaDispositivosConfig();
+        // Atualizar badge se existir
+        if (typeof atualizarBadgePlano === 'function') {
+            atualizarBadgePlano();
         }
         
         return true;
@@ -134,7 +137,6 @@ async function ativarDispositivoAtual() {
     if (!currentUser) { toast('Usuário não logado.', 'error'); return false; }
 
     try {
-        // Verifica se a função registrarDispositivoAtual existe no escopo
         if (typeof registrarDispositivoAtual === 'function') {
             var resultado = await registrarDispositivoAtual();
             
@@ -143,27 +145,25 @@ async function ativarDispositivoAtual() {
                 if (typeof verificarStatusPro === 'function') {
                     await verificarStatusPro();
                 }
+                
+                // RE-RENDERIZAR A LISTA NA HORA
+                var modalBody = document.getElementById('modal-body');
+                if (modalBody) {
+                    modalBody.innerHTML = await gerarHtmlListaDispositivos();
+                }
+
                 if (typeof atualizarBadgePlano === 'function') {
                     atualizarBadgePlano();
                 }
                 
-                // Verifica se desbloqueou e renderiza novamente
-                if (window.LIMITES && !window.LIMITES.bloqueadoPorDispositivo) {
-                    toast('✅ Dispositivo ativado com sucesso! Plano PRO liberado.', 'success');
-                    if (typeof renderizarListaDispositivosConfig === 'function') {
-                        renderizarListaDispositivosConfig();
-                    }
-                    return true;
-                } else {
-                    toast('⚠️ Dispositivo registrado, mas o limite ainda não foi liberado.', 'warning');
-                    return false;
-                }
+                toast('✅ Dispositivo ativado com sucesso!', 'success');
+                return true;
             } else {
                 toast('❌ Não foi possível ativar este dispositivo. Verifique o limite.', 'error');
                 return false;
             }
         } else {
-            console.warn('[AtivarDispositivo] Função registrarDispositivoAtual não encontrada. Verifique se subscription.js foi carregado.');
+            console.warn('[AtivarDispositivo] Função registrarDispositivoAtual não encontrada.');
             toast('Erro interno: função de registro não encontrada.', 'error');
             return false;
         }
@@ -195,24 +195,27 @@ async function gerarHtmlListaDispositivos() {
     var dispositivos = await listarDispositivosAtivos();
     var assinatura = await getAssinaturaAtiva();
     
-    var html = '';
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📱 Dispositivos</div>';
 
     if (!assinatura) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhuma assinatura PRO ativa encontrada.</div>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:12px">Fechar</button>';
         return html;
     }
 
     var maxDevices = assinatura.dispositivos_max;
     var currentDeviceId = getDeviceId();
-    // Verifica se o dispositivo que está usando o app agora já está ativo na lista
     var isCurrentDeviceActive = dispositivos.some(function(d) {
         return d.device_id === currentDeviceId;
     });
 
+    html += '<div style="text-align:center; margin-bottom:15px; font-weight:600; color:var(--accent);">' + dispositivos.length + ' de ' + maxDevices + ' dispositivos em uso</div>';
+
     if (dispositivos.length === 0) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhum dispositivo ativo encontrado.</div>';
     } else {
-        html += '<div style="margin-bottom:10px; font-size:13px; color:var(--text2);">Dispositivos ativos: ' + dispositivos.length + '</div>';
+        html += '<div class="item-list">';
         for (var i = 0; i < dispositivos.length; i++) {
             var d = dispositivos[i];
             var dataAcesso = new Date(d.ultimo_acesso).toLocaleString('pt-BR');
@@ -228,28 +231,18 @@ async function gerarHtmlListaDispositivos() {
                 </div>
             `;
         }
+        html += '</div>';
     }
 
-    // ✅ Lógica CORRIGIDA: Mostra o botão se o dispositivo ATUAL não estiver ativo (independente da flag de bloqueio)
-    if (!isCurrentDeviceActive && dispositivos.length < maxDevices) {
+    if (!isCurrentDeviceActive) {
+        var statusColor = dispositivos.length < maxDevices ? 'var(--success)' : 'var(--warning)';
+        var statusMsg = dispositivos.length < maxDevices ? 'Este dispositivo ainda não está ativo.' : 'Você removeu um dispositivo antigo ou atingiu o limite.';
+        
         html += `
-            <div style="margin-top:20px; padding:20px; text-align:center; background:var(--bg3); border-radius:8px; border:1px dashed var(--success);">
+            <div style="margin-top:20px; padding:20px; text-align:center; background:var(--bg3); border-radius:8px; border:1px dashed ${statusColor};">
                 <p style="margin-bottom:12px; color:var(--text2); font-size:14px;">
-                    <strong>Este dispositivo ainda não está ativo.</strong><br>
-                    Registre-o agora para usar o plano PRO neste navegador.
-                </p>
-                <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%;">
-                    📱 Ativar este dispositivo
-                </button>
-            </div>
-        `;
-    } else if (!isCurrentDeviceActive && dispositivos.length >= maxDevices) {
-        // Aviso específico caso o usuário tenha removido o único dispositivo, mas não tem vaga
-        html += `
-            <div style="margin-top:20px; padding:20px; text-align:center; background:var(--bg3); border-radius:8px; border:1px dashed var(--warning);">
-                <p style="margin-bottom:12px; color:var(--text2); font-size:14px;">
-                    Você removeu um dispositivo antigo. <br>
-                    <strong>Deseja ativar este computador/celular agora?</strong>
+                    <strong>${statusMsg}</strong><br>
+                    Deseja ativar este computador/celular agora?
                 </p>
                 <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%;">
                     📱 Ativar este dispositivo
@@ -258,8 +251,8 @@ async function gerarHtmlListaDispositivos() {
         `;
     }
 
+    html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:12px; width:100%">Fechar</button>';
     return html;
 }
-
 
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas e funções de dispositivo integradas');

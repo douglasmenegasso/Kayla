@@ -6,7 +6,7 @@ window.LIMITES = {
     maxClientes: 3,
     maxProdutos: 10,
     maxVendas: 3,
-    bloqueadoPorDispositivo: false // NOVO: Flag para modo somente leitura
+    bloqueadoPorDispositivo: false // Mantido para compatibilidade, mas não usado na lógica de bloqueio
 };
 
 // ============ FUNÇÃO DE REGISTRO DE DISPOSITIVO ============
@@ -170,75 +170,61 @@ async function verificarStatusPro() {
             .maybeSingle();
         
         if (result.error || !result.data) {
-            LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
+            resetarStatusLocal();
             return false;
         }
         
         var assinatura = result.data;
         
         if (assinatura.data_fim && new Date(assinatura.data_fim) < new Date()) {
-            LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
-            
+            resetarStatusLocal();
             await supabaseClient
                 .from('assinaturas')
                 .update({ status: 'expirada' })
                 .eq('id', assinatura.id);
-            
             return false;
         }
 
-        var { count: dispositivosAtivos, error: countError } = await supabaseClient
+        // ✅ LÓGICA SIMPLIFICADA: Verificar se o dispositivo ATUAL está na lista de ativos
+        var { data: ativos, error: countError } = await supabaseClient
             .from('dispositivos')
-            .select('id', { count: 'exact', head: true })
+            .select('device_id')
             .eq('assinatura_id', assinatura.id)
             .eq('ativo', true);
 
         if (countError) {
             console.error('[Pro] Erro ao contar dispositivos:', countError);
-            dispositivosAtivos = 0;
+            ativos = [];
         }
 
-        console.log('[Pro] Dispositivos ativos:', dispositivosAtivos, '/', assinatura.dispositivos_max);
+        var dispositivosAtivosCount = ativos ? ativos.length : 0;
+        var meuId = getDeviceId();
+        var estouAtivo = ativos ? ativos.some(function(d) { return d.device_id === meuId; }) : false;
 
-        // 🔒 NOVA LÓGICA: Se atingiu o limite, NÃO rebaixar para GRÁTIS. Ativar modo SOMENTE LEITURA.
-        if (dispositivosAtivos >= assinatura.dispositivos_max) {
-            console.warn('[Pro] ⚠️ LIMITE DE DISPOSITIVOS ATINGIDO! (' + dispositivosAtivos + '/' + assinatura.dispositivos_max + ')');
-            console.warn('[Pro] 🔒 Modo SOMENTE LEITURA ativado neste dispositivo. Ações de escrita bloqueadas.');
+        console.log('[Pro] Dispositivos ativos:', dispositivosAtivosCount, '/', assinatura.dispositivos_max, '| Este dispositivo ativo:', estouAtivo);
+
+        // Se NÃO estou na lista de ativos, sou GRÁTIS (sem modo leitura, apenas rebaixado)
+        if (!estouAtivo) {
+            console.warn('[Pro] Este dispositivo não está ativado. Operando em modo GRÁTIS.');
+            LIMITES.proAtivo = false;
+            LIMITES.bloqueadoPorDispositivo = false;
             
-            // Manter como PRO (para visualizar dados), mas bloquear ações
-            LIMITES.proAtivo = true;
-            LIMITES.bloqueadoPorDispositivo = true;
-            
-            localStorage.setItem('kayla_pro', 'true');
-            localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
-            localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-            localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
-            localStorage.setItem('kayla_pro_blocked', 'true');
-            
-            return true;
+            localStorage.setItem('kayla_pro', 'false');
+            localStorage.setItem('kayla_pro_devices', dispositivosAtivosCount + '/' + assinatura.dispositivos_max);
+            localStorage.removeItem('kayla_pro_blocked');
+            return false;
         }
         
+        // Se estou ativo, configurar PRO normalmente
         LIMITES.proAtivo = true;
         LIMITES.bloqueadoPorDispositivo = false;
         localStorage.setItem('kayla_pro', 'true');
         localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
         localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-        localStorage.setItem('kayla_pro_devices', dispositivosAtivos + '/' + assinatura.dispositivos_max);
+        localStorage.setItem('kayla_pro_devices', dispositivosAtivosCount + '/' + assinatura.dispositivos_max);
         localStorage.removeItem('kayla_pro_blocked');
         
-        console.log('[Pro] ✅ PRO ativado! Dispositivos:', dispositivosAtivos + '/' + assinatura.dispositivos_max);
+        console.log('[Pro] ✅ PRO ativado! Dispositivos:', dispositivosAtivosCount + '/' + assinatura.dispositivos_max);
         return true;
         
     } catch(e) {
@@ -247,16 +233,23 @@ async function verificarStatusPro() {
     }
 }
 
+function resetarStatusLocal() {
+    LIMITES.proAtivo = false;
+    LIMITES.bloqueadoPorDispositivo = false;
+    localStorage.removeItem('kayla_pro');
+    localStorage.removeItem('kayla_pro_key');
+    localStorage.removeItem('kayla_pro_expires');
+    localStorage.removeItem('kayla_pro_devices');
+    localStorage.removeItem('kayla_pro_blocked');
+}
+
 // ============ FUNÇÕES AUXILIARES ============
 
 function atualizarBadgePlano() {
     var badge = document.getElementById('plan-badge');
     if (!badge) return;
     
-    if (LIMITES.bloqueadoPorDispositivo) {
-        badge.textContent = 'PRO (LEITURA)';
-        badge.className = 'badge-pro badge-blocked';
-    } else if (LIMITES.proAtivo) {
+    if (LIMITES.proAtivo) {
         badge.textContent = 'PRO';
         badge.className = 'badge-pro';
     } else {
@@ -307,8 +300,6 @@ async function getAssinaturaAtiva() {
 async function cancelarAssinatura() {
     if (!currentUser) { toast('Faça login primeiro.', 'error'); return; }
     
-    // ✅ CORREÇÃO: Removido o bloqueio por dispositivo. Usuário pode cancelar sempre!
-
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) { toast('Você não possui uma assinatura PRO ativa.', 'error'); return; }
 
@@ -344,13 +335,7 @@ async function cancelarAssinatura() {
         try {
             await supabaseClient.from('assinaturas').update({ status: 'cancelada' }).eq('id', assinatura.id);
             await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
-            localStorage.removeItem('kayla_pro');
-            localStorage.removeItem('kayla_pro_key');
-            localStorage.removeItem('kayla_pro_expires');
-            localStorage.removeItem('kayla_pro_devices');
-            localStorage.removeItem('kayla_pro_blocked');
-            LIMITES.proAtivo = false;
-            LIMITES.bloqueadoPorDispositivo = false;
+            resetarStatusLocal();
             atualizarBadgePlano();
             if (typeof mudarAba === 'function') mudarAba('settings');
             toast('✅ Assinatura PRO cancelada com sucesso!', 'success');
@@ -360,306 +345,3 @@ async function cancelarAssinatura() {
         }
     });
 }
-
-// ============ EXCLUSÃO DEFINITIVA DE CONTA (LGPD) ============
-
-async function excluirConta() {
-    if (!currentUser || !supabaseClient) { toast('Nenhum usuário logado.', 'error'); return; }
-    
-    // ✅ CORREÇÃO: Removido o bloqueio por dispositivo. Usuário pode excluir sempre!
-
-    var resumoTexto = '';
-    try {
-        var { data: creditos } = await supabaseClient
-            .from('creditos')
-            .select('valor')
-            .eq('user_id', currentUser.id)
-            .eq('utilizado', false);
-        var totalCredito = 0;
-        if (creditos && creditos.length > 0) {
-            creditos.forEach(function(cred) { totalCredito += parseFloat(cred.valor || 0); });
-        }
-        var assinatura = await getAssinaturaAtiva();
-        var dispositivosAtivos = 0;
-        if (assinatura) {
-            var { count: deviceCount } = await supabaseClient
-                .from('dispositivos')
-                .select('id', { count: 'exact', head: true })
-                .eq('assinatura_id', assinatura.id)
-                .eq('ativo', true);
-            dispositivosAtivos = deviceCount || 0;
-        }
-        if (totalCredito > 0 || assinatura || dispositivosAtivos > 0) {
-            resumoTexto += '\n\n🔍 Dados encontrados na sua conta:';
-            if (totalCredito > 0) resumoTexto += '\n   💰 Créditos: R$ ' + totalCredito.toFixed(2).replace('.', ',');
-            if (assinatura) resumoTexto += '\n   💎 Plano PRO: Ativo (válido até ' + new Date(assinatura.data_fim).toLocaleDateString('pt-BR') + ')';
-            if (dispositivosAtivos > 0) resumoTexto += '\n   📱 Dispositivos ativos: ' + dispositivosAtivos;
-            resumoTexto += '\n\nTodos esses dados serão excluídos permanentemente.';
-        }
-    } catch (e) { console.warn('Erro ao buscar dados para o resumo da exclusão:', e); }
-
-    confirmar('Excluir Conta', 'Ao confirmar, TODOS os seus dados (cadastro, clientes, produtos, pedidos e assinaturas) serão EXCLUÍDOS PERMANENTEMENTE.\n\nEsta ação é IRREVERSÍVEL de acordo com a LGPD.' + resumoTexto, async function(confirmou1) {
-        if (!confirmou1) return;
-
-        confirmar('Última Chance!', 'Você tem certeza absoluta que deseja deletar sua conta?\n\nNão há como recuperar essas informações.', async function(confirmou2) {
-            if (!confirmou2) return;
-            try {
-                var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/delete-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
-                    body: JSON.stringify({ userId: currentUser.id })
-                });
-                var resultado = await response.json();
-                
-                if (resultado.success) {
-                    await supabaseClient.auth.signOut();
-                    localStorage.clear();
-                    currentUser = null;
-                    LIMITES.proAtivo = false;
-                    LIMITES.bloqueadoPorDispositivo = false;
-                    mostrarTelaSelecao();
-                    toast('✅ Dados excluídos com sucesso!', 'success');
-                } else {
-                    toast('❌ Erro: ' + resultado.error, 'error');
-                }
-            } catch (e) {
-                toast('Erro de conexão.', 'error');
-            }
-        });
-    });
-}
-
-// ============ BACKUP E RESTAURAÇÃO ============
-
-function exportarBackup() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    try {
-        var backup = {
-            versao: '5.4.0',
-            data: new Date().toISOString(),
-            clientes: window.clientes || [],
-            produtos: window.produtos || [],
-            vendas: window.vendas || [],
-            pedidos: window.pedidos || [],
-            config: window.configEmpresa || {}
-        };
-        var json = JSON.stringify(backup, null, 2);
-        var blob = new Blob([json], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'kayla-backup-' + new Date().toISOString().split('T')[0] + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('✅ Backup exportado com sucesso!', 'success');
-    } catch(e) {
-        console.error('[Backup] Erro ao exportar:', e);
-        toast('Erro ao exportar backup', 'error');
-    }
-}
-
-function importarBackup() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                var backup = JSON.parse(event.target.result);
-                if (!backup.versao || !backup.data) {
-                    toast('Arquivo de backup inválido', 'error');
-                    return;
-                }
-                var confirmar = confirm('⚠️ ATENÇÃO!\n\nIsso irá SUBSTITUIR todos os dados atuais.\n\nDeseja continuar?');
-                if (!confirmar) return;
-                if (backup.clientes) window.clientes = backup.clientes;
-                if (backup.produtos) window.produtos = backup.produtos;
-                if (backup.vendas) window.vendas = backup.vendas;
-                if (backup.pedidos) window.pedidos = backup.pedidos;
-                if (backup.config) window.configEmpresa = backup.config;
-                if (window.clientes) localStorage.setItem('kayla_clientes', JSON.stringify(window.clientes));
-                if (window.produtos) localStorage.setItem('kayla_produtos', JSON.stringify(window.produtos));
-                if (window.vendas) localStorage.setItem('kayla_vendas', JSON.stringify(window.vendas));
-                if (window.pedidos) localStorage.setItem('kayla_pedidos', JSON.stringify(window.pedidos));
-                if (window.configEmpresa) localStorage.setItem('kayla_config_empresa', JSON.stringify(window.configEmpresa));
-                toast('✅ Backup importado com sucesso!', 'success');
-                if (typeof renderizarConteudo === 'function') {
-                    renderizarConteudo();
-                }
-            } catch(err) {
-                console.error('[Backup] Erro ao importar:', err);
-                toast('Erro ao importar backup', 'error');
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-// ============ CONFIGURAÇÃO DA EMPRESA ============
-
-function configurarEmpresa() {
-    // 🚫 Verifica bloqueio por dispositivo OU falta de PRO
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        return;
-    }
-    if (!LIMITES.proAtivo) {
-        toast('Recurso disponível apenas no plano PRO', 'error');
-        return;
-    }
-    var config = window.configEmpresa || {};
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">⚙️ Dados da Empresa</div>';
-    html += '<div class="modal-sub">Configure as informações que aparecerão nos recibos</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Nome da Empresa</label>';
-    html += '<input type="text" class="form-input" id="emp-nome" value="' + (config.nome || '') + '" placeholder="Sua Empresa Ltda">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">CNPJ</label>';
-    html += '<input type="text" class="form-input" id="emp-cnpj" value="' + (config.cnpj || '') + '" placeholder="00.000.000/0000-00">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Telefone</label>';
-    html += '<input type="text" class="form-input" id="emp-telefone" value="' + (config.telefone || '') + '" placeholder="(00) 00000-0000">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Endereço</label>';
-    html += '<input type="text" class="form-input" id="emp-endereco" value="' + (config.endereco || '') + '" placeholder="Rua, Número - Cidade/UF">';
-    html += '</div>';
-    html += '<div class="form-group">';
-    html += '<label class="form-label">Email</label>';
-    html += '<input type="email" class="form-input" id="emp-email" value="' + (config.email || '') + '" placeholder="contato@empresa.com">';
-    html += '</div>';
-    html += '<button class="btn btn-primary" onclick="salvarConfigEmpresa()" style="width:100%;margin-bottom:8px"> Salvar Configurações</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-function salvarConfigEmpresa() {
-    // 🚫 Bloqueio duplo por segurança
-    if (LIMITES.bloqueadoPorDispositivo) {
-        toast('Ação bloqueada. Limite de dispositivos atingido.', 'error');
-        fecharModal();
-        return;
-    }
-    var config = {
-        nome: document.getElementById('emp-nome').value.trim(),
-        cnpj: document.getElementById('emp-cnpj').value.trim(),
-        telefone: document.getElementById('emp-telefone').value.trim(),
-        endereco: document.getElementById('emp-endereco').value.trim(),
-        email: document.getElementById('emp-email').value.trim()
-    };
-    window.configEmpresa = config;
-    localStorage.setItem('kayla_config_empresa', JSON.stringify(config));
-    toast('✅ Configurações salvas!', 'success');
-    fecharModal();
-}
-
-// ============ SUPORTE WHATSAPP ============
-
-function abrirSuporteWhatsApp() {
-    var mensagem = 'Olá! Preciso de suporte com o Kayla App.';
-    if (currentUser) {
-        mensagem += '\n\nUsuário: ' + currentUser.email;
-        mensagem += '\nPlano: ' + (LIMITES.proAtivo ? 'PRO' : 'GRÁTIS');
-        mensagem += '\nVersão: 5.4.0';
-    }
-    var url = 'https://wa.me/5541996427444?text=' + encodeURIComponent(mensagem);
-    window.open(url, '_blank');
-}
-
-// ============ INICIALIZAÇÃO ============
-
-function carregarConfigEmpresa() {
-    try {
-        var config = localStorage.getItem('kayla_config_empresa');
-        if (config) {
-            window.configEmpresa = JSON.parse(config);
-        } else {
-            window.configEmpresa = {};
-        }
-    } catch(e) {
-        console.error('[Config] Erro ao carregar:', e);
-        window.configEmpresa = {};
-    }
-}
-if (typeof window !== 'undefined') {
-    carregarConfigEmpresa();
-}
-
-// ============ MODAIS DE AVISO ============
-
-function mostrarAvisoLimite(tipo) {
-    document.getElementById('modal-overlay').classList.remove('show');
-    document.getElementById('modal-body').innerHTML = '';
-
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">🔒 Limite Atingido</div>';
-    html += '<div class="modal-sub">Você atingiu o limite de <strong>' + tipo + '</strong> para o plano GRÁTIS.</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px;margin-bottom:12px">🚀</div>';
-    html += '<div style="font-size:16px;font-weight:600;color:var(--warning);margin-bottom:8px">Aumente seus limites!</div>';
-    html += '<div style="font-size:13px;color:var(--text2)">Assine o plano PRO para ter clientes e produtos ilimitados.</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()" style="width:100%;margin-bottom:8px">🚀 Ver Planos PRO</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Cancelar</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-function mostrarAvisoLimiteDispositivos() {
-    document.getElementById('modal-overlay').classList.remove('show');
-    document.getElementById('modal-body').innerHTML = '';
-
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">📱 Limite de Dispositivos Atingido</div>';
-    html += '<div class="modal-sub">Você está no modo <strong>SOMENTE LEITURA</strong>.</div>';
-    
-    html += '<div class="card" style="background:var(--bg3);padding:20px;text-align:center;margin-bottom:16px">';
-    html += '<div style="font-size:48px;margin-bottom:12px">👁️</div>';
-    html += '<div style="font-size:15px;font-weight:500;color:var(--warning);margin-bottom:8px">Você pode ver todos os dados, mas não pode alterá-los.</div>';
-    html += '<div style="font-size:13px;color:var(--text2);line-height:1.6">';
-    html += 'Para voltar a adicionar, editar ou gerar PDFs, você deve:<br>';
-    html += '1️⃣ <strong>Desativar</strong> um dispositivo antigo na aba "Config".<br>';
-    html += '2️⃣ Ou <strong>Adquirir mais licenças</strong> para o seu plano PRO.';
-    html += '</div>';
-    html += '</div>';
-    
-    html += '<button class="btn btn-primary" onclick="fecharModal()" style="width:100%;margin-bottom:8px">Entendi, continuar visualizando</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal(); mudarAba(\'settings\')" style="width:100%">Ir para Configurações</button>';
-    
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-}
-
-// ✅ NOTA: As funções de gerenciamento de dispositivos (listarDispositivosAtivos, desativarDispositivo, ativarDispositivoAtual)
-// estão definidas em config.js com versão melhorada que inclui device_id para detecção correta do dispositivo atual.
-// Não as redefina aqui para evitar sobrescrita.
-
-console.log('✅ Subscription.js carregado (Com gerenciamento de dispositivos e remoção de bloqueio em ações críticas)');
