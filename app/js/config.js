@@ -26,12 +26,18 @@ var produtos = [];
 var vendas = [];
 var pedidos = [];
 var configEmpresa = {};
+var isOnline = navigator.onLine;
 
 // Inicializar Supabase Client
 function inicializarSupabase() {
     if (typeof supabase !== 'undefined') {
         supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('[Config] Supabase inicializado');
+        
+        // Inicializar sessão após Supabase estar pronto
+        if (typeof verificarSessao === 'function') {
+            verificarSessao();
+        }
         return true;
     }
     return false;
@@ -40,8 +46,16 @@ function inicializarSupabase() {
 // Inicializar ao carregar
 if (typeof window !== 'undefined') {
     window.addEventListener('load', function() {
+        // Garantir que isOnline esteja correto no boot
+        if (typeof verificarConexao === 'function') {
+            verificarConexao();
+        }
         setTimeout(inicializarSupabase, 100);
     });
+    
+    // Listeners de conexão
+    window.addEventListener('online', function() { if (typeof verificarConexao === 'function') verificarConexao(); });
+    window.addEventListener('offline', function() { if (typeof verificarConexao === 'function') verificarConexao(); });
 }
 
 // ====================================================================
