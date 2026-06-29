@@ -329,7 +329,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         console.log('[MP] Valor:', valor);
         console.log('[MP] Método:', metodoPagamento);
         
-        var response = await fetch('app/api/criar-pagamento.php', {
+        var response = await fetch('/app/api/criar-pagamento.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
