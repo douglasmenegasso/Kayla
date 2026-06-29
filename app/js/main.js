@@ -206,6 +206,9 @@ function renderizarConfig() {
     var planoUsuario = localStorage.getItem('kayla_plano') || 'free';
     var isPro = planoUsuario === 'pro' || LIMITES.proAtivo;
     
+    // ✅ NOVO: Verificar se o usuário tem assinatura ativa (mesmo que este dispositivo esteja em modo GRÁTIS)
+    var temAssinaturaAtiva = localStorage.getItem('kayla_pro_key') ? true : false;
+    
     // Plano e Dispositivos lado a lado (2 banners)
     var devices = localStorage.getItem('kayla_pro_devices') || '0/0';
     var planoTexto = isPro ? '💎 PRO' : '🆓 GRÁTIS';
@@ -286,6 +289,10 @@ function renderizarConfig() {
         html += '<div style="font-size:11px;color:var(--text2);margin-top:8px;text-align:center"> Exporte seus dados para um arquivo JSON e importe em outro dispositivo</div>';
         html += '</div>';
         
+    } else if (temAssinaturaAtiva) {
+        // ✅ NOVO: Se tem assinatura mas este dispositivo está em modo GRÁTIS, mostrar opção de ativar
+        html += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%">📱 Gerenciar Dispositivos</button>';
+        html += '<div style="font-size:12px;color:var(--success);margin-top:8px;text-align:center;padding:8px;background:rgba(0, 200, 83, 0.1);border-radius:8px">✅ Você tem uma assinatura PRO ativa! Ative neste dispositivo.</div>';
     } else {
         html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
         html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Já tem uma key?</label>';

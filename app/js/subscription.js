@@ -99,11 +99,18 @@ async function verificarStatusPro() {
             await supabaseClient.from('assinaturas').update({ dispositivos_usados: totalAtivos }).eq('id', assinatura.id);
         }
 
-        // TRAVA: Se não estou na lista de ativos, SOU GRÁTIS. Sem exceções.
+        // TRAVA: Se não estou na lista de ativos, SOU GRÁTIS neste dispositivo
         if (!estouAtivo) {
             LIMITES.proAtivo = false;
             localStorage.setItem('kayla_pro', 'false');
             localStorage.setItem('kayla_pro_devices', totalAtivos + '/' + assinatura.dispositivos_max);
+            
+            // ✅ NOVO: Mas ainda armazenar a chave para facilitar ativação posterior
+            if (assinatura.key_ativacao) {
+                localStorage.setItem('kayla_pro_key', assinatura.key_ativacao);
+                localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
+            }
+            
             atualizarBadgePlano();
             return false;
         }
