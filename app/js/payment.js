@@ -9,7 +9,7 @@ window.MP_CONFIG = {
 // Configurações de planos
 window.PLANOS = {
     mensal: { id: 'mensal', nome: 'Plano Mensal', precoBase: 19.90, precoPorDevice: 5.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 30, tipo: 'mensal' },
-    anual: { id: 'anual', nome: 'Plano Anual', precoBase: 199.90, precoPorDevice: 50.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 365, tipo: 'anual' } // R$ 50,00 por device extra (10 meses x R$ 5,00)
+    anual: { id: 'anual', nome: 'Plano Anual', precoBase: 199.90, precoPorDevice: 50.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 365, tipo: 'anual' }
 };
 
 async function validarKeyBackend(keyCode) {
@@ -58,7 +58,7 @@ async function getAssinaturaAtiva() {
 
 // ============ NOVO MODAL DE PLANOS (MODERNO) ============
 function mostrarPlanos() {
-    var html = `
+    var html = \`
         <div class="modal-handle"></div>
         <div class="modal-title">🚀 Escolha seu Plano</div>
         <p style="text-align:center; color:var(--text2); font-size:13px; margin-bottom:20px;">Selecione o plano ideal para você</p>
@@ -112,7 +112,7 @@ function mostrarPlanos() {
         </div>
 
         <button class="btn btn-outline" onclick="fecharModal()" style="width:100%; padding:14px; font-weight:700;">Cancelar</button>
-    `;
+    \`;
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
@@ -137,20 +137,20 @@ function selecionarPlano(planoId) {
             textoExtra = 'Incluso no plano';
         } else {
             var valorMesExtra = (i - 1) * 5;
-            textoExtra = `+R$ ${valorMesExtra.toFixed(2)}/mês extra`;
+            textoExtra = \`+R$ \${valorMesExtra.toFixed(2)}/mês extra\`;
         }
 
         var borderStyle = i === 1 ? 'border:2px solid var(--accent); background:rgba(124, 92, 242, 0.05);' : 'border:1px solid transparent;';
         
-        html += `
-            <div class="item-card" style="margin-bottom:8px; cursor:pointer; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; ${borderStyle}" onclick="window.confirmarPlanoHandler('${planoId}', ${i})">
+        html += \`
+            <div class="item-card" style="margin-bottom:8px; cursor:pointer; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; \${borderStyle}" onclick="window.confirmarPlanoHandler('\${planoId}', \${i})">
                 <div class="item-info">
-                    <div class="item-name" style="font-size:15px; font-weight:700;">${i} ${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
-                    <div style="font-size:11px; color:var(--text3);">${textoExtra}</div>
+                    <div class="item-name" style="font-size:15px; font-weight:700;">\${i} \${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
+                    <div style="font-size:11px; color:var(--text3); color:var(--text3);">\${textoExtra}</div>
                 </div>
-                <div style="font-weight:800; color:var(--accent); font-size:16px;">R$ ${precoFinal.toFixed(2).replace('.', ',')}</div>
+                <div style="font-weight:800; color:var(--accent); font-size:16px;">R$ \${precoFinal.toFixed(2).replace('.', ',')}</div>
             </div>
-        `;
+        \`;
     }
     html += '</div>';
     html += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="width:100%; margin-top:15px; padding:14px; font-weight:700;">← Voltar</button>';
@@ -174,9 +174,53 @@ function confirmarPlano(planoId, numDispositivos) {
     document.getElementById('modal-body').innerHTML = html;
 }
 
-async function pagarComMercadoPago(planoId, numDispositivos, valor, metodo) {
-    toast('Iniciando pagamento...', 'info');
-    // Lógica MP integrada
+async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagamento) {
+    if (!currentUser) {
+        toast('Faça login primeiro', 'error');
+        return;
+    }
+    toast('Processando...', 'warning');
+    try {
+        console.log('[MP] Criando pagamento...', {
+            titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
+            valor: valor,
+            email: currentUser.email,
+            user_id: currentUser.id,
+            plano_id: planoId
+        });
+        var response = await fetch('app/api/criar-pagamento.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                titulo: 'Kayla PRO - ' + PLANOS[planoId].nome,
+                valor: valor,
+                email: currentUser.email,
+                user_id: currentUser.id,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos
+            })
+        });
+        var preference = await response.json();
+        console.log('[MP] Resposta:', preference);
+        if (preference.id && preference.init_point) {
+            localStorage.setItem('kayla_pending_payment', JSON.stringify({
+                preference_id: preference.id,
+                plano_id: planoId,
+                num_dispositivos: numDispositivos,
+                valor: valor
+            }));
+            console.log('[MP] Redirecionando:', preference.init_point);
+            window.location.href = preference.init_point;
+        } else {
+            console.error('[MP] Erro:', preference);
+            toast('Erro: ' + (preference.message || 'Tente novamente'), 'error');
+        }
+    } catch(error) {
+        console.error('[MP] Erro:', error);
+        toast('Erro de conexão: ' + error.message, 'error');
+    }
 }
 
 async function gerenciarDispositivos() {
@@ -217,6 +261,35 @@ async function mostrarInfoAssinatura() {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+// ============ VERIFICAÇÃO DE RETORNO DE PAGAMENTO ============
+function verificarRetornoPagamento() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var collectionStatus = urlParams.get('collection_status');
+    var paymentId = urlParams.get('payment_id');
+    var preferenceId = urlParams.get('preference_id');
+    
+    if (collectionStatus === 'approved' || paymentId || preferenceId) {
+        toast('✅ Pagamento detectado! Verificando status...', 'success');
+        setTimeout(async function() {
+            if (typeof verificarStatusPro === 'function') {
+                var ativo = await verificarStatusPro();
+                if (ativo) {
+                    toast('🎉 Plano PRO ativado com sucesso!', 'success');
+                    if (typeof mudarAba === 'function') mudarAba('settings');
+                }
+            }
+        }, 3000);
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+if (typeof window !== 'undefined') {
+    verificarRetornoPagamento();
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(verificarRetornoPagamento, 500);
+    });
+}
+
 function fazerUpgradeDispositivos() { mostrarPlanos(); }
 function iniciarCancelamentoDispositivos() { toast('Contate o suporte para cancelar.', 'info'); }
 function iniciarRenovacao() { mostrarPlanos(); }
@@ -230,5 +303,5 @@ window.mostrarInfoAssinatura = mostrarInfoAssinatura;
 window.fazerUpgradeDispositivos = fazerUpgradeDispositivos;
 window.ativarPro = ativarPro;
 
-console.log('✅ Payments.js atualizado com Modal Moderno e Preços Corrigidos');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-29
+console.log('✅ Payments.js restaurado com sistema de pagamento do Mercado Pago');
+// Restaurado por Manus (AI) em 2026-06-29
