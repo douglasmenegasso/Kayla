@@ -290,8 +290,10 @@ function renderizarConfig() {
         html += '</div>';
         
     } else if (temAssinaturaAtiva) {
-        // ✅ NOVO: Se tem assinatura mas este dispositivo está em modo GRÁTIS, mostrar opção de ativar
+        // ✅ NOVO: Se tem assinatura mas este dispositivo está em modo GRÁTIS, mostrar opção de ativar e gerenciar
         html += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%">📱 Gerenciar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
+        html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Assinar PRO (Renovar/Upgrade)</button>';
         html += '<div style="font-size:12px;color:var(--success);margin-top:8px;text-align:center;padding:8px;background:rgba(0, 200, 83, 0.1);border-radius:8px">✅ Você tem uma assinatura PRO ativa! Ative neste dispositivo.</div>';
     } else {
         html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
