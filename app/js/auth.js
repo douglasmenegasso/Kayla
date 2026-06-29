@@ -159,7 +159,7 @@ async function fazerLogin() {
     }
     
     // ONLINE: Tenta login no Supabase
-    if (supabaseClient) {
+    if (supabaseClient && isOnline) {
         console.log('[AUTH] Login ONLINE via Supabase');
         
         try {
@@ -194,17 +194,8 @@ async function fazerLogin() {
             // Login online sucesso
             if (result.data && result.data.user) {
                 await loginSucesso(result.data.user, senha, lembrarMe);
-                // Restaura o botão após sucesso
-                if (btn) {
-                    btn.innerText = textoOriginal;
-                    btn.disabled = false;
-                }
             } else {
                 toast('Erro ao fazer login', 'error');
-                if (btn) {
-                    btn.innerText = textoOriginal;
-                    btn.disabled = false;
-                }
             }
             
         } catch(error) {
@@ -227,14 +218,6 @@ async function fazerLogin() {
                     fecharModal();
                     toast('Bem-vindo (Offline)!', 'success');
                     mostrarApp();
-                    atualizarBadgePlano();
-                    
-                    if (btn) {
-                        btn.innerText = textoOriginal;
-                        btn.disabled = false;
-                    }
-                    return;
-                    
                 } catch(e) {
                     console.error('[AUTH] Erro no fallback offline:', e);
                     toast('Erro ao carregar sessão offline', 'error');
@@ -242,15 +225,19 @@ async function fazerLogin() {
             } else {
                 toast('Erro de conexão: ' + error.message, 'error');
             }
-            
-            // Restaura o botão em caso de erro
+        } finally {
+            // Garantir que o botão seja restaurado em qualquer caso (sucesso ou erro)
             if (btn) {
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
             }
         }
     } else {
-        toast('Serviço de autenticação indisponível', 'error');
+        if (!isOnline) {
+            toast('Sem conexão com a internet', 'warning');
+        } else {
+            toast('Serviço de autenticação indisponível', 'error');
+        }
         if (btn) {
             btn.innerText = textoOriginal;
             btn.disabled = false;
