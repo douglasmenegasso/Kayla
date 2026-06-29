@@ -105,7 +105,11 @@ function atualizarBadgeConexao() {
 }
 
 function verificarConexao() {
-    isOnline = navigator.onLine;
+    if (typeof isOnline === 'undefined') {
+        window.isOnline = navigator.onLine;
+    } else {
+        isOnline = navigator.onLine;
+    }
     atualizarBadgeConexao();
 }
 
