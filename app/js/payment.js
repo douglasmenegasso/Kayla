@@ -58,7 +58,7 @@ async function getAssinaturaAtiva() {
 
 // ============ NOVO MODAL DE PLANOS (MODERNO) ============
 function mostrarPlanos() {
-    var html = \`
+    var html = `
         <div class="modal-handle"></div>
         <div class="modal-title">🚀 Escolha seu Plano</div>
         <p style="text-align:center; color:var(--text2); font-size:13px; margin-bottom:20px;">Selecione o plano ideal para você</p>
@@ -112,7 +112,7 @@ function mostrarPlanos() {
         </div>
 
         <button class="btn btn-outline" onclick="fecharModal()" style="width:100%; padding:14px; font-weight:700;">Cancelar</button>
-    \`;
+    `;
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
@@ -137,20 +137,20 @@ function selecionarPlano(planoId) {
             textoExtra = 'Incluso no plano';
         } else {
             var valorMesExtra = (i - 1) * 5;
-            textoExtra = \`+R$ \${valorMesExtra.toFixed(2)}/mês extra\`;
+            textoExtra = `+R$ ${valorMesExtra.toFixed(2)}/mês extra`;
         }
 
         var borderStyle = i === 1 ? 'border:2px solid var(--accent); background:rgba(124, 92, 242, 0.05);' : 'border:1px solid transparent;';
         
-        html += \`
-            <div class="item-card" style="margin-bottom:8px; cursor:pointer; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; \${borderStyle}" onclick="window.confirmarPlanoHandler('\${planoId}', \${i})">
+        html += `
+            <div class="item-card" style="margin-bottom:8px; cursor:pointer; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; ${borderStyle}" onclick="window.confirmarPlanoHandler('${planoId}', ${i})">
                 <div class="item-info">
-                    <div class="item-name" style="font-size:15px; font-weight:700;">\${i} \${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
-                    <div style="font-size:11px; color:var(--text3); color:var(--text3);">\${textoExtra}</div>
+                    <div class="item-name" style="font-size:15px; font-weight:700;">${i} ${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
+                    <div style="font-size:11px; color:var(--text3); color:var(--text3);">${textoExtra}</div>
                 </div>
-                <div style="font-weight:800; color:var(--accent); font-size:16px;">R$ \${precoFinal.toFixed(2).replace('.', ',')}</div>
+                <div style="font-weight:800; color:var(--accent); font-size:16px;">R$ ${precoFinal.toFixed(2).replace('.', ',')}</div>
             </div>
-        \`;
+        `;
     }
     html += '</div>';
     html += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="width:100%; margin-top:15px; padding:14px; font-weight:700;">← Voltar</button>';
