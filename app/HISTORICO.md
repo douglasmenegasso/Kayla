@@ -178,3 +178,11 @@
 ---
 
 ## 📝 Estrutura de Arquivos
+
+### 🔷 v5.4.1 - 2026-06-29
+**Status:** ✅ Atual  
+
+#### Correções:
+- [x] Corrigido bug onde o botão de login ficava preso em "Entrando..." em caso de erro ou sucesso.
+- [x] Corrigido bug onde a tecla Enter não funcionava nos campos de e-mail e senha para realizar o login.
+- [x] Melhoria na detecção do botão de login para garantir a restauração do estado visual.

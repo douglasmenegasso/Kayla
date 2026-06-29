@@ -9,8 +9,8 @@ function abrirLogin() {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🔐 Login</div>';
     html += '<div class="modal-sub">Digite suas credenciais</div>';
-    html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
-    html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')fazerLogin()"></div>';
+    html += '<div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\'){event.preventDefault();fazerLogin();}"></div>';
+    html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\'){event.preventDefault();fazerLogin();}"></div>';
     html += '<div class="checkbox-group"><input type="checkbox" id="lembrar-me"><label for="lembrar-me" style="color:var(--text2);font-size:13px">Lembrar de mim</label></div>';
     html += '<div style="text-align:right;margin-bottom:12px"><button class="btn btn-sm btn-outline" onclick="recuperarSenha()" style="width:auto;padding:6px 12px;font-size:11px">🔑 Esqueci a senha</button></div>';
     html += '<button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
@@ -88,7 +88,11 @@ async function fazerLogin() {
         return; 
     }
     
-    var btn = event ? event.target : document.querySelector('button[onclick="fazerLogin()"]');
+    // Encontra o botão de forma mais confiável
+    var btn = document.querySelector('.modal-content button[onclick="fazerLogin()"]');
+    if (!btn) {
+        btn = document.querySelector('button[onclick="fazerLogin()"]');
+    }
     var textoOriginal = btn ? btn.innerText : 'Entrar';
     
     if (btn) {
@@ -190,8 +194,17 @@ async function fazerLogin() {
             // Login online sucesso
             if (result.data && result.data.user) {
                 await loginSucesso(result.data.user, senha, lembrarMe);
+                // Restaura o botão após sucesso
+                if (btn) {
+                    btn.innerText = textoOriginal;
+                    btn.disabled = false;
+                }
             } else {
                 toast('Erro ao fazer login', 'error');
+                if (btn) {
+                    btn.innerText = textoOriginal;
+                    btn.disabled = false;
+                }
             }
             
         } catch(error) {
@@ -224,18 +237,24 @@ async function fazerLogin() {
                     
                 } catch(e) {
                     console.error('[AUTH] Erro no fallback offline:', e);
+                    toast('Erro ao carregar sessão offline', 'error');
                 }
+            } else {
+                toast('Erro de conexão: ' + error.message, 'error');
             }
             
-            toast('Erro de conexão: ' + error.message, 'error');
+            // Restaura o botão em caso de erro
+            if (btn) {
+                btn.innerText = textoOriginal;
+                btn.disabled = false;
+            }
         }
     } else {
         toast('Serviço de autenticação indisponível', 'error');
-    }
-    
-    if (btn) {
-        btn.innerText = textoOriginal;
-        btn.disabled = false;
+        if (btn) {
+            btn.innerText = textoOriginal;
+            btn.disabled = false;
+        }
     }
 }
 
