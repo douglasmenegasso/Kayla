@@ -384,6 +384,73 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
     }
 }
 
+// ============ FUNÇÕES AUXILIARES DE PAGAMENTO (registro/confirmação manual) ============
+
+async function criarRegistroPagamento(planoId, numDispositivos, valor, metodo) {
+    if (!currentUser || !supabaseClient) {
+        toast('Faça login primeiro', 'error');
+        return null;
+    }
+    
+    try {
+        var pagamentoData = {
+            user_id: currentUser.id,
+            valor: valor,
+            metodo_pagamento: metodo,
+            status: 'pendente'
+        };
+        
+        var result = await supabaseClient
+            .from('pagamentos')
+            .insert(pagamentoData)
+            .select()
+            .single();
+        
+        if (result.error) {
+            console.error('Erro ao criar pagamento:', result.error);
+            toast('Erro ao iniciar pagamento', 'error');
+            return null;
+        }
+        
+        return result.data;
+    } catch(e) {
+        console.error('Erro no pagamento:', e);
+        toast('Erro de conexão', 'error');
+        return null;
+    }
+}
+
+async function verificarStatusPagamento(pagamentoId) {
+    toast('Verificando pagamento...', 'warning');
+    
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">✅ Confirmar Pagamento</div>';
+    html += '<div class="modal-sub">Insira o código da transação</div>';
+    
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:12px;color:var(--text2);margin-bottom:12px">';
+    html += 'Após pagar, você receberá um código de confirmação. Insira-o abaixo:';
+    html += '</div>';
+    html += '<input type="text" class="form-input" id="codigo-transacao" placeholder="Código da transação">';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="confirmarPagamentoManual(\'' + pagamentoId + '\')">✅ Confirmar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+}
+
+async function confirmarPagamentoManual(pagamentoId) {
+    var codigo = document.getElementById('codigo-transacao').value.trim();
+    if (!codigo) {
+        toast('Digite o código da transação', 'warning');
+        return;
+    }
+    
+    toast('Pagamento em análise. Aguarde aprovação.', 'warning');
+    fecharModal();
+}
+
 // ============ QR CODE PIX ============
 
 function mostrarQRCodePIX(dados, pagamentoId) {
@@ -816,28 +883,43 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
                 })
                 .eq('id', assinaturaId);
             
+            // Atualizar localStorage
+            localStorage.setItem('kayla_pro_devices', novosUsados + '/' + assinatura.dispositivos_max);
+            
+            // ✅ CORREÇÃO: Aguardar a verificação antes de atualizar a interface
+            if (typeof verificarStatusPro === 'function') {
+                const statusAtualizado = await verificarStatusPro();
+                console.log('[Dispositivo] Status PRO re-verificado após remoção:', statusAtualizado);
+                
+                // Atualizar badge do plano SOMENTE após a verificação
+                if (typeof atualizarBadgePlano === 'function') {
+                    atualizarBadgePlano();
+                }
+            }
+            
+            // Atualizar contador na tela
             var contadorTexto = document.querySelector('#modal-body .modal-sub');
             if (contadorTexto) {
-                var textoAtual = contadorTexto.innerText;
-                var match = textoAtual.match(/(\d+)\s+de\s+(\d+)/);
-                if (match) {
-                    var max = parseInt(match[2]);
-                    contadorTexto.innerText = novosUsados + ' de ' + max + ' dispositivos em uso';
-                }
+                contadorTexto.innerText = novosUsados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso';
             }
         }
         
         console.log('[Dispositivo] ✅ Dispositivo removido com sucesso!');
         
+        // Remover elemento da tela
         if (elementoHtml && elementoHtml.parentElement) {
-            elementoHtml.style.transition = 'all 0.3s ease';
-            elementoHtml.style.opacity = '0';
-            elementoHtml.style.transform = 'scale(0.95)';
+            var cardElement = elementoHtml.closest('.item-card') || elementoHtml.parentElement;
             
-            setTimeout(function() {
-                elementoHtml.remove();
-                toast('✅ Dispositivo removido!', 'success');
-            }, 300);
+            if (cardElement) {
+                cardElement.style.transition = 'all 0.3s ease';
+                cardElement.style.opacity = '0';
+                cardElement.style.transform = 'scale(0.95)';
+                
+                setTimeout(function() {
+                    cardElement.remove();
+                    toast('✅ Dispositivo removido! Licença liberada.', 'success');
+                }, 300);
+            }
         } else {
             if (typeof gerenciarDispositivos === 'function') {
                 gerenciarDispositivos();
@@ -1088,18 +1170,54 @@ function verificarRetornoPagamento() {
     var collectionStatus = urlParams.get('collection_status');
     var paymentId = urlParams.get('payment_id');
     var preferenceId = urlParams.get('preference_id');
+    var externalReference = urlParams.get('external_reference');
     
-    if (collectionStatus === 'approved' || paymentId || preferenceId) {
+    console.log('[Pagamento] Retorno detectado:', { 
+        collectionStatus, 
+        paymentId, 
+        preferenceId, 
+        externalReference 
+    });
+    
+    if (collectionStatus || paymentId || preferenceId) {
+        console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
+        
+        localStorage.removeItem('kayla_pro');
+        localStorage.removeItem('kayla_pro_key');
+        localStorage.removeItem('kayla_pro_expires');
+        localStorage.removeItem('kayla_pro_devices');
+        LIMITES.proAtivo = false;
+        
         toast('✅ Pagamento detectado! Verificando status...', 'success');
+        
         setTimeout(async function() {
-            if (typeof verificarStatusPro === 'function') {
-                var ativo = await verificarStatusPro();
-                if (ativo) {
-                    toast('🎉 Plano PRO ativado com sucesso!', 'success');
-                    if (typeof mudarAba === 'function') mudarAba('settings');
+            console.log('[Pagamento] Chamando verificarStatusPro()...');
+            
+            await verificarStatusPro();
+            
+            if (LIMITES.proAtivo) {
+                toast('🎉 Plano PRO ativado com sucesso!', 'success');
+                atualizarBadgePlano();
+                
+                if (typeof mudarAba === 'function') {
+                    mudarAba('settings');
                 }
+            } else {
+                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
+                
+                setTimeout(async function() {
+                    await verificarStatusPro();
+                    if (LIMITES.proAtivo) {
+                        toast('🎉 Plano PRO ativado!', 'success');
+                        atualizarBadgePlano();
+                        if (typeof mudarAba === 'function') {
+                            mudarAba('settings');
+                        }
+                    }
+                }, 10000);
             }
         }, 3000);
+        
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
