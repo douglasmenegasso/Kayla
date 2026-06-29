@@ -627,6 +627,8 @@ async function alterarQuantidadeItem(pedidoId, itemId, delta) {
 
 // ============ HISTÓRICO ============
 
+// Versão Corrigida de orders.js - Foco: Erro de sintaxe no Histórico
+
 function renderizarHistorico() {
     var finalizados = pedidos.filter(function(p) { return p.status === 'finalizado'; });
     
@@ -704,8 +706,8 @@ function renderizarHistorico() {
                 }
             });
             
-            // Card compacto do cliente - CLICÁVEL
-            html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\\'")+'\'" style="cursor:pointer">';
+            // ✅ CORREÇÃO AQUI: Fechado o parêntese e as aspas do onclick
+            html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\\'") + '\')" style="cursor:pointer">';
             html += '<div class="item-info">';
             html += '<div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + nomeCliente + '</div>';
             html += '<div class="item-detail">' + pedidosDoCliente.length + ' pedido(s) • ' + totalItensCliente + ' itens • ' + totalDevolvidoCliente + ' devolvidos</div>';
@@ -720,6 +722,7 @@ function renderizarHistorico() {
     
     return html;
 }
+
 
 function verPedidosCliente(nomeCliente) {
     var pedidosDoCliente = pedidos.filter(function(p) { return p.cliente_nome === nomeCliente; });
