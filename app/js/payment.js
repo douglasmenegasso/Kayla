@@ -9,7 +9,7 @@ window.MP_CONFIG = {
 // Configurações de planos
 window.PLANOS = {
     mensal: { id: 'mensal', nome: 'Plano Mensal', precoBase: 19.90, precoPorDevice: 5.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 30, tipo: 'mensal' },
-    anual: { id: 'anual', nome: 'Plano Anual', precoBase: 199.90, precoPorDevice: 5.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 365, tipo: 'anual' }
+    anual: { id: 'anual', nome: 'Plano Anual', precoBase: 199.90, precoPorDevice: 50.00, dispositivosInclusos: 1, dispositivosMax: 5, duracaoDias: 365, tipo: 'anual' } // R$ 50,00 por device extra (10 meses x R$ 5,00)
 };
 
 async function validarKeyBackend(keyCode) {
@@ -121,41 +121,56 @@ window.confirmarPlanoHandler = function(planoId, numDispositivos) { confirmarPla
 
 function selecionarPlano(planoId) {
     var plano = PLANOS[planoId];
+    var isAnual = planoId === 'anual';
     var html = '<div class="modal-handle"></div><div class="modal-title">📱 Dispositivos</div>';
-    html += '<p style="text-align:center; color:var(--text2); font-size:13px; margin-bottom:20px;">Quantos dispositivos você precisa?</p>';
+    html += '<p style="text-align:center; color:var(--text2); font-size:13px; margin-bottom:20px;">Quantos dispositivos deseja usar?</p>';
     
+    html += '<div style="background:var(--bg3); padding:16px; border-radius:16px; border:1px solid var(--border);">';
+    html += '<p style="font-size:12px; color:var(--text2); text-align:center; margin-bottom:15px;">Selecione o número de dispositivos que terão acesso ao plano PRO</p>';
+
     for (var i = 1; i <= 5; i++) {
-        var precoFinal = plano.precoBase + (Math.max(0, i - 1) * 5);
-        if (planoId === 'anual') {
-            // Ajuste proporcional para o anual se necessário, ou mantém a lógica de base
-            // Aqui mantemos a lógica simples do sistema
+        var precoExtra = Math.max(0, i - 1) * (isAnual ? 50 : 5);
+        var precoFinal = plano.precoBase + precoExtra;
+        var textoExtra = '';
+        
+        if (i === 1) {
+            textoExtra = 'Incluso no plano';
+        } else {
+            var valorMesExtra = (i - 1) * 5;
+            textoExtra = `+R$ ${valorMesExtra.toFixed(2)}/mês extra`;
         }
+
+        var borderStyle = i === 1 ? 'border:2px solid var(--accent); background:rgba(124, 92, 242, 0.05);' : 'border:1px solid transparent;';
         
         html += `
-            <div class="item-card" style="margin-bottom:10px; cursor:pointer; padding:15px; display:flex; justify-content:space-between; align-items:center;" onclick="window.confirmarPlanoHandler('${planoId}', ${i})">
+            <div class="item-card" style="margin-bottom:8px; cursor:pointer; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-radius:12px; ${borderStyle}" onclick="window.confirmarPlanoHandler('${planoId}', ${i})">
                 <div class="item-info">
-                    <div class="item-name" style="font-size:15px;">${i} ${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
-                    <div style="font-size:12px; color:var(--text3);">${i === 1 ? 'Incluso no plano' : '+' + (i-1) + ' adicional(is)'}</div>
+                    <div class="item-name" style="font-size:15px; font-weight:700;">${i} ${i === 1 ? 'dispositivo' : 'dispositivos'}</div>
+                    <div style="font-size:11px; color:var(--text3);">${textoExtra}</div>
                 </div>
-                <div style="font-weight:700; color:var(--accent);">R$ ${precoFinal.toFixed(2)}</div>
+                <div style="font-weight:800; color:var(--accent); font-size:16px;">R$ ${precoFinal.toFixed(2).replace('.', ',')}</div>
             </div>
         `;
     }
-    html += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="width:100%; margin-top:10px;">← Voltar</button>';
+    html += '</div>';
+    html += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="width:100%; margin-top:15px; padding:14px; font-weight:700;">← Voltar</button>';
     document.getElementById('modal-body').innerHTML = html;
 }
 
 function confirmarPlano(planoId, numDispositivos) {
     var plano = PLANOS[planoId];
-    var valor = plano.precoBase + (Math.max(0, numDispositivos - 1) * 5);
+    var isAnual = planoId === 'anual';
+    var precoExtra = Math.max(0, numDispositivos - 1) * (isAnual ? 50 : 5);
+    var valor = plano.precoBase + precoExtra;
+    
     var html = '<div class="modal-handle"></div><div class="modal-title">💳 Pagamento</div>';
-    html += '<div class="card" style="background:var(--bg3);padding:24px;margin-bottom:16px;text-align:center">';
+    html += '<div class="card" style="background:var(--bg3);padding:24px;margin-bottom:16px;text-align:center;border-radius:16px;border:1px solid var(--border)">';
     html += '<div style="font-size:14px;color:var(--text2);margin-bottom:8px">Total a pagar (' + plano.nome + ')</div>';
-    html += '<div style="font-size:32px;font-weight:800;color:var(--accent)">R$ ' + valor.toFixed(2) + '</div>';
+    html += '<div style="font-size:32px;font-weight:800;color:var(--accent)">R$ ' + valor.toFixed(2).replace('.', ',') + '</div>';
     html += '<div style="font-size:12px;color:var(--text3);margin-top:8px">' + numDispositivos + ' dispositivo(s) configurado(s)</div>';
     html += '</div>';
-    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + valor + ', \'pix\')" style="width:100%; padding:16px; font-weight:700;">Pagar com PIX</button>';
-    html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')" style="margin-top:12px;width:100%">Voltar</button>';
+    html += '<button class="btn btn-primary" onclick="pagarComMercadoPago(\'' + planoId + '\', ' + numDispositivos + ', ' + valor + ', \'pix\')" style="width:100%; padding:16px; font-weight:700; border-radius:12px;">Pagar com PIX</button>';
+    html += '<button class="btn btn-outline" onclick="selecionarPlano(\'' + planoId + '\')" style="margin-top:12px;width:100%; padding:14px; border-radius:12px;">Voltar</button>';
     document.getElementById('modal-body').innerHTML = html;
 }
 
@@ -215,5 +230,5 @@ window.mostrarInfoAssinatura = mostrarInfoAssinatura;
 window.fazerUpgradeDispositivos = fazerUpgradeDispositivos;
 window.ativarPro = ativarPro;
 
-console.log('✅ Payments.js atualizado com Modal Moderno');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-28
+console.log('✅ Payments.js atualizado com Modal Moderno e Preços Corrigidos');
+// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-29
