@@ -13,7 +13,7 @@ function abrirLogin() {
     html += '<div class="form-group"><label class="form-label">Senha</label><input class="form-input" id="senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\'){event.preventDefault();fazerLogin();}"></div>';
     html += '<div class="checkbox-group"><input type="checkbox" id="lembrar-me"><label for="lembrar-me" style="color:var(--text2);font-size:13px">Lembrar de mim</label></div>';
     html += '<div style="text-align:right;margin-bottom:12px"><button class="btn btn-sm btn-outline" onclick="recuperarSenha()" style="width:auto;padding:6px 12px;font-size:11px">🔑 Esqueci a senha</button></div>';
-    html += '<button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
+    html += '<button id="btn-fazer-login" class="btn btn-primary" onclick="fazerLogin()">Entrar</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
@@ -93,6 +93,9 @@ async function fazerLogin() {
     if (!btn) {
         btn = document.querySelector('button[onclick="fazerLogin()"]');
     }
+    
+    if (btn && btn.disabled) return; // Evita loop/cliques duplos
+
     var textoOriginal = btn ? btn.innerText : 'Entrar';
     
     if (btn) {

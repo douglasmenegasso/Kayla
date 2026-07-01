@@ -114,7 +114,10 @@ async function gerarHtmlListaDispositivos() {
     var dispositivos = await listarDispositivosAtivos();
     var assinatura = await getAssinaturaAtiva();
     
-    var html = '<div class="modal-handle"></div><div class="modal-title">📱 Dispositivos</div>';
+    // CORREÇÃO: Removida duplicidade de título e handle
+    var html = ''; 
+    
+    if (!assinatura) {
 
     if (!assinatura) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhuma assinatura PRO ativa.</div>';
@@ -155,21 +158,14 @@ async function gerarHtmlListaDispositivos() {
         html += '</div>';
     }
 
-    if (!isMeActive) {
+    if (!isMeActive && dispositivos.length < assinatura.dispositivos_max) {
         html += `
-            <div style="margin-top:15px; padding:15px; text-align:center; background:var(--bg3); border-radius:10px; border:1px dashed var(--warning);">
-                <p style="margin-bottom:10px; color:var(--text2); font-size:13px;">
-                    <strong>Este dispositivo está no modo GRÁTIS.</strong><br>
-                    Para usar o PRO aqui, libere uma vaga acima.
-                </p>
-                <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%;">
-                    ⚡ Ativar PRO neste dispositivo
-                </button>
-            </div>
+            <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%; margin-top:15px">
+                ⚡ Ativar PRO neste dispositivo
+            </button>
         `;
     }
 
-    html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:12px; width:100%">Fechar</button>';
     return html;
 }
 

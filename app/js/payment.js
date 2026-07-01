@@ -862,27 +862,21 @@ async function gerenciarDispositivos() {
     }
     
     try {
-        // ✅ Usa a função criada no config.js que já possui a lógica de renderizar o botão "Ativar este dispositivo" automaticamente
-        var dispositivosHtml = await gerarHtmlListaDispositivos();
-        
-        var html = '<div class="modal-handle"></div>';
-        html += '<div class="modal-title">📱 Dispositivos</div>';
+        var content = await gerarHtmlListaDispositivos();
+        var html = '<div class="modal-handle"></div><div class="modal-title">📱 Dispositivos</div>';
         html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        html += content;
         
-        html += dispositivosHtml;
-        
-        // Botões auxiliares
         if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
-            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Adicionar Dispositivo</button>';
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px; width:100%">⬆️ Adicionar Dispositivo</button>';
         } else {
-            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px">⬆️ Fazer Upgrade</button>';
+            html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px; width:100%">⬆️ Fazer Upgrade</button>';
         }
         
-        html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:8px">Fechar</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:8px; width:100%">Fechar</button>';
         
-        document.getElementById('modal-body').innerHTML = html;
+        modalBody.innerHTML = html;
         document.getElementById('modal-overlay').classList.add('show');
-        
     } catch(e) {
         console.error('Erro ao buscar dispositivos:', e);
         toast('Erro ao carregar dispositivos', 'error');
