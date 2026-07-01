@@ -1,17 +1,16 @@
-
 // ============ MAIN - INICIALIZAÇÃO E NAVEGAÇÃO ============
 
 // ============ HISTÓRICO DE VERSÕES (DEFINIÇÃO) ============
 var HISTORICO_VERSOES = [
     { 
         versao: '5.4.2', 
-        data: '29/06/2026', 
+        data: '30/06/2026', 
         mudancas: [
-            '✨ Novo design do seletor de planos e dispositivos',
-            '🔄 Atualização automática das configurações ao ativar dispositivos',
-            '📱 Gerenciamento de assinatura liberado no modo gratuito',
-            '💰 Ajuste nos cálculos de upgrade para planos anuais',
-            '✅ Melhorias gerais na interface e estabilidade'
+            '🔒 Trava de licenciamento rigorosa (Anti-2/1)',
+            '📱 Identificação visual de dispositivo atual',
+            '⚡ Alternância rápida entre dispositivos sem Key',
+            '🌐 Diferenciação entre Edge e Chrome',
+            '✅ Correção: Renderização do Histórico'
         ] 
     },
     { 
@@ -24,33 +23,6 @@ var HISTORICO_VERSOES = [
             '📱 Registro inteligente de múltiplos dispositivos',
             '💾 Sistema de backup e restauração de dados (PRO)',
             '💬 Suporte direto via WhatsApp'
-        ] 
-    },
-    { 
-        versao: '5.3.1', 
-        data: '10/06/2026', 
-        mudancas: [
-            '🕒 Relógio e data em tempo real no cabeçalho', 
-            'ℹ️ Central de informações e histórico de atualizações', 
-            '🎨 Ajustes visuais no painel principal'
-        ] 
-    },
-    { 
-        versao: '5.3.0', 
-        data: '09/06/2026', 
-        mudancas: [
-            '🌐 Otimização do funcionamento offline', 
-            '⚡ Carregamento mais rápido do aplicativo', 
-            '🔒 Segurança aprimorada na geração de documentos'
-        ] 
-    },
-    { 
-        versao: '5.1.0', 
-        data: '07/06/2026', 
-        mudancas: [
-            '📁 Organização interna de arquivos otimizada', 
-            '✅ Correções na navegação entre abas', 
-            '📱 Melhor suporte para dispositivos móveis'
         ] 
     }
 ];
@@ -141,10 +113,7 @@ function renderizarConfig() {
     var html = '<div class="card"><div class="card-title">⚙️ Configurações</div>';
     html += '<div class="form-group"><label class="form-label"> Usuário</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">' + (currentUser ? currentUser.email : 'Não logado') + '</div></div>';
     
-    var planoUsuario = localStorage.getItem('kayla_plano') || 'free';
-    var isPro = planoUsuario === 'pro' || (window.LIMITES && LIMITES.proAtivo);
-    var temAssinaturaAtiva = localStorage.getItem('kayla_pro_key') ? true : false;
-    
+    var isPro = (window.LIMITES && LIMITES.proAtivo);
     var devices = localStorage.getItem('kayla_pro_devices') || '0/0';
     var planoTexto = isPro ? '💎 PRO' : '🆓 GRÁTIS';
     var planoCor = isPro ? 'var(--accent)' : 'var(--text2)';
@@ -160,30 +129,49 @@ function renderizarConfig() {
     html += '</div>';
     html += '</div>';
     
+    // Área dinâmica de controles de assinatura
+    html += '<div id="subscription-controls">';
+    
     if (isPro) {
         var expires = localStorage.getItem('kayla_pro_expires');
         var expDate = expires ? new Date(expires).toLocaleDateString('pt-BR') : 'N/A';
         html += '<div class="form-group"><label class="form-label">📅 Validade</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px;text-align:center;font-weight:600;color:var(--accent)">' + expDate + '</div></div>';
         html += '<button class="btn btn-primary" onclick="mostrarInfoAssinatura()" style="margin-top:8px;width:100%">📋 Minha Assinatura</button>';
-        html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%"> Gerenciar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%">📱 Gerenciar Dispositivos</button>';
         html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
         html += '<button class="btn btn-red" onclick="cancelarAssinatura()" style="margin-top:8px;width:100%">🚫 Cancelar Assinatura PRO</button>';
         html += '<button class="btn btn-primary" onclick="iniciarRenovacao()" style="margin-top:8px;width:100%">🔄 Renovar Assinatura</button>';
-        html += '<div class="form-group" style="margin-top:16px"><label class="form-label">💾 Backup e Restauração <span class="badge-pro" style="font-size:10px">PRO</span></label>';
-        html += '<button class="btn btn-primary" onclick="exportarBackup()" style="margin-top:8px;width:100%">📥 Exportar Backup</button>';
-        html += '<button class="btn btn-outline" onclick="importarBackup()" style="margin-top:8px;width:100%">📤 Importar Backup</button></div>';
-    } else if (temAssinaturaAtiva) {
-        html += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%">📱 Gerenciar Dispositivos</button>';
-        html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
-        html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Assinar PRO (Renovar/Upgrade)</button>';
-        html += '<div style="font-size:12px;color:var(--success);margin-top:8px;text-align:center;padding:8px;background:rgba(0, 200, 83, 0.1);border-radius:8px">✅ Você tem uma assinatura PRO ativa! Ative neste dispositivo.</div>';
     } else {
+        // MODO GRÁTIS - Verificar se tem assinatura no banco para mostrar o botão de dispositivos
+        if (currentUser && supabaseClient && isOnline) {
+            getAssinaturaAtiva().then(function(assinatura) {
+                if (assinatura) {
+                    var container = document.getElementById('subscription-controls');
+                    if (container) {
+                        var btnHtml = '<div style="padding:12px;background:rgba(124, 92, 252, 0.1);border-radius:10px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--accent);border:1px dashed var(--accent)">';
+                        btnHtml += '✅ Você possui uma assinatura PRO ativa!<br><strong>Libere uma vaga para usar neste dispositivo.</strong></div>';
+                        btnHtml += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%">📱 Gerenciar Dispositivos</button>';
+                        btnHtml += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
+                        btnHtml += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Planos e Upgrade</button>';
+                        container.innerHTML = btnHtml;
+                    }
+                }
+            });
+        }
+        
         html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
         html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Já tem uma key?</label>';
         html += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
         html += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px;width:100%">⚡ Ativar Key</button></div>';
     }
-    
+    html += '</div>';
+
+    // Backup e Restauração
+    html += '<div class="form-group" style="margin-top:16px"><label class="form-label">💾 Backup e Restauração ' + (isPro ? '<span class="badge-pro" style="font-size:10px">PRO</span>' : '') + '</label>';
+    html += '<button class="btn ' + (isPro ? 'btn-primary' : 'btn-outline') + '" onclick="' + (isPro ? 'exportarBackup()' : 'mostrarPlanos()') + '" style="margin-top:8px;width:100%">📥 Exportar Backup</button>';
+    html += '<button class="btn btn-outline" onclick="' + (isPro ? 'importarBackup()' : 'mostrarPlanos()') + '" style="margin-top:8px;width:100%">📤 Importar Backup</button></div>';
+
+    // Dados da Empresa
     html += '<div class="form-group" style="margin-top:16px"><label class="form-label"> Dados da Empresa</label>';
     html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">';
     if (configEmpresa && configEmpresa.nome) {
@@ -204,5 +192,4 @@ window.mudarAba = mudarAba;
 window.renderizarConfig = renderizarConfig;
 window.mostrarHistoricoVersoes = mostrarHistoricoVersoes;
 
-console.log('✅ Main.js atualizado com Histórico Profissional');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-29
+console.log('✅ Main.js carregado');
