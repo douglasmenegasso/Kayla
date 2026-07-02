@@ -118,8 +118,6 @@ async function gerarHtmlListaDispositivos() {
     var html = ''; 
     
     if (!assinatura) {
-
-    if (!assinatura) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhuma assinatura PRO ativa.</div>';
         html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
         return html;
