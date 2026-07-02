@@ -115,7 +115,12 @@ function renderizarConfig() {
     
     var isPro = (window.LIMITES && LIMITES.proAtivo);
     var devices = localStorage.getItem('kayla_pro_devices') || '0/0';
-    var planoTexto = isPro ? '💎 PRO' : '🆓 GRÁTIS';
+    // Corrigir exibição: se não é PRO, mostrar 0/X ou 0/0 para não confundir
+    if (!isPro) {
+        var partes = devices.split('/');
+        devices = '0/' + (partes[1] || '0');
+    }
+    var planoTexto = isPro ? '📎 PRO' : '🆓 GRÁTIS';
     var planoCor = isPro ? 'var(--accent)' : 'var(--text2)';
     
     html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
@@ -142,19 +147,31 @@ function renderizarConfig() {
         html += '<button class="btn btn-red" onclick="cancelarAssinatura()" style="margin-top:8px;width:100%">🚫 Cancelar Assinatura PRO</button>';
         html += '<button class="btn btn-primary" onclick="iniciarRenovacao()" style="margin-top:8px;width:100%">🔄 Renovar Assinatura</button>';
     } else {
-        // MODO GRÁTIS - Verificar se tem assinatura no banco para mostrar o botão de dispositivos
+        // MODO GRÁTIS - Verificar se tem assinatura no banco para mostrar o botão de ativação correto
         if (currentUser && supabaseClient && isOnline) {
-            getAssinaturaAtiva().then(function(assinatura) {
+            getAssinaturaAtiva().then(async function(assinatura) {
+                var container = document.getElementById('subscription-controls');
+                if (!container) return;
                 if (assinatura) {
-                    var container = document.getElementById('subscription-controls');
-                    if (container) {
-                        var btnHtml = '<div style="padding:12px;background:rgba(124, 92, 252, 0.1);border-radius:10px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--accent);border:1px dashed var(--accent)">';
-                        btnHtml += '✅ Você possui uma assinatura PRO ativa!<br><strong>Libere uma vaga para usar neste dispositivo.</strong></div>';
-                        btnHtml += '<button class="btn btn-primary" onclick="gerenciarDispositivos()" style="width:100%">📱 Gerenciar Dispositivos</button>';
-                        btnHtml += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
-                        btnHtml += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Planos e Upgrade</button>';
-                        container.innerHTML = btnHtml;
+                    // Buscar contagem real de dispositivos ativos
+                    var qtdAtivos = 0;
+                    try {
+                        var { count: cntAtivos } = await supabaseClient.from('dispositivos').select('id', { count: 'exact', head: true }).eq('assinatura_id', assinatura.id).eq('ativo', true);
+                        qtdAtivos = cntAtivos || 0;
+                    } catch(e) { qtdAtivos = assinatura.dispositivos_usados || 0; }
+                    
+                    var temVaga = qtdAtivos < assinatura.dispositivos_max;
+                    var btnHtml = '<div style="padding:12px;background:rgba(124, 92, 252, 0.1);border-radius:10px;margin-bottom:12px;text-align:center;font-size:13px;color:var(--accent);border:1px dashed var(--accent)">';
+                    btnHtml += '\u2705 Você possui uma assinatura PRO ativa!</div>';
+                    if (temVaga) {
+                        btnHtml += '<button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%">⚡ Ativar PRO neste dispositivo</button>';
+                    } else {
+                        btnHtml += '<div style="padding:10px;background:rgba(255,152,0,0.1);border-radius:8px;text-align:center;font-size:12px;color:var(--warning);margin-bottom:8px">⚠️ Limite atingido. Libere uma vaga ou adquira uma nova licença.</div>';
                     }
+                    btnHtml += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%">📱 Gerenciar Dispositivos</button>';
+                    btnHtml += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
+                    btnHtml += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Planos e Upgrade</button>';
+                    container.innerHTML = btnHtml;
                 }
             });
         }

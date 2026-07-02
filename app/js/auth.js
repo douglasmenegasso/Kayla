@@ -54,10 +54,8 @@ async function verificarSessao() {
                     await carregarDados();
                     await verificarStatusPro();
                     
-                    // ✅ CORREÇÃO: Tentar registrar o dispositivo ao reabrir o app também
-                    if (LIMITES.proAtivo) {
-                        await registrarDispositivoAtual();
-                    }
+                    // NÃO registra o dispositivo automaticamente ao restaurar sessão
+                    // O usuário deve ativar manualmente via botão
                     
                     // ✅ NOVO: Verificar se voltou de um pagamento
                     if (typeof verificarRetornoPagamento === 'function') {
@@ -279,23 +277,8 @@ async function loginSucesso(user, senha, lembrarMe) {
     }
 
     // Verifica se tem assinatura válida e define a badge
+    // NÃO registra o dispositivo automaticamente — o usuário deve ativar manualmente
     await verificarStatusPro();
-
-    // ✅ CORREÇÃO: Tenta registrar o dispositivo ATUAL no banco
-    if (isOnline && supabaseClient && currentUser) {
-        try {
-            // A função registrarDispositivoAtual está no subscription.js
-            var dispositivoRegistrado = await registrarDispositivoAtual();
-            
-            // Se o registro falhou (porque estourou o limite), re-verifica o status para rebaixar para GRÁTIS
-            if (!dispositivoRegistrado) {
-                await verificarStatusPro();
-                console.warn('[AUTH] 🔒 Limite de dispositivos atingido. Modo GRÁTIS ativado neste dispositivo.');
-            }
-        } catch (e) {
-            console.warn('Erro ao registrar dispositivo:', e);
-        }
-    }
     
     fecharModal();
     toast('Bem-vindo!', 'success');

@@ -78,6 +78,19 @@ async function desativarDispositivo(deviceId) {
         await supabaseClient.from('dispositivos').update({ ativo: false }).eq('id', deviceId);
         toast('✅ Dispositivo removido!', 'success');
         
+        // Sincronizar contador de dispositivos no banco após desativação
+        try {
+            var assinatura = await getAssinaturaAtiva();
+            if (assinatura) {
+                var { count: cntAtivos } = await supabaseClient.from('dispositivos').select('id', { count: 'exact', head: true }).eq('assinatura_id', assinatura.id).eq('ativo', true);
+                var qtdAtivos = cntAtivos || 0;
+                if (assinatura.dispositivos_usados !== qtdAtivos) {
+                    await supabaseClient.from('assinaturas').update({ dispositivos_usados: qtdAtivos }).eq('id', assinatura.id);
+                }
+                localStorage.setItem('kayla_pro_devices', qtdAtivos + '/' + assinatura.dispositivos_max);
+            }
+        } catch(e2) { console.warn('Erro ao sincronizar contador:', e2); }
+        
         // Forçar re-verificação total do status PRO
         if (typeof verificarStatusPro === 'function') await verificarStatusPro();
         
@@ -103,6 +116,19 @@ async function ativarDispositivoAtual() {
             var ok = await registrarDispositivoAtual();
             if (ok) {
                 if (typeof verificarStatusPro === 'function') await verificarStatusPro();
+                
+                // Sincronizar contador de dispositivos no banco após ativação
+                try {
+                    var assinatura = await getAssinaturaAtiva();
+                    if (assinatura) {
+                        var { count: cntAtivos } = await supabaseClient.from('dispositivos').select('id', { count: 'exact', head: true }).eq('assinatura_id', assinatura.id).eq('ativo', true);
+                        var qtdAtivos = cntAtivos || 0;
+                        if (assinatura.dispositivos_usados !== qtdAtivos) {
+                            await supabaseClient.from('assinaturas').update({ dispositivos_usados: qtdAtivos }).eq('id', assinatura.id);
+                        }
+                        localStorage.setItem('kayla_pro_devices', qtdAtivos + '/' + assinatura.dispositivos_max);
+                    }
+                } catch(e2) { console.warn('Erro ao sincronizar contador:', e2); }
                 
                 if (typeof gerenciarDispositivos === 'function') {
                     await gerenciarDispositivos();
@@ -193,4 +219,4 @@ async function gerarHtmlListaDispositivos() {
 }
 
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-07-01
+// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-07-02

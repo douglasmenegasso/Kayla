@@ -862,12 +862,21 @@ async function gerenciarDispositivos() {
     }
     
     try {
+        // Buscar contagem real de dispositivos ativos no banco
+        var { count: totalAtivosReal } = await supabaseClient.from('dispositivos').select('id', { count: 'exact', head: true }).eq('assinatura_id', assinatura.id).eq('ativo', true);
+        var qtdAtivos = totalAtivosReal || 0;
+        
+        // Sincronizar contador na assinatura se estiver errado
+        if (assinatura.dispositivos_usados !== qtdAtivos) {
+            await supabaseClient.from('assinaturas').update({ dispositivos_usados: qtdAtivos }).eq('id', assinatura.id);
+        }
+        
         var content = await gerarHtmlListaDispositivos();
         var html = '<div class="modal-handle"></div><div class="modal-title">📱 Dispositivos</div>';
-        html += '<div class="modal-sub">' + assinatura.dispositivos_usados + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        html += '<div class="modal-sub">' + qtdAtivos + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
         html += content;
         
-        if (assinatura.dispositivos_usados < assinatura.dispositivos_max) {
+        if (qtdAtivos < assinatura.dispositivos_max) {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px; width:100%">⬆️ Adicionar Dispositivo</button>';
         } else {
             html += '<button class="btn btn-primary" onclick="fecharModal(); fazerUpgradeDispositivos()" style="margin-top:12px; width:100%">⬆️ Fazer Upgrade</button>';
@@ -1137,6 +1146,17 @@ async function mostrarInfoAssinatura() {
     var dataFim = new Date(assinatura.data_fim).toLocaleDateString('pt-BR');
     var diasRestantes = Math.floor((new Date(assinatura.data_fim) - new Date()) / (1000 * 60 * 60 * 24));
 
+    // Buscar contagem real de dispositivos ativos no banco
+    var qtdAtivosReal = 0;
+    try {
+        var { count: cntAtivos } = await supabaseClient.from('dispositivos').select('id', { count: 'exact', head: true }).eq('assinatura_id', assinatura.id).eq('ativo', true);
+        qtdAtivosReal = cntAtivos || 0;
+        // Sincronizar contador se estiver errado
+        if (assinatura.dispositivos_usados !== qtdAtivosReal) {
+            await supabaseClient.from('assinaturas').update({ dispositivos_usados: qtdAtivosReal }).eq('id', assinatura.id);
+        }
+    } catch(e) { qtdAtivosReal = assinatura.dispositivos_usados || 0; }
+
     var saldoCredito = 0;
     try {
         var { data: creditos, error: credError } = await supabaseClient
@@ -1149,12 +1169,10 @@ async function mostrarInfoAssinatura() {
         }
     } catch(e) { console.warn('Erro ao buscar créditos:', e); }
     
-    localStorage.setItem('kayla_pro', 'true');
+    // Apenas salvar a key e a validade; não forçar PRO ativo (isso depende do dispositivo estar registrado)
     localStorage.setItem('kayla_pro_key', assinatura.key_ativacao || '');
     localStorage.setItem('kayla_pro_expires', assinatura.data_fim || '');
-    localStorage.setItem('kayla_pro_devices', assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max);
-    LIMITES.proAtivo = true;
-    atualizarBadgePlano();
+    localStorage.setItem('kayla_pro_devices', qtdAtivosReal + '/' + assinatura.dispositivos_max);
     
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📋 Minha Assinatura</div>';
@@ -1176,7 +1194,7 @@ async function mostrarInfoAssinatura() {
     html += '</div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
     html += '<span style="color:var(--text2)">Dispositivos:</span>';
-    html += '<strong>' + assinatura.dispositivos_usados + '/' + assinatura.dispositivos_max + '</strong>';
+    html += '<strong>' + qtdAtivosReal + '/' + assinatura.dispositivos_max + '</strong>';
     html += '</div>';
     html += '<div style="display:flex;justify-content:space-between;margin-bottom:12px">';
     html += '<span style="color:var(--text2)">Validade:</span>';
