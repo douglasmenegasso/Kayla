@@ -470,20 +470,9 @@ async function excluirContaUsuario() {
                     if (isOnline && supabaseClient) {
                         var userId = currentUser.id;
                         
-                        // 1. Limpar TODAS as tabelas vinculadas primeiro (incluindo pagamentos e créditos se existirem)
-                        // Usamos Promise.allSettled para garantir que tentamos apagar tudo mesmo se um falhar por falta de permissão
-                        await Promise.allSettled([
-                            supabaseClient.from('clientes').delete().eq('user_id', userId),
-                            supabaseClient.from('produtos').delete().eq('user_id', userId),
-                            supabaseClient.from('pedidos').delete().eq('user_id', userId),
-                            supabaseClient.from('pedido_itens').delete().eq('user_id', userId),
-                            supabaseClient.from('assinaturas').delete().eq('user_id', userId),
-                            supabaseClient.from('dispositivos').delete().eq('user_id', userId),
-                            supabaseClient.from('pagamentos').delete().eq('user_id', userId),
-                            supabaseClient.from('creditos').delete().eq('user_id', userId)
-                        ]);
-                        
-                        // 2. Chamar Edge Function para deletar o usuário do Auth (exige service role no backend)
+                        // 1. Chamar Edge Function para deletar TUDO (Auth + Tabelas restritas por RLS)
+                        // Como assinaturas e dispositivos têm RLS restrito a service_role para DELETE/UPDATE,
+                        // a Edge Function é o único lugar que pode realizar a limpeza completa com segurança.
                         try {
                             var response = await fetch(SUPABASE_EDGE_URL + '/delete-user', {
                                 method: 'POST',
@@ -491,11 +480,22 @@ async function excluirContaUsuario() {
                                     'Content-Type': 'application/json',
                                     'Authorization': 'Bearer ' + SUPABASE_KEY
                                 },
-                                body: JSON.stringify({ user_id: userId })
+                                body: JSON.stringify({ 
+                                    user_id: userId,
+                                    clean_all_data: true // Sinaliza para a função apagar também as tabelas vinculadas
+                                })
                             });
                             
                             if (!response.ok) {
                                 console.warn('Edge Function delete-user retornou erro:', response.status);
+                                
+                                // Fallback: Tentar apagar o que for possível via RLS de usuário (clientes, produtos, pedidos)
+                                await Promise.allSettled([
+                                    supabaseClient.from('clientes').delete().eq('user_id', userId),
+                                    supabaseClient.from('produtos').delete().eq('user_id', userId),
+                                    supabaseClient.from('pedidos').delete().eq('user_id', userId),
+                                    supabaseClient.from('pedido_itens').delete().eq('user_id', userId)
+                                ]);
                             }
                         } catch(e2) { 
                             console.error('Erro ao chamar Edge Function delete-user:', e2);

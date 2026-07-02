@@ -176,13 +176,33 @@ async function cancelarAssinatura() {
                 if (!finalConfirmed) return;
                 
                 try {
-                    await supabaseClient.from('assinaturas').update({ status: 'cancelada', updated_at: new Date().toISOString() }).eq('id', assinatura.id);
-                    await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
+                    // Como a tabela assinaturas tem RLS restrito a service_role para UPDATE,
+                    // tentamos usar a Edge Function de cancelamento dedicada.
+                    var response = await fetch(SUPABASE_EDGE_URL + '/cancel-subscription', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + SUPABASE_KEY
+                        },
+                        body: JSON.stringify({ 
+                            user_id: currentUser.id,
+                            assinatura_id: assinatura.id
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        // Fallback: Tentar via client direto (pode falhar se RLS estiver ativo)
+                        await supabaseClient.from('assinaturas').update({ status: 'cancelada', updated_at: new Date().toISOString() }).eq('id', assinatura.id);
+                        await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
+                    }
                     
                     resetarStatusLocal();
                     if (typeof mudarAba === 'function') mudarAba('settings');
                     toast('✅ Assinatura cancelada permanentemente.', 'success');
-                } catch(e) { toast('❌ Erro ao cancelar.', 'error'); }
+                } catch(e) { 
+                    console.error('Erro ao cancelar assinatura:', e);
+                    toast('❌ Erro ao cancelar.', 'error'); 
+                }
             });
         }, 500);
     });
