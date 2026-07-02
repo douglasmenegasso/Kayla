@@ -306,11 +306,22 @@ async function fazerLogout() {
         }
     }
     
+    // Limpar sessão
     localStorage.removeItem('kayla_lembrar_me');
     localStorage.removeItem('kayla_email');
     localStorage.removeItem('kayla_user');
     localStorage.removeItem('kayla_senha_hash');
     localStorage.removeItem('perfilAcesso');
+    
+    // Limpar status PRO local
+    if (typeof resetarStatusLocal === 'function') {
+        resetarStatusLocal();
+    } else {
+        localStorage.removeItem('kayla_pro');
+        localStorage.removeItem('kayla_pro_key');
+        localStorage.removeItem('kayla_pro_expires');
+        localStorage.removeItem('kayla_pro_devices');
+    }
     
     currentUser = null;
     clienteAtual = null;
@@ -404,7 +415,7 @@ function recuperarSenha() {
     });
 }
 
-console.log('✅ Auth.js carregado (Versão corrigida com verificação de pagamento e exclusão de conta)');
+console.log('✅ Auth.js carregado (Versão corrigida com verificação de pagamento e exclusão radical de conta)');
 
 // ============ FUNÇÕES DE EXCLUSÃO DE DADOS E CONTA ============
 
@@ -457,31 +468,55 @@ async function excluirContaUsuario() {
                 
                 try {
                     if (isOnline && supabaseClient) {
-                        // 1. Limpar dados
-                        await supabaseClient.from('clientes').delete().eq('user_id', currentUser.id);
-                        await supabaseClient.from('produtos').delete().eq('user_id', currentUser.id);
-                        await supabaseClient.from('pedidos').delete().eq('user_id', currentUser.id);
-                        await supabaseClient.from('assinaturas').delete().eq('user_id', currentUser.id);
-                        await supabaseClient.from('dispositivos').delete().eq('user_id', currentUser.id);
+                        var userId = currentUser.id;
                         
-                        // 2. Chamar Edge Function para deletar o usuário do Auth
-                        // Como a RPC pode falhar ou não existir, usamos a função dedicada
+                        // 1. Limpar TODAS as tabelas vinculadas primeiro (incluindo pagamentos e créditos se existirem)
+                        // Usamos Promise.allSettled para garantir que tentamos apagar tudo mesmo se um falhar por falta de permissão
+                        await Promise.allSettled([
+                            supabaseClient.from('clientes').delete().eq('user_id', userId),
+                            supabaseClient.from('produtos').delete().eq('user_id', userId),
+                            supabaseClient.from('pedidos').delete().eq('user_id', userId),
+                            supabaseClient.from('pedido_itens').delete().eq('user_id', userId),
+                            supabaseClient.from('assinaturas').delete().eq('user_id', userId),
+                            supabaseClient.from('dispositivos').delete().eq('user_id', userId),
+                            supabaseClient.from('pagamentos').delete().eq('user_id', userId),
+                            supabaseClient.from('creditos').delete().eq('user_id', userId)
+                        ]);
+                        
+                        // 2. Chamar Edge Function para deletar o usuário do Auth (exige service role no backend)
                         try {
-                            await fetch(SUPABASE_EDGE_URL + '/delete-user', {
+                            var response = await fetch(SUPABASE_EDGE_URL + '/delete-user', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
                                     'Authorization': 'Bearer ' + SUPABASE_KEY
                                 },
-                                body: JSON.stringify({ user_id: currentUser.id })
+                                body: JSON.stringify({ user_id: userId })
                             });
-                        } catch(e2) { console.warn('Erro ao chamar delete-user:', e2); }
+                            
+                            if (!response.ok) {
+                                console.warn('Edge Function delete-user retornou erro:', response.status);
+                            }
+                        } catch(e2) { 
+                            console.error('Erro ao chamar Edge Function delete-user:', e2);
+                        }
+                        
+                        // 3. Forçar logout no Supabase Auth (lado do cliente)
+                        await supabaseClient.auth.signOut();
                     }
                     
+                    // 4. Limpeza radical local
+                    localStorage.clear(); // Apaga TUDO do localStorage para este domínio
+                    
                     toast('✅ Conta excluída com sucesso.', 'success');
-                    fazerLogout();
+                    
+                    // Recarregar a página para limpar todo o estado da memória
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1500);
                     
                 } catch(e) {
+                    console.error('Erro crítico na exclusão:', e);
                     toast('❌ Erro ao excluir conta.', 'error');
                 }
             });
