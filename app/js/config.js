@@ -34,6 +34,19 @@ function inicializarSupabase() {
         supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('[Config] Supabase inicializado');
         
+        // Listener de autenticação em tempo real para sincronizar múltiplos dispositivos
+        supabaseClient.auth.onAuthStateChange(function(event, session) {
+            console.log('[AUTH] Evento:', event);
+            if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+                // Se o usuário foi deslogado ou deletado em outro lugar, limpa tudo e recarrega
+                if (typeof currentUser !== 'undefined' && currentUser) {
+                    console.warn('[AUTH] Sessão encerrada remotamente. Limpando dados...');
+                    localStorage.clear();
+                    window.location.reload();
+                }
+            }
+        });
+        
         // Inicializar sessão após Supabase estar pronto
         if (typeof verificarSessao === 'function') {
             verificarSessao();
