@@ -168,14 +168,22 @@ async function cancelarAssinatura() {
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) return;
 
-    confirmar('Cancelar Assinatura PRO', 'Isso desativará todos os seus dispositivos. Confirmar?', async function(confirmed) {
+    confirmar('🚫 CANCELAR PRO (1/2)', 'Isso desativará todos os seus dispositivos e você perderá o acesso às funções PRO imediatamente. Confirmar?', function(confirmed) {
         if (!confirmed) return;
-        try {
-            await supabaseClient.from('assinaturas').update({ status: 'cancelada' }).eq('id', assinatura.id);
-            await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
-            resetarStatusLocal();
-            if (typeof mudarAba === 'function') mudarAba('settings');
-            toast('✅ Assinatura cancelada.', 'success');
-        } catch(e) { toast('❌ Erro ao cancelar.', 'error'); }
+        
+        setTimeout(function() {
+            confirmar('🚨 CONFIRMAÇÃO FINAL (2/2)', 'VOCÊ TEM CERTEZA? Sua assinatura será cancelada PERMANENTEMENTE e não poderá ser recuperada. Deseja continuar?', async function(finalConfirmed) {
+                if (!finalConfirmed) return;
+                
+                try {
+                    await supabaseClient.from('assinaturas').update({ status: 'cancelada', updated_at: new Date().toISOString() }).eq('id', assinatura.id);
+                    await supabaseClient.from('dispositivos').update({ ativo: false }).eq('assinatura_id', assinatura.id);
+                    
+                    resetarStatusLocal();
+                    if (typeof mudarAba === 'function') mudarAba('settings');
+                    toast('✅ Assinatura cancelada permanentemente.', 'success');
+                } catch(e) { toast('❌ Erro ao cancelar.', 'error'); }
+            });
+        }, 500);
     });
 }

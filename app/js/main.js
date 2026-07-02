@@ -175,6 +175,7 @@ function renderizarConfig() {
         html += '<button class="btn btn-primary" onclick="mostrarInfoAssinatura()" style="margin-top:8px;width:100%">📋 Minha Assinatura</button>';
         html += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%">📱 Gerenciar Dispositivos</button>';
         html += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
+        html += '<button class="btn btn-outline" onclick="iniciarCancelamentoDispositivos()" style="margin-top:8px;width:100%">📉 Reduzir Dispositivos (Downgrade)</button>';
         html += '<button class="btn btn-red" onclick="cancelarAssinatura()" style="margin-top:8px;width:100%">🚫 Cancelar Assinatura PRO</button>';
         html += '<button class="btn btn-primary" onclick="iniciarRenovacao()" style="margin-top:8px;width:100%">🔄 Renovar Assinatura</button>';
     } else {

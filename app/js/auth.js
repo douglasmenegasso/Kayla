@@ -404,76 +404,87 @@ function recuperarSenha() {
     });
 }
 
-console.log('✅ Auth.js carregado (Versão corrigida com verificação de pagamento)');
+console.log('✅ Auth.js carregado (Versão corrigida com verificação de pagamento e exclusão de conta)');
 
 // ============ FUNÇÕES DE EXCLUSÃO DE DADOS E CONTA ============
 
 async function apagarDadosUsuario() {
     if (!currentUser) return;
     
-    confirmar('⚠️ APAGAR TUDO', 'Isso excluirá permanentEMENTE todos os seus clientes, produtos e pedidos. Esta ação não pode ser desfeita. Deseja continuar?', async function(confirmed) {
+    confirmar('⚠️ APAGAR TUDO (1/2)', 'Isso excluirá PERMANENTEMENTE todos os seus clientes, produtos e pedidos. Esta ação não pode ser desfeita. Deseja continuar?', function(confirmed) {
         if (!confirmed) return;
         
-        toast('⏳ Apagando dados...', 'warning');
-        
-        try {
-            if (isOnline && supabaseClient) {
-                // Apagar do banco
-                await supabaseClient.from('clientes').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('produtos').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('pedidos').delete().eq('user_id', currentUser.id);
-            }
-            
-            // Limpar localmente
-            clientes = [];
-            produtos = [];
-            pedidos = [];
-            salvarDadosLocais();
-            
-            toast('✅ Todos os dados foram apagados.', 'success');
-            if (typeof mudarAba === 'function') mudarAba('settings');
-            
-        } catch(e) {
-            toast('❌ Erro ao apagar dados.', 'error');
-            console.error(e);
-        }
+        setTimeout(function() {
+            confirmar('🚨 CONFIRMAÇÃO FINAL (2/2)', 'VOCÊ TEM CERTEZA? Todos os seus dados de vendas, clientes e estoque serão perdidos para sempre.', async function(finalConfirmed) {
+                if (!finalConfirmed) return;
+                
+                toast('⏳ Apagando dados...', 'warning');
+                
+                try {
+                    if (isOnline && supabaseClient) {
+                        await supabaseClient.from('clientes').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('produtos').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('pedidos').delete().eq('user_id', currentUser.id);
+                    }
+                    
+                    clientes = [];
+                    produtos = [];
+                    pedidos = [];
+                    salvarDadosLocais();
+                    
+                    toast('✅ Todos os dados foram apagados.', 'success');
+                    if (typeof mudarAba === 'function') mudarAba('settings');
+                    
+                } catch(e) {
+                    toast('❌ Erro ao apagar dados.', 'error');
+                }
+            });
+        }, 500);
     });
 }
 
 async function excluirContaUsuario() {
     if (!currentUser) return;
     
-    confirmar('🚫 EXCLUIR CONTA', 'ATENÇÃO: Sua conta e todos os seus dados serão excluídos permanentemente. Se você tem uma assinatura PRO, ela será perdida. Deseja realmente excluir sua conta?', async function(confirmed) {
+    confirmar('🚫 EXCLUIR CONTA (1/2)', 'ATENÇÃO: Sua conta e todos os seus dados serão excluídos permanentemente. Se você tem uma assinatura PRO, ela será perdida. Deseja realmente excluir sua conta?', function(confirmed) {
         if (!confirmed) return;
         
-        toast('⏳ Excluindo conta...', 'warning');
-        
-        try {
-            if (isOnline && supabaseClient) {
-                // A exclusão de usuário geralmente requer permissão de admin ou uma Edge Function
-                // Por segurança e simplicidade, vamos apenas marcar como cancelado e deslogar
-                // No Supabase, o usuário pode ser excluído via API se configurado
+        setTimeout(function() {
+            confirmar('🚨 EXCLUSÃO PERMANENTE (2/2)', 'ÚLTIMO AVISO: Esta ação é IRREVERSÍVEL. Você perderá seu acesso e sua assinatura imediatamente. Confirmar exclusão definitiva?', async function(finalConfirmed) {
+                if (!finalConfirmed) return;
                 
-                // 1. Apagar dados primeiro
-                await supabaseClient.from('clientes').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('produtos').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('pedidos').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('assinaturas').delete().eq('user_id', currentUser.id);
-                await supabaseClient.from('dispositivos').delete().eq('user_id', currentUser.id);
+                toast('⏳ Excluindo conta...', 'warning');
                 
-                // 2. Tentar excluir o usuário (pode falhar dependendo das permissões)
-                // Se falhar, o logout já resolve o acesso
                 try {
-                    await supabaseClient.rpc('delete_user_data'); 
-                } catch(e2) {}
-            }
-            
-            toast('✅ Conta excluída com sucesso.', 'success');
-            fazerLogout();
-            
-        } catch(e) {
-            toast('❌ Erro ao excluir conta.', 'error');
-            console.error(e);
-        }
+                    if (isOnline && supabaseClient) {
+                        // 1. Limpar dados
+                        await supabaseClient.from('clientes').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('produtos').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('pedidos').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('assinaturas').delete().eq('user_id', currentUser.id);
+                        await supabaseClient.from('dispositivos').delete().eq('user_id', currentUser.id);
+                        
+                        // 2. Chamar Edge Function para deletar o usuário do Auth
+                        // Como a RPC pode falhar ou não existir, usamos a função dedicada
+                        try {
+                            await fetch(SUPABASE_EDGE_URL + '/delete-user', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + SUPABASE_KEY
+                                },
+                                body: JSON.stringify({ user_id: currentUser.id })
+                            });
+                        } catch(e2) { console.warn('Erro ao chamar delete-user:', e2); }
+                    }
+                    
+                    toast('✅ Conta excluída com sucesso.', 'success');
+                    fazerLogout();
+                    
+                } catch(e) {
+                    toast('❌ Erro ao excluir conta.', 'error');
+                }
+            });
+        }, 500);
     });
 }
