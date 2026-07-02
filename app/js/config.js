@@ -124,7 +124,8 @@ async function gerarHtmlListaDispositivos() {
     }
 
     var currentDeviceId = getDeviceId();
-    var isMeActive = dispositivos.some(function(d) { return d.device_id === currentDeviceId; });
+    // CORREÇÃO: Verificar se o dispositivo atual está REALMENTE ativo no banco
+    var isMeActive = dispositivos.some(function(d) { return d.device_id === currentDeviceId && d.ativo === true; });
 
     html += '<div style="text-align:center; margin-bottom:15px; font-weight:600; color:var(--accent);">' + dispositivos.length + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
 
@@ -134,7 +135,8 @@ async function gerarHtmlListaDispositivos() {
         html += '<div class="item-list">';
         for (var i = 0; i < dispositivos.length; i++) {
             var d = dispositivos[i];
-            var isMe = d.device_id === currentDeviceId;
+            // CORREÇÃO: O badge "PRO ATIVO AQUI" só deve aparecer se o status local (LIMITES.proAtivo) for verdadeiro E o ID bater
+            var isMe = d.device_id === currentDeviceId && window.LIMITES && LIMITES.proAtivo;
             var dataAcesso = new Date(d.ultimo_acesso).toLocaleString('pt-BR');
             var borderStyle = isMe ? 'border:2px solid var(--success); background:rgba(34, 197, 94, 0.05);' : 'border:1px solid var(--border-color);';
             
@@ -156,6 +158,7 @@ async function gerarHtmlListaDispositivos() {
         html += '</div>';
     }
 
+    // CORREÇÃO: O botão de ativação deve aparecer se eu não estiver ativo, mesmo que o banco ache que estou (conflito de cache/sessão)
     if (!isMeActive && dispositivos.length < assinatura.dispositivos_max) {
         html += `
             <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%; margin-top:15px">
