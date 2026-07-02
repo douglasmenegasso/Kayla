@@ -14,6 +14,15 @@ var HISTORICO_VERSOES = [
         ] 
     },
     { 
+        versao: '5.4.1', 
+        data: '29/06/2026', 
+        mudancas: [
+            '✅ Corrigido bug onde o botão de login ficava preso em "Entrando..."',
+            '✅ Tecla Enter agora funciona nos campos de login',
+            '⚡ Melhoria na detecção do botão de login'
+        ] 
+    },
+    { 
         versao: '5.4.0', 
         data: '25/06/2026', 
         mudancas: [
@@ -23,6 +32,26 @@ var HISTORICO_VERSOES = [
             '📱 Registro inteligente de múltiplos dispositivos',
             '💾 Sistema de backup e restauração de dados (PRO)',
             '💬 Suporte direto via WhatsApp'
+        ] 
+    },
+    { 
+        versao: '5.0.0', 
+        data: '15/06/2026', 
+        mudancas: [
+            '🚀 Modularização completa do sistema',
+            '💎 Novo sistema de assinatura PRO',
+            '📱 Gerenciamento de dispositivos ativos',
+            '🎨 Nova interface de configurações'
+        ] 
+    },
+    { 
+        versao: '4.4.0', 
+        data: '04/06/2026', 
+        mudancas: [
+            '📋 Dados da empresa em modal separado',
+            '📧 Campo e-mail para notificações',
+            '📱 Back button Android com duplo toque para sair',
+            '🛍️ Nome do app atualizado para Kayla'
         ] 
     }
 ];
@@ -61,6 +90,7 @@ function mostrarHistoricoVersoes() {
     
     html += '<div style="margin-bottom:12px"><strong style="color:var(--accent)">📋 Novidades e Melhorias:</strong></div>';
     
+    html += '<div style="max-height: 400px; overflow-y: auto; padding-right: 5px; -webkit-overflow-scrolling: touch;">';
     HISTORICO_VERSOES.forEach(function(ver, index) {
         html += '<div style="background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid ' + (index === 0 ? 'var(--accent)' : 'var(--border)') + '">';
         html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
@@ -73,6 +103,7 @@ function mostrarHistoricoVersoes() {
         });
         html += '</ul></div>';
     });
+    html += '</div>';
     
     html += '<button class="btn btn-outline" onclick="fecharModal()" style="margin-top:12px; width:100%; padding:14px; font-weight:700;">Fechar</button>';
     
@@ -199,6 +230,11 @@ function renderizarConfig() {
     }
     html += '</div><button class="btn btn-outline" onclick="editarEmpresa()">📝 Editar Dados</button></div>';
     
+    // Perigo: Apagar Dados e Excluir Conta
+    html += '<div class="form-group" style="margin-top:16px"><label class="form-label">⚠️ Zona de Perigo</label>';
+    html += '<button class="btn btn-outline" onclick="apagarDadosUsuario()" style="margin-top:8px;width:100%;color:var(--error);border-color:var(--error)">🗑️ Apagar Todos os Dados</button>';
+    html += '<button class="btn btn-outline" onclick="excluirContaUsuario()" style="margin-top:8px;width:100%;color:var(--error);border-color:var(--error)">🚫 Excluir Minha Conta</button></div>';
+
     html += '<button class="btn btn-red" onclick="fazerLogout()" style="margin-top:20px;width:100%">🚪 Sair da Conta</button>';
     html += '<div style="text-align:center;margin-top:20px;font-size:11px;color:var(--text3)">Kayla v' + appVersion + '</div></div>';
     

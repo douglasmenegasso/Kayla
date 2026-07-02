@@ -1,5 +1,5 @@
 // Service Worker para funcionamento Offline
-const CACHE_NAME = 'kayla-v5.4.0';
+const CACHE_NAME = 'kayla-v5.4.2';
 
 // Lista básica de assets essenciais
 const ASSETS_TO_CACHE = [

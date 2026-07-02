@@ -100,7 +100,7 @@ font-size:9px;
 #reader { width:100%; border-radius:var(--radius-sm); overflow: hidden; margin-bottom:12px; }
 #modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:2500; display: none; align-items: flex-end; justify-content: center; }
 #modal-overlay.show { display: flex; }
-.modal-content { background:var(--bg2); border-radius:20px 20px 0 0; padding:24px 20px; width:100%; max-width:500px; max-height:90vh; overflow-y: auto; animation: slideUp 0.3s; }
+.modal-content { background:var(--bg2); border-radius:20px 20px 0 0; padding:24px 20px; width:100%; max-width:500px; max-height:90vh; overflow-y: auto; animation: slideUp 0.3s; -webkit-overflow-scrolling: touch; }
 @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
 .modal-title { font-size:20px; font-weight:700; text-align: center; margin-bottom:8px; }
 .modal-sub { font-size:13px; color:var(--text2); text-align: center; margin-bottom:20px; }
@@ -231,7 +231,7 @@ background:var(--accent2);
 </div>
 <button class="btn btn-primary" onclick="abrirLogin()">🔐 Entrar</button>
 <button class="btn btn-outline" onclick="abrirCadastro()">📝 Criar Conta</button>
-<div id="login-version" style="font-size:11px;color:var(--text3);margin-top:20px">v5.4.1</div>
+<div id="login-version" style="font-size:11px;color:var(--text3);margin-top:20px">v5.4.2</div>
 </div>
 </div>
 <!-- APP -->

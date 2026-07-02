@@ -873,7 +873,7 @@ async function gerenciarDispositivos() {
         
         var content = await gerarHtmlListaDispositivos();
         var html = '<div class="modal-handle"></div><div class="modal-title">📱 Dispositivos</div>';
-        html += '<div class="modal-sub">' + qtdAtivos + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
+        // A contagem já é exibida dentro do 'content' (gerarHtmlListaDispositivos)
         html += content;
         
         if (qtdAtivos < assinatura.dispositivos_max) {
