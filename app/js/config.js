@@ -77,12 +77,20 @@ async function desativarDispositivo(deviceId) {
     try {
         await supabaseClient.from('dispositivos').update({ ativo: false }).eq('id', deviceId);
         toast('✅ Dispositivo removido!', 'success');
-        if (typeof verificarStatusPro === 'function') await verificarStatusPro();
-        var modalBody = document.getElementById('modal-body');
-        if (modalBody) modalBody.innerHTML = await gerarHtmlListaDispositivos();
         
-        // CORREÇÃO: Forçar atualização da tela de configurações para refletir mudanças Pro/Grátis
-        if (typeof mudarAba === 'function') mudarAba('settings');
+        // Forçar re-verificação total do status PRO
+        if (typeof verificarStatusPro === 'function') await verificarStatusPro();
+        
+        // Recarregar o modal de gerenciamento
+        if (typeof gerenciarDispositivos === 'function') {
+            await gerenciarDispositivos();
+        }
+        
+        // Atualizar a aba de configurações se estiver nela
+        if (typeof mudarAba === 'function' && document.querySelector('.nav-btn:nth-child(6).active')) {
+            var content = document.getElementById('content');
+            if (content) content.innerHTML = renderizarConfig();
+        }
         
         return true;
     } catch(e) { return false; }
@@ -95,11 +103,15 @@ async function ativarDispositivoAtual() {
             var ok = await registrarDispositivoAtual();
             if (ok) {
                 if (typeof verificarStatusPro === 'function') await verificarStatusPro();
-                var modalBody = document.getElementById('modal-body');
-                if (modalBody) modalBody.innerHTML = await gerarHtmlListaDispositivos();
                 
-                // CORREÇÃO: Forçar atualização da tela de configurações para refletir mudanças Pro/Grátis
-                if (typeof mudarAba === 'function') mudarAba('settings');
+                if (typeof gerenciarDispositivos === 'function') {
+                    await gerenciarDispositivos();
+                }
+                
+                if (typeof mudarAba === 'function' && document.querySelector('.nav-btn:nth-child(6).active')) {
+                    var content = document.getElementById('content');
+                    if (content) content.innerHTML = renderizarConfig();
+                }
                 
                 toast('✅ Dispositivo ativado!', 'success');
                 return true;
@@ -114,28 +126,27 @@ async function gerarHtmlListaDispositivos() {
     var dispositivos = await listarDispositivosAtivos();
     var assinatura = await getAssinaturaAtiva();
     
-    // CORREÇÃO: Removida duplicidade de título e handle
     var html = ''; 
     
     if (!assinatura) {
         html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhuma assinatura PRO ativa.</div>';
-        html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
         return html;
     }
 
     var currentDeviceId = getDeviceId();
-    // CORREÇÃO: Verificar se o dispositivo atual está REALMENTE ativo no banco
-    var isMeActive = dispositivos.some(function(d) { return d.device_id === currentDeviceId && d.ativo === true; });
+    // O dispositivo atual está ativo se o ID bater E o app localmente estiver no modo PRO
+    var isMeActive = dispositivos.some(function(d) { 
+        return d.device_id === currentDeviceId && window.LIMITES && LIMITES.proAtivo; 
+    });
 
     html += '<div style="text-align:center; margin-bottom:15px; font-weight:600; color:var(--accent);">' + dispositivos.length + ' de ' + assinatura.dispositivos_max + ' dispositivos em uso</div>';
 
     if (dispositivos.length === 0) {
-        html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhum dispositivo ativo.</div>';
+        html += '<div style="text-align:center; padding:20px; color:var(--text2);">Nenhum dispositivo ativo no momento.</div>';
     } else {
         html += '<div class="item-list">';
         for (var i = 0; i < dispositivos.length; i++) {
             var d = dispositivos[i];
-            // CORREÇÃO: O badge "PRO ATIVO AQUI" só deve aparecer se o status local (LIMITES.proAtivo) for verdadeiro E o ID bater
             var isMe = d.device_id === currentDeviceId && window.LIMITES && LIMITES.proAtivo;
             var dataAcesso = new Date(d.ultimo_acesso).toLocaleString('pt-BR');
             var borderStyle = isMe ? 'border:2px solid var(--success); background:rgba(34, 197, 94, 0.05);' : 'border:1px solid var(--border-color);';
@@ -158,12 +169,23 @@ async function gerarHtmlListaDispositivos() {
         html += '</div>';
     }
 
-    // CORREÇÃO: O botão de ativação deve aparecer se eu não estiver ativo, mesmo que o banco ache que estou (conflito de cache/sessão)
+    // Se eu não estou ativo e tem vaga, mostra o botão de ativação
     if (!isMeActive && dispositivos.length < assinatura.dispositivos_max) {
         html += `
-            <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%; margin-top:15px">
-                ⚡ Ativar PRO neste dispositivo
-            </button>
+            <div style="margin-top:15px; padding:15px; text-align:center; background:var(--bg3); border-radius:10px; border:1px dashed var(--accent);">
+                <p style="margin-bottom:10px; color:var(--text2); font-size:13px;">
+                    Este dispositivo está operando no modo <strong>GRÁTIS</strong>.
+                </p>
+                <button class="btn btn-primary" onclick="ativarDispositivoAtual()" style="width:100%;">
+                    ⚡ Ativar PRO neste dispositivo
+                </button>
+            </div>
+        `;
+    } else if (!isMeActive && dispositivos.length >= assinatura.dispositivos_max) {
+        html += `
+            <div style="margin-top:15px; padding:12px; text-align:center; background:rgba(255, 152, 0, 0.1); border-radius:10px; color:var(--warning); font-size:12px;">
+                ⚠️ Limite atingido. Liberte uma vaga para ativar este dispositivo.
+            </div>
         `;
     }
 
@@ -171,4 +193,4 @@ async function gerarHtmlListaDispositivos() {
 }
 
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-06-28
+// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-07-01
