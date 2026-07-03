@@ -172,6 +172,25 @@ async function removerDispositivo(deviceId, assinaturaId) {
     } catch(e) { return false; }
 }
 
+// Função para listar todos os dispositivos ativos
+async function listarDispositivos(assinaturaId) {
+    if (!currentUser || !supabaseClient) return [];
+    try {
+        var { data } = await supabaseClient
+            .from('dispositivos')
+            .select('*')
+            .eq('assinatura_id', assinaturaId)
+            .eq('ativo', true)
+            .order('ultimo_acesso', { ascending: false });
+        return data || [];
+    } catch(e) { 
+        console.error('[listarDispositivos] Erro:', e);
+        return []; 
+    }
+}
+
+// Tornar global
+
 window.getDeviceId = getDeviceId;
 window.getDeviceName = getDeviceName;
 window.getDeviceType = getDeviceType;
