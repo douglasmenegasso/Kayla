@@ -1258,7 +1258,6 @@ async function mostrarInfoAssinatura() {
 
 // ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 
-// ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 function verificarRetornoPagamento() {
     var urlParams = new URLSearchParams(window.location.search);
     var collectionStatus = urlParams.get('collection_status');
@@ -1281,6 +1280,18 @@ function verificarRetornoPagamento() {
         localStorage.removeItem('kayla_pro_key');
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
+        
+        // ✅ CORREÇÃO: Inicializar LIMITES se não existir
+        if (typeof window.LIMITES === 'undefined') {
+            window.LIMITES = {
+                proAtivo: false,
+                maxClientes: 3,
+                maxProdutos: 10,
+                maxVendas: 3,
+                bloqueadoPorDispositivo: false
+            };
+        }
+        
         LIMITES.proAtivo = false;
         
         toast('✅ Pagamento detectado! Ativando sua conta...', 'success');
@@ -1292,10 +1303,15 @@ function verificarRetornoPagamento() {
             for (var tentativa = 0; tentativa < 5; tentativa++) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                var statusAtivado = await verificarStatusPro();
-                console.log('[Pagamento] Tentativa ' + (tentativa + 1) + ' - PRO ativo:', statusAtivado);
+                // ✅ CORREÇÃO: Chamar verificarStatusPro que está em subscription.js
+                if (typeof window.verificarStatusPro === 'function') {
+                    await window.verificarStatusPro();
+                }
                 
-                if (statusAtivado) {
+                var statusAtivo = LIMITES.proAtivo;
+                console.log('[Pagamento] Tentativa ' + (tentativa + 1) + ' - PRO ativo:', statusAtivo);
+                
+                if (statusAtivo) {
                     break;
                 }
             }
@@ -1305,17 +1321,21 @@ function verificarRetornoPagamento() {
                 atualizarBadgePlano();
                 
                 // Verificar se precisa registrar dispositivo atual
-                var assinatura = await getAssinaturaAtiva();
-                if (assinatura) {
-                    var deviceId = getDeviceId();
-                    var dispositivos = await listarDispositivos(assinatura.id);
-                    var dispositivoRegistrado = dispositivos.some(function(d) { 
-                        return d.device_id === deviceId && d.ativo; 
-                    });
-                    
-                    if (!dispositivoRegistrado) {
-                        console.log('[Pagamento] Registrando dispositivo atual...');
-                        await registrarDispositivoAtual();
+                if (typeof window.getAssinaturaAtiva === 'function' && 
+                    typeof window.registrarDispositivoAtual === 'function') {
+                    var assinatura = await window.getAssinaturaAtiva();
+                    if (assinatura) {
+                        var deviceId = window.getDeviceId ? window.getDeviceId() : null;
+                        var dispositivos = await window.listarDispositivos ? 
+                            await window.listarDispositivos(assinatura.id) : [];
+                        var dispositivoRegistrado = dispositivos.some(function(d) { 
+                            return d.device_id === deviceId && d.ativo; 
+                        });
+                        
+                        if (!dispositivoRegistrado) {
+                            console.log('[Pagamento] Registrando dispositivo atual...');
+                            await window.registrarDispositivoAtual();
+                        }
                     }
                 }
                 
@@ -1327,8 +1347,10 @@ function verificarRetornoPagamento() {
                 
                 // Tentar mais uma vez após 10 segundos
                 setTimeout(async function() {
-                    var statusFinal = await verificarStatusPro();
-                    if (statusFinal) {
+                    if (typeof window.verificarStatusPro === 'function') {
+                        await window.verificarStatusPro();
+                    }
+                    if (LIMITES.proAtivo) {
                         toast('🎉 Plano PRO ativado!', 'success');
                         atualizarBadgePlano();
                         if (typeof mudarAba === 'function') mudarAba('settings');
@@ -1345,13 +1367,4 @@ function verificarRetornoPagamento() {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
-
-if (typeof window !== 'undefined') {
-    verificarRetornoPagamento();
-    
-    window.addEventListener('DOMContentLoaded', function() {
-        setTimeout(verificarRetornoPagamento, 500);
-    });
-}
-
 console.log('✅ Payments.js carregado');
