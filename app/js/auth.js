@@ -246,6 +246,200 @@ async function fazerLogin() {
     }
 }
 
+async function fazerLogin() {
+    var email = document.getElementById('email').value.trim();
+    var senha = document.getElementById('senha').value;
+    var lembrarMe = document.getElementById('lembrar-me').checked;
+    
+    if (!email || !senha) { 
+        toast('Preencha e-mail e senha', 'error'); 
+        return; 
+    }
+    
+    // Encontra o botão de forma mais confiável
+    var btn = document.querySelector('.modal-content button[onclick="fazerLogin()"]');
+    if (!btn) {
+        btn = document.querySelector('button[onclick="fazerLogin()"]');
+    }
+    if (btn && btn.disabled) return;
+    
+    var textoOriginal = btn ? btn.innerText : 'Entrar';
+    if (btn) {
+        btn.innerText = 'Entrando...';
+        btn.disabled = true;
+    }
+    
+    console.log('[AUTH] Tentando login - Email:', email, 'Online:', isOnline);
+    
+    // OFFLINE: Primeiro verifica se tem sessão salva
+    var userSalvo = localStorage.getItem('kayla_user');
+    var emailSalvo = localStorage.getItem('kayla_email');
+    var senhaSalva = localStorage.getItem('kayla_senha_hash');
+    
+    if (!isOnline && userSalvo && emailSalvo === email) {
+        console.log('[AUTH] Login OFFLINE detectado');
+        try {
+            var userOffline = JSON.parse(userSalvo);
+            if (senhaSalva) {
+                var senhaDecodificada = atob(senhaSalva);
+                if (senha !== senhaDecodificada) {
+                    toast('Senha incorreta', 'error');
+                    if (btn) { btn.innerText = textoOriginal; btn.disabled = false; }
+                    return;
+                }
+            }
+            currentUser = userOffline;
+            if (lembrarMe) {
+                localStorage.setItem('kayla_lembrar_me', 'true');
+                localStorage.setItem('kayla_email', email);
+            }
+            carregarDadosLocais();
+            fecharModal();
+            toast('Bem-vindo (Offline)!', 'success');
+            mostrarApp();
+            atualizarBadgePlano();
+            console.log('[AUTH] Login OFFLINE sucesso');
+            if (btn) { btn.innerText = textoOriginal; btn.disabled = false; }
+            return;
+        } catch(e) {
+            console.error('[AUTH] Erro ao fazer login offline:', e);
+            toast('Erro ao carregar sessão offline', 'error');
+            if (btn) { btn.innerText = textoOriginal; btn.disabled = false; }
+            return;
+        }
+    }
+    
+    // ONLINE: Tenta login no Supabase
+    if (supabaseClient && isOnline) {
+        console.log('[AUTH] Login ONLINE via Supabase');
+        try {
+            var result = await supabaseClient.auth.signInWithPassword({ 
+                email: email, 
+                password: senha 
+            });
+            console.log('[AUTH] Resultado Supabase:', result);
+            
+            if (result.error) {
+                var errorMsg = result.error.message || 'Erro desconhecido';
+                
+                // ✅ NOVO: Detecta quando o email não existe ou senha está errada
+                if (errorMsg.toLowerCase().includes('invalid login credentials') || 
+                    errorMsg.toLowerCase().includes('bad request')) {
+                    
+                    // Pergunta se o usuário quer criar uma conta
+                    confirmar(
+                        'E-mail não encontrado', 
+                        'O e-mail "' + email + '" não está cadastrado no sistema.\n\nDeseja criar uma nova conta com este e-mail?', 
+                        function(querCriar) {
+                            if (querCriar) {
+                                // Abre o modal de cadastro com o email preenchido
+                                abrirCadastroComEmail(email);
+                            }
+                        }
+                    );
+                } else if (errorMsg.toLowerCase().includes('email not confirmed')) {
+                    toast('Confirme seu e-mail antes de entrar', 'warning');
+                } else {
+                    toast('Erro: ' + errorMsg, 'error');
+                }
+                
+                console.error('[AUTH] Erro login:', result.error);
+                if (btn) { btn.innerText = textoOriginal; btn.disabled = false; }
+                return;
+            }
+            
+            // Login online sucesso
+            if (result.data && result.data.user) {
+                await loginSucesso(result.data.user, senha, lembrarMe);
+            } else {
+                toast('Erro ao fazer login', 'error');
+            }
+        } catch(error) {
+            console.error('[AUTH] Exceção no login:', error);
+            if (userSalvo && emailSalvo === email) {
+                console.log('[AUTH] Falha online, tentando offline...');
+                toast('Sem conexão. Tentando login offline...', 'warning');
+                try {
+                    var userOffline = JSON.parse(userSalvo);
+                    currentUser = userOffline;
+                    if (lembrarMe) {
+                        localStorage.setItem('kayla_lembrar_me', 'true');
+                        localStorage.setItem('kayla_email', email);
+                    }
+                    carregarDadosLocais();
+                    fecharModal();
+                    toast('Bem-vindo (Offline)!', 'success');
+                    mostrarApp();
+                } catch(e) {
+                    console.error('[AUTH] Erro no fallback offline:', e);
+                    toast('Erro ao carregar sessão offline', 'error');
+                }
+            } else {
+                toast('Erro de conexão: ' + error.message, 'error');
+            }
+        } finally {
+            if (btn) {
+                btn.innerText = textoOriginal;
+                btn.disabled = false;
+            }
+        }
+    } else {
+        if (!isOnline) {
+            toast('Sem conexão com a internet', 'warning');
+        } else {
+            toast('Serviço de autenticação indisponível', 'error');
+        }
+        if (btn) { btn.innerText = textoOriginal; btn.disabled = false; }
+    }
+}
+
+// ✅ NOVA FUNÇÃO: Abre o cadastro com o email já preenchido
+function abrirCadastroComEmail(emailPreenchido) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">📝 Criar Conta</div>';
+    html += '<div class="modal-sub">Preencha seus dados</div>';
+    
+    // Campo Nome
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Nome *</label>';
+    html += '<input class="form-input" id="cadastro-nome" placeholder="Seu nome completo" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-email\').focus()">';
+    html += '</div>';
+    
+    // Campo Email (JÁ PREENCHIDO)
+    html += '<div class="form-group">';
+    html += '<label class="form-label">E-mail *</label>';
+    html += '<input class="form-input" id="cadastro-email" type="email" value="' + emailPreenchido + '" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-senha\').focus()">';
+    html += '</div>';
+    
+    // Campo Senha
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Senha *</label>';
+    html += '<input class="form-input" id="cadastro-senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-senha2\').focus()">';
+    html += '</div>';
+    
+    // Confirmar Senha
+    html += '<div class="form-group">';
+    html += '<label class="form-label">Confirmar Senha *</label>';
+    html += '<input class="form-input" id="cadastro-senha2" type="password" placeholder="Repita a senha" onkeypress="if(event.key===\'Enter\')fazerCadastro()">';
+    html += '</div>';
+    
+    html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text2)">';
+    html += '💡 Dica: Use uma senha forte com pelo menos 6 caracteres';
+    html += '</div>';
+    
+    html += '<button class="btn btn-primary" onclick="fazerCadastro()">✅ Criar Conta</button>';
+    html += '<button class="btn btn-outline" onclick="abrirLogin()">Já tenho conta</button>';
+    html += '<button class="btn btn-outline" onclick="mostrarTelaSelecao()">Voltar</button>';
+    
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+    
+    // Foca no campo nome após abrir
+    setTimeout(function() { 
+        document.getElementById('cadastro-nome').focus(); 
+    }, 100);
+}
+
 async function loginSucesso(user, senha, lembrarMe) {
     console.log('[AUTH] Login sucesso:', user.email);
     
