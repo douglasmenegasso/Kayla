@@ -203,15 +203,29 @@ function renderizarConfig() {
                     btnHtml += '<button class="btn btn-outline" onclick="gerenciarDispositivos()" style="margin-top:8px;width:100%">📱 Gerenciar Dispositivos</button>';
                     btnHtml += '<button class="btn btn-outline" onclick="fazerUpgradeDispositivos()" style="margin-top:8px;width:100%">⬆️ Adicionar Dispositivos</button>';
                     btnHtml += '<button class="btn btn-outline" onclick="mostrarPlanos()" style="margin-top:8px;width:100%">🚀 Planos e Upgrade</button>';
+                    
+                    // ✅ ADICIONAR CAMPO DE ATIVAÇÃO MANUAL SEMPRE (mesmo com assinatura ativa)
+                    btnHtml += '<div class="form-group" style="margin-top:16px"><label class="form-label">🔑 Já tem uma key?</label>';
+                    btnHtml += '<input class="form-input" id="pro-key-manual" placeholder="PRO-XXXX-XXXX-XXXX">';
+                    btnHtml += '<button class="btn btn-outline" onclick="ativarProManual()" style="margin-top:8px;width:100%">⚡ Ativar Key Manualmente</button></div>';
+                    
                     container.innerHTML = btnHtml;
+                } else {
+                    // Não tem assinatura ativa - mostrar opções padrão
+                    var defaultHtml = '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
+                    defaultHtml += '<div class="form-group" style="margin-top:12px"><label class="form-label">🔑 Já tem uma key?</label>';
+                    defaultHtml += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
+                    defaultHtml += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px;width:100%">⚡ Ativar Key Manualmente</button></div>';
+                    container.innerHTML = defaultHtml;
                 }
             });
+        } else {
+            // Offline ou não logado - mostrar opções padrão
+            html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
+            html += '<div class="form-group" style="margin-top:12px"><label class="form-label">🔑 Já tem uma key?</label>';
+            html += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
+            html += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px;width:100%">⚡ Ativar Key Manualmente</button></div>';
         }
-        
-        html += '<button class="btn btn-primary" onclick="mostrarPlanos()" style="width:100%">🚀 Assinar Plano Pro</button>';
-        html += '<div class="form-group" style="margin-top:12px"><label class="form-label">Já tem uma key?</label>';
-        html += '<input class="form-input" id="pro-key" placeholder="PRO-XXXX-XXXX-XXXX">';
-        html += '<button class="btn btn-outline" onclick="ativarPro()" style="margin-top:8px;width:100%">⚡ Ativar Key</button></div>';
     }
     html += '</div>';
 
