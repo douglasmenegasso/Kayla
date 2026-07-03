@@ -58,9 +58,9 @@ async function validarKeyBackend(keyCode) {
 
 async function ativarPro() {
     var chave = document.getElementById('pro-key').value.trim().toUpperCase();
-    if (!chave || !chave.startsWith('PRO-')) { 
-        toast('Chave inválida', 'error'); 
-        return; 
+    if (!chave || !chave.startsWith('PRO-')) {
+        toast('Chave inválida. Deve começar com PRO-', 'error');
+        return;
     }
     
     var btn = window.event ? window.event.target : null;
@@ -70,21 +70,66 @@ async function ativarPro() {
         btn.disabled = true;
     }
     
-    var resultado = await validarKeyBackend(chave);
+    // ✅ TENTAR ONLINE PRIMEIRO
+    if (isOnline && supabaseClient) {
+        try {
+            var resultado = await validarKeyBackend(chave);
+            if (resultado.valid) {
+                LIMITES.proAtivo = true;
+                localStorage.setItem('kayla_pro', 'true');
+                localStorage.setItem('kayla_pro_key', chave);
+                localStorage.setItem('kayla_pro_expires', resultado.expires_at || '');
+                localStorage.setItem('kayla_pro_devices', resultado.devices_used + '/' + resultado.max_devices);
+                toast('✅ ' + resultado.message + ' ' + resultado.devices_used + '/' + resultado.max_devices + ' dispositivos', 'success');
+                fecharModal();
+                atualizarBadgePlano();
+                if (typeof mudarAba === 'function') mudarAba('settings');
+                if (btn) {
+                    btn.innerText = texto;
+                    btn.disabled = false;
+                }
+                return;
+            } else {
+                toast('❌ ' + resultado.message, 'error');
+                if (btn) {
+                    btn.innerText = texto;
+                    btn.disabled = false;
+                }
+                return;
+            }
+        } catch(e) {
+            console.warn('[ativarPro] Erro online, tentando offline:', e);
+            // Continua para tentativa offline
+        }
+    }
     
-    if (resultado.valid) {
-        LIMITES.proAtivo = true;
-        localStorage.setItem('kayla_pro', 'true');
-        localStorage.setItem('kayla_pro_key', chave);
-        localStorage.setItem('kayla_pro_expires', resultado.expires_at || '');
-        localStorage.setItem('kayla_pro_devices', resultado.devices_used + '/' + resultado.max_devices);
-        
-        toast('✅ Plano PRO ativado! ' + resultado.devices_used + '/' + resultado.max_devices + ' dispositivos', 'success');
-        fecharModal();
-        atualizarBadgePlano();
-        mudarAba('settings');
+    // ✅ TENTATIVA OFFLINE: Verificar se key existe no localStorage
+    var chaveSalva = localStorage.getItem('kayla_pro_key');
+    var expiresSalvo = localStorage.getItem('kayla_pro_expires');
+    
+    if (chave === chaveSalva && expiresSalvo) {
+        // Key já foi validada anteriormente, ativar localmente
+        var assinatura = await getAssinaturaAtiva();
+        if (assinatura) {
+            var dispositivosMax = assinatura.dispositivos_max || 1;
+            var dispositivosUsados = assinatura.dispositivos_usados || 0;
+            
+            LIMITES.proAtivo = true;
+            localStorage.setItem('kayla_pro', 'true');
+            localStorage.setItem('kayla_pro_key', chave);
+            localStorage.setItem('kayla_pro_expires', expiresSalvo);
+            localStorage.setItem('kayla_pro_devices', dispositivosUsados + '/' + dispositivosMax);
+            
+            toast('✅ Assinatura ativada (modo offline) • ' + new Date(expiresSalvo).toLocaleDateString('pt-BR'), 'success');
+            fecharModal();
+            atualizarBadgePlano();
+            if (typeof mudarAba === 'function') mudarAba('settings');
+        } else {
+            toast('❌ Assinatura não encontrada. Conecte-se à internet para validar.', 'error');
+        }
     } else {
-        toast('❌ ' + resultado.message, 'error');
+        // Key nunca foi validada e está offline
+        toast('❌ Sem conexão. Conecte-se à internet para validar esta key.', 'warning');
     }
     
     if (btn) {
@@ -92,7 +137,6 @@ async function ativarPro() {
         btn.disabled = false;
     }
 }
-
 // ============ FUNÇÃO AUXILIAR ============
 
 async function getAssinaturaAtiva() {
