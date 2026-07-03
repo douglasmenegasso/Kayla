@@ -1258,6 +1258,7 @@ async function mostrarInfoAssinatura() {
 
 // ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 
+// ============ VERIFICAÇÃO APÓS RETORNO DO PAGAMENTO ============
 function verificarRetornoPagamento() {
     var urlParams = new URLSearchParams(window.location.search);
     var collectionStatus = urlParams.get('collection_status');
@@ -1275,41 +1276,71 @@ function verificarRetornoPagamento() {
     if (collectionStatus || paymentId || preferenceId) {
         console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
         
+        // Limpar cache PRO antigo
         localStorage.removeItem('kayla_pro');
         localStorage.removeItem('kayla_pro_key');
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
         LIMITES.proAtivo = false;
         
-        toast('✅ Pagamento detectado! Verificando status...', 'success');
+        toast('✅ Pagamento detectado! Ativando sua conta...', 'success');
         
         setTimeout(async function() {
-            console.log('[Pagamento] Chamando verificarStatusPro()...');
+            console.log('[Pagamento] Verificando status...');
             
-            await verificarStatusPro();
+            // Aguardar webhook processar
+            for (var tentativa = 0; tentativa < 5; tentativa++) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                var statusAtivado = await verificarStatusPro();
+                console.log('[Pagamento] Tentativa ' + (tentativa + 1) + ' - PRO ativo:', statusAtivado);
+                
+                if (statusAtivado) {
+                    break;
+                }
+            }
             
             if (LIMITES.proAtivo) {
                 toast('🎉 Plano PRO ativado com sucesso!', 'success');
                 atualizarBadgePlano();
                 
+                // Verificar se precisa registrar dispositivo atual
+                var assinatura = await getAssinaturaAtiva();
+                if (assinatura) {
+                    var deviceId = getDeviceId();
+                    var dispositivos = await listarDispositivos(assinatura.id);
+                    var dispositivoRegistrado = dispositivos.some(function(d) { 
+                        return d.device_id === deviceId && d.ativo; 
+                    });
+                    
+                    if (!dispositivoRegistrado) {
+                        console.log('[Pagamento] Registrando dispositivo atual...');
+                        await registrarDispositivoAtual();
+                    }
+                }
+                
                 if (typeof mudarAba === 'function') {
                     mudarAba('settings');
                 }
             } else {
-                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
+                toast('⚠️ Pagamento registrado mas ainda não ativado. Aguarde alguns segundos e recarregue.', 'warning');
                 
+                // Tentar mais uma vez após 10 segundos
                 setTimeout(async function() {
-                    await verificarStatusPro();
-                    if (LIMITES.proAtivo) {
+                    var statusFinal = await verificarStatusPro();
+                    if (statusFinal) {
                         toast('🎉 Plano PRO ativado!', 'success');
                         atualizarBadgePlano();
-                        if (typeof mudarAba === 'function') {
-                            mudarAba('settings');
-                        }
+                        if (typeof mudarAba === 'function') mudarAba('settings');
+                    } else {
+                        toast('⚠️ Entre em contato com o suporte se o problema persistir.', 'error');
                     }
                 }, 10000);
             }
-        }, 3000);
+            
+            // Limpar URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 2000);
         
         window.history.replaceState({}, document.title, window.location.pathname);
     }
