@@ -414,6 +414,14 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         var pagamentoId = registroPagamento.data.id;
         
+        // ✅ CORREÇÃO 1: Capturar dados do dispositivo ANTES de enviar
+        // Se as funções globais existirem (getDeviceId, etc), usa elas. Senão, usa fallback.
+        var device_id_atual = (typeof window.getDeviceId === 'function') ? window.getDeviceId() : ('DEV-' + Math.random().toString(36).substring(2, 10).toUpperCase());
+        var device_name_atual = (typeof window.getDeviceName === 'function') ? window.getDeviceName() : 'Web App';
+        var device_type_atual = (typeof window.getDeviceType === 'function') ? window.getDeviceType() : 'web';
+        
+        console.log('[MP] Enviando device_id para criar-pagamento:', device_id_atual);
+        
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -428,7 +436,12 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
                 plano_id: planoUUID,
                 num_dispositivos: numDispositivos,
                 pagamento_id: pagamentoId,
-                metodo_pagamento: metodoPagamento
+                metodo_pagamento: metodoPagamento,
+                // ✅ CORREÇÃO 2: Enviar dados do dispositivo para o criar-preferencia.php passar pro MP
+                device_id: device_id_atual,
+                device_name: device_name_atual,
+                device_type: device_type_atual,
+                tipo: 'novo'
             })
         });
         
@@ -802,6 +815,13 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         
         console.log('[Upgrade] Criando preferência...');
         
+        // ✅ CORREÇÃO 1: Capturar dados do dispositivo ANTES de enviar
+        var device_id_atual = (typeof window.getDeviceId === 'function') ? window.getDeviceId() : ('DEV-' + Math.random().toString(36).substring(2, 10).toUpperCase());
+        var device_name_atual = (typeof window.getDeviceName === 'function') ? window.getDeviceName() : 'Web App';
+        var device_type_atual = (typeof window.getDeviceType === 'function') ? window.getDeviceType() : 'web';
+        
+        console.log('[Upgrade] Enviando device_id para criar-pagamento:', device_id_atual);
+        
         var response = await fetch('https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/criar-pagamento', {
             method: 'POST',
             headers: {
@@ -818,7 +838,11 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 pagamento_id: pagamentoId,
                 tipo: 'upgrade',
                 assinatura_id: assinatura.id,
-                metodo_pagamento: metodoPagamento
+                metodo_pagamento: metodoPagamento,
+                // ✅ CORREÇÃO 2: Enviar dados do dispositivo para o criar-preferencia.php passar pro MP
+                device_id: device_id_atual,
+                device_name: device_name_atual,
+                device_type: device_type_atual
             })
         });
         
@@ -1272,8 +1296,10 @@ function verificarRetornoPagamento() {
         externalReference 
     });
     
-    if (collectionStatus || paymentId || preferenceId) {
-        console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
+    // ✅ CORREÇÃO CRÍTICA: Só processa se collection_status for "approved"
+    // Evita ativar assinatura quando pagamento foi recusado/cancelado/pendente
+    if (collectionStatus && collectionStatus !== 'null' && collectionStatus === 'approved') {
+        console.log('[Pagamento] ✅ Pagamento APROVADO detectado!');
         
         // Limpar cache PRO antigo
         localStorage.removeItem('kayla_pro');
@@ -1294,7 +1320,7 @@ function verificarRetornoPagamento() {
         
         LIMITES.proAtivo = false;
         
-        toast('✅ Pagamento detectado! Ativando sua conta...', 'success');
+        toast('✅ Pagamento aprovado! Ativando sua conta...', 'success');
         
         setTimeout(async function() {
             console.log('[Pagamento] Verificando status...');
@@ -1343,7 +1369,7 @@ function verificarRetornoPagamento() {
                     mudarAba('settings');
                 }
             } else {
-                toast('⚠️ Pagamento registrado mas ainda não ativado. Aguarde alguns segundos e recarregue.', 'warning');
+                toast('⚠️ Pagamento aprovado mas assinatura ainda não ativa. Aguarde alguns segundos e recarregue.', 'warning');
                 
                 // Tentar mais uma vez após 10 segundos
                 setTimeout(async function() {
@@ -1364,7 +1390,25 @@ function verificarRetornoPagamento() {
             window.history.replaceState({}, document.title, window.location.pathname);
         }, 2000);
         
-        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (collectionStatus && collectionStatus !== 'null') {
+        // ✅ CORREÇÃO: Pagamento NÃO foi aprovado (rejected, cancelled, pending, etc)
+        console.warn('[Pagamento] Status do pagamento:', collectionStatus);
+        
+        var mensagemStatus = {
+            'rejected': '❌ Pagamento recusado pelo Mercado Pago.',
+            'cancelled': '❌ Pagamento cancelado.',
+            'pending': '⏳ Pagamento pendente de confirmação.',
+            'in_process': '⏳ Pagamento em processamento.',
+            'null': '⚠️ Status não informado.'
+        };
+        
+        toast(mensagemStatus[collectionStatus] || ('⚠️ Status: ' + collectionStatus), 'warning');
+        
+        // Limpar URL após 3 segundos
+        setTimeout(function() {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 3000);
     }
+    // Se collectionStatus for null/undefined, ignora silenciosamente (não é retorno de pagamento)
 }
 console.log('✅ Payments.js carregado');
