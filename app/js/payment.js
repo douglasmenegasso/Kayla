@@ -436,58 +436,42 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📱 Pagamento PIX</div>';
     html += '<div class="modal-sub">Escaneie o QR Code ou copie o código</div>';
-
+    
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px;text-align:center">';
-
-    // ✅ CORREÇÃO (única mudança): garantir que a imagem tenha o "cabeçalho" data:image
-    // O Mercado Pago manda o base64 "cru"; sem esse prefixo o navegador não desenha o QR.
+    
+    // ✅ CORREÇÃO: Adicionar prefixo data:image se não existir
     var imgSrc = dados.qr_code_base64 || '';
     if (imgSrc && imgSrc.indexOf('data:') !== 0) {
         imgSrc = 'data:image/png;base64,' + imgSrc;
     }
-
-    // Verificar se tem QR Code base64
+    
     if (imgSrc && imgSrc.length > 100) {
         html += '<div style="background:#fff;padding:16px;border-radius:8px;margin-bottom:16px;display:inline-block">';
         html += '<img src="' + imgSrc + '" alt="QR Code PIX" style="width:250px;height:250px">';
         html += '</div>';
         html += '<div style="font-size:12px;color:var(--success);margin-bottom:16px">✅ QR Code gerado com sucesso!</div>';
     } else {
-        // Se não tem base64, mostrar mensagem e botão para abrir no MP
         html += '<div style="background:var(--bg2);padding:20px;border-radius:8px;margin-bottom:16px">';
         html += '<div style="font-size:48px;margin-bottom:12px">📱</div>';
         html += '<div style="font-size:14px;color:var(--text2);margin-bottom:12px">';
         html += 'O QR Code será gerado no app do seu banco<br>';
         html += 'ou você pode abrir no Mercado Pago';
-        html += '</div>';
-        html += '</div>';
+        html += '</div></div>';
     }
-
-    // Código Copia e Cola
+    
     if (dados.qr_code) {
         html += '<div style="margin-bottom:16px">';
         html += '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">Código PIX (Copia e Cola):</div>';
         html += '<textarea id="pix-codigo" readonly style="width:100%;height:80px;padding:8px;border-radius:8px;border:1px solid var(--border);font-size:11px;resize:none;background:var(--bg2);font-family:monospace;color:#fff">' + dados.qr_code + '</textarea>';
         html += '</div>';
-
-        // Botão Copiar
         html += '<button class="btn btn-primary" onclick="copiarCodigoPIX()" style="width:100%;margin-bottom:8px">📋 Copiar Código PIX</button>';
     }
-
-    // Link de pagamento (sempre mostrar)
+    
     if (dados.ticket_url) {
-        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🔗 Abrir QR Code no App do Banco</a>';
+        html += '<a href="' + dados.ticket_url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px"> Abrir QR Code no App do Banco</a>';
     }
-
-    // Se tiver payment_url (fallback)
-    if (dados.payment_url || dados.init_point) {
-        var url = dados.payment_url || dados.init_point;
-        html += '<a href="' + url + '" target="_blank" class="btn btn-outline" style="width:100%;display:block;text-align:center;margin-bottom:8px;text-decoration:none;padding:12px">🌐 Ver no Mercado Pago</a>';
-    }
-
+    
     html += '</div>';
-
-    // Instruções
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="font-weight:600;margin-bottom:12px">📋 Como pagar:</div>';
     html += '<ol style="padding-left:20px;font-size:12px;color:var(--text2);margin:0">';
@@ -496,15 +480,9 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     html += '<li style="margin-bottom:8px">Escaneie o QR Code ou copie o código</li>';
     html += '<li style="margin-bottom:8px">Confirme o pagamento</li>';
     html += '<li>Aprovação é instantânea!</li>';
-    html += '</ol>';
-    html += '</div>';
-
-    html += '<div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:12px">';
-    html += '⏱️ Este QR Code expira em 24 horas';
-    html += '</div>';
-
+    html += '</ol></div>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
-
+    
     document.getElementById('modal-body').innerHTML = html;
 }
 
