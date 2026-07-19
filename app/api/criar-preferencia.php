@@ -1,15 +1,32 @@
 <?php
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Tratar requisição OPTIONS (preflight do navegador)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
 
 // Receber dados do frontend
-$data = json_decode(file_get_contents('php://input'), true);
+$input = file_get_contents('php://input');
+$data = json_decode($input, true);
 
 if (!$data) {
     http_response_code(400);
-    echo json_encode(['error' => 'Dados inválidos']);
+    echo json_encode(['error' => 'Dados inválidos ou não JSON', 'received' => $input]);
+    exit;
+}
+
+// Validação rápida para evitar erros genéricos do Mercado Pago
+if (!isset($data['valor']) || !isset($data['user_id'])) {
+    http_response_code(400);
+    echo json_encode([
+        'error' => 'Dados incompletos. É necessário enviar "valor" e "user_id".',
+        'received_keys' => array_keys($data)
+    ]);
     exit;
 }
 
@@ -22,13 +39,11 @@ $preference = [
         [
             "title" => $data['titulo'] ?? 'Kayla PRO',
             "quantity" => 1,
-            "unit_price" => floatval($data['valor'] ?? 0),
+            "unit_price" => floatval($data['valor']), // Garante que seja número
             "currency_id" => "BRL"
         ]
     ],
     "payer" => [
-        "name" => "Usuario",
-        "surname" => "Teste",
         "email" => $data['email'] ?? 'teste@teste.com'
     ],
     "back_urls" => [
@@ -42,19 +57,18 @@ $preference = [
     "notification_url" => "https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/webhook-mp",
     
     // ✅ CORREÇÃO 2: External reference (ID do pagamento no banco)
-    // O webhook usa isso para encontrar o pagamento e atualizar o status
-    "external_reference" => $data['pagamento_id'] ?? '',
+    "external_reference" => (string)($data['pagamento_id'] ?? ''),
     
     // ✅ CORREÇÃO 3: Metadata completo (webhook precisa desses dados)
     "metadata" => [
-        "user_id" => $data['user_id'] ?? '',
-        "plano_id" => $data['plano_id'] ?? '',
-        "num_dispositivos" => $data['num_dispositivos'] ?? 1,
-        "tipo" => $data['tipo'] ?? 'novo',
-        "assinatura_id" => $data['assinatura_id'] ?? '',
-        "device_id" => $data['device_id'] ?? '',
-        "device_name" => $data['device_name'] ?? 'Web',
-        "device_type" => $data['device_type'] ?? 'web'
+        "user_id" => (string)$data['user_id'],
+        "plano_id" => (string)($data['plano_id'] ?? ''),
+        "num_dispositivos" => intval($data['num_dispositivos'] ?? 1),
+        "tipo" => (string)($data['tipo'] ?? 'novo'),
+        "assinatura_id" => (string)($data['assinatura_id'] ?? ''),
+        "device_id" => (string)($data['device_id'] ?? ''),
+        "device_name" => (string)($data['device_name'] ?? 'Web'),
+        "device_type" => (string)($data['device_type'] ?? 'web')
     ]
 ];
 
@@ -70,12 +84,30 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 
 $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlError = curl_error($ch);
 curl_close($ch);
 
-if ($httpCode === 201) {
+// Retornar resposta
+if ($httpCode === 201 && $response) {
     echo $response;
 } else {
     http_response_code($httpCode);
-    echo $response;
+    
+    // Garante que o frontend sempre receba um JSON válido, mesmo em caso de erro do MP
+    $errorData = json_decode($response, true);
+    if ($errorData) {
+        echo json_encode([
+            'error' => 'Erro ao criar preferência no Mercado Pago',
+            'http_code' => $httpCode,
+            'mp_response' => $errorData
+        ]);
+    } else {
+        echo json_encode([
+            'error' => 'Erro de comunicação',
+            'http_code' => $httpCode,
+            'curl_error' => $curlError,
+            'raw_response' => $response
+        ]);
+    }
 }
 ?>
