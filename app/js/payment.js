@@ -1248,37 +1248,96 @@ function verificarRetornoPagamento() {
         externalReference 
     });
     
+    // ✅ CORREÇÃO 1: Inicializar LIMITES se não existir
+    if (typeof window.LIMITES === 'undefined') {
+        window.LIMITES = {
+            proAtivo: false,
+            maxClientes: 3,
+            maxProdutos: 10,
+            maxVendas: 3,
+            bloqueadoPorDispositivo: false
+        };
+        console.log('[Pagamento] LIMITES inicializado');
+    }
+    
     if (collectionStatus || paymentId || preferenceId) {
         console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
+        
+        // Limpar cache PRO antigo
         localStorage.removeItem('kayla_pro');
         localStorage.removeItem('kayla_pro_key');
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
         LIMITES.proAtivo = false;
-        toast('✅ Pagamento detectado! Verificando status...', 'success');
-        setTimeout(async function() {
-            console.log('[Pagamento] Chamando verificarStatusPro()...');
-            await verificarStatusPro();
-            if (LIMITES.proAtivo) {
-                toast('🎉 Plano PRO ativado com sucesso!', 'success');
-                atualizarBadgePlano();
-                if (typeof mudarAba === 'function') {
-                    mudarAba('settings');
+        
+        // ✅ CORREÇÃO 2: Lidar com diferentes status
+        if (collectionStatus === 'approved') {
+            toast('✅ Pagamento aprovado! Ativando sua conta...', 'success');
+            setTimeout(async function() {
+                console.log('[Pagamento] Chamando verificarStatusPro()...');
+                if (typeof window.verificarStatusPro === 'function') {
+                    await window.verificarStatusPro();
                 }
-            } else {
-                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
-                setTimeout(async function() {
-                    await verificarStatusPro();
-                    if (LIMITES.proAtivo) {
-                        toast('🎉 Plano PRO ativado!', 'success');
-                        atualizarBadgePlano();
-                        if (typeof mudarAba === 'function') {
-                            mudarAba('settings');
-                        }
+                if (LIMITES.proAtivo) {
+                    toast('🎉 Plano PRO ativado com sucesso!', 'success');
+                    atualizarBadgePlano();
+                    if (typeof mudarAba === 'function') {
+                        mudarAba('settings');
                     }
-                }, 10000);
-            }
-        }, 3000);
+                } else {
+                    toast('⚠️ Pagamento aprovado, mas assinatura não ativada. Aguarde 10 segundos e recarregue.', 'warning');
+                    setTimeout(async function() {
+                        if (typeof window.verificarStatusPro === 'function') {
+                            await window.verificarStatusPro();
+                        }
+                        if (LIMITES.proAtivo) {
+                            toast('🎉 Plano PRO ativado!', 'success');
+                            atualizarBadgePlano();
+                            if (typeof mudarAba === 'function') {
+                                mudarAba('settings');
+                            }
+                        }
+                    }, 10000);
+                }
+            }, 3000);
+        } else if (collectionStatus === 'pending' || collectionStatus === 'in_process') {
+            // ✅ CORREÇÃO 3: Pagamento pendente/em processamento - verificar periodicamente
+            toast('⏳ Pagamento em processamento. Aguarde...', 'warning');
+            
+            // Verificar status a cada 5 segundos por 2 minutos
+            var tentativas = 0;
+            var maxTentativas = 24; // 24 x 5s = 2 minutos
+            
+            var intervaloVerificacao = setInterval(async function() {
+                tentativas++;
+                console.log('[Pagamento] Verificando status... tentativa ' + tentativas);
+                
+                if (typeof window.verificarStatusPro === 'function') {
+                    await window.verificarStatusPro();
+                }
+                
+                if (LIMITES.proAtivo) {
+                    clearInterval(intervaloVerificacao);
+                    toast(' Plano PRO ativado!', 'success');
+                    atualizarBadgePlano();
+                    if (typeof mudarAba === 'function') {
+                        mudarAba('settings');
+                    }
+                } else if (tentativas >= maxTentativas) {
+                    clearInterval(intervaloVerificacao);
+                    toast('️ Pagamento ainda pendente. Entre em contato com o suporte.', 'error');
+                }
+            }, 5000);
+            
+            // Limpar intervalo quando sair da página
+            window.addEventListener('beforeunload', function() {
+                clearInterval(intervaloVerificacao);
+            });
+        } else {
+            // Pagamento rejeitado/cancelado
+            toast('❌ Pagamento não aprovado. Status: ' + collectionStatus, 'error');
+        }
+        
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
