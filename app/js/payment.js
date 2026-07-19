@@ -59,7 +59,7 @@ async function validarKeyBackend(keyCode) {
 async function ativarPro() {
     var chave = document.getElementById('pro-key').value.trim().toUpperCase();
     if (!chave || !chave.startsWith('PRO-')) {
-        toast('Chave inválida. Deve começar com PRO-', 'error');
+        toast('Chave inválida', 'error');
         return;
     }
     
@@ -70,66 +70,19 @@ async function ativarPro() {
         btn.disabled = true;
     }
     
-    // ✅ TENTAR ONLINE PRIMEIRO
-    if (isOnline && supabaseClient) {
-        try {
-            var resultado = await validarKeyBackend(chave);
-            if (resultado.valid) {
-                LIMITES.proAtivo = true;
-                localStorage.setItem('kayla_pro', 'true');
-                localStorage.setItem('kayla_pro_key', chave);
-                localStorage.setItem('kayla_pro_expires', resultado.expires_at || '');
-                localStorage.setItem('kayla_pro_devices', resultado.devices_used + '/' + resultado.max_devices);
-                toast('✅ ' + resultado.message + ' ' + resultado.devices_used + '/' + resultado.max_devices + ' dispositivos', 'success');
-                fecharModal();
-                atualizarBadgePlano();
-                if (typeof mudarAba === 'function') mudarAba('settings');
-                if (btn) {
-                    btn.innerText = texto;
-                    btn.disabled = false;
-                }
-                return;
-            } else {
-                toast('❌ ' + resultado.message, 'error');
-                if (btn) {
-                    btn.innerText = texto;
-                    btn.disabled = false;
-                }
-                return;
-            }
-        } catch(e) {
-            console.warn('[ativarPro] Erro online, tentando offline:', e);
-            // Continua para tentativa offline
-        }
-    }
-    
-    // ✅ TENTATIVA OFFLINE: Verificar se key existe no localStorage
-    var chaveSalva = localStorage.getItem('kayla_pro_key');
-    var expiresSalvo = localStorage.getItem('kayla_pro_expires');
-    
-    if (chave === chaveSalva && expiresSalvo) {
-        // Key já foi validada anteriormente, ativar localmente
-        var assinatura = await getAssinaturaAtiva();
-        if (assinatura) {
-            var dispositivosMax = assinatura.dispositivos_max || 1;
-            var dispositivosUsados = assinatura.dispositivos_usados || 0;
-            
-            LIMITES.proAtivo = true;
-            localStorage.setItem('kayla_pro', 'true');
-            localStorage.setItem('kayla_pro_key', chave);
-            localStorage.setItem('kayla_pro_expires', expiresSalvo);
-            localStorage.setItem('kayla_pro_devices', dispositivosUsados + '/' + dispositivosMax);
-            
-            toast('✅ Assinatura ativada (modo offline) • ' + new Date(expiresSalvo).toLocaleDateString('pt-BR'), 'success');
-            fecharModal();
-            atualizarBadgePlano();
-            if (typeof mudarAba === 'function') mudarAba('settings');
-        } else {
-            toast('❌ Assinatura não encontrada. Conecte-se à internet para validar.', 'error');
-        }
+    var resultado = await validarKeyBackend(chave);
+    if (resultado.valid) {
+        LIMITES.proAtivo = true;
+        localStorage.setItem('kayla_pro', 'true');
+        localStorage.setItem('kayla_pro_key', chave);
+        localStorage.setItem('kayla_pro_expires', resultado.expires_at || '');
+        localStorage.setItem('kayla_pro_devices', resultado.devices_used + '/' + resultado.max_devices);
+        toast('✅ Plano PRO ativado! ' + resultado.devices_used + '/' + resultado.max_devices + ' dispositivos', 'success');
+        fecharModal();
+        atualizarBadgePlano();
+        mudarAba('settings');
     } else {
-        // Key nunca foi validada e está offline
-        toast('❌ Sem conexão. Conecte-se à internet para validar esta key.', 'warning');
+        toast('❌ ' + resultado.message, 'error');
     }
     
     if (btn) {
@@ -137,6 +90,7 @@ async function ativarPro() {
         btn.disabled = false;
     }
 }
+
 // ============ FUNÇÃO AUXILIAR ============
 
 async function getAssinaturaAtiva() {
@@ -414,8 +368,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
         
         var pagamentoId = registroPagamento.data.id;
         
-        // ✅ CORREÇÃO 1: Capturar dados do dispositivo ANTES de enviar
-        // Se as funções globais existirem (getDeviceId, etc), usa elas. Senão, usa fallback.
+        // ✅ CORREÇÃO: Capturar dados do dispositivo ANTES de enviar
         var device_id_atual = (typeof window.getDeviceId === 'function') ? window.getDeviceId() : ('DEV-' + Math.random().toString(36).substring(2, 10).toUpperCase());
         var device_name_atual = (typeof window.getDeviceName === 'function') ? window.getDeviceName() : 'Web App';
         var device_type_atual = (typeof window.getDeviceType === 'function') ? window.getDeviceType() : 'web';
@@ -437,7 +390,7 @@ async function pagarComMercadoPago(planoId, numDispositivos, valor, metodoPagame
                 num_dispositivos: numDispositivos,
                 pagamento_id: pagamentoId,
                 metodo_pagamento: metodoPagamento,
-                // ✅ CORREÇÃO 2: Enviar dados do dispositivo para o criar-preferencia.php passar pro MP
+                // ✅ NOVOS CAMPOS: Dados do dispositivo para o webhook registrar
                 device_id: device_id_atual,
                 device_name: device_name_atual,
                 device_type: device_type_atual,
@@ -812,10 +765,9 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
         
         var pagamentoId = registroPagamento.data.id;
         console.log('[Upgrade] Pagamento registrado:', pagamentoId);
-        
         console.log('[Upgrade] Criando preferência...');
         
-        // ✅ CORREÇÃO 1: Capturar dados do dispositivo ANTES de enviar
+        // ✅ CORREÇÃO: Capturar dados do dispositivo ANTES de enviar
         var device_id_atual = (typeof window.getDeviceId === 'function') ? window.getDeviceId() : ('DEV-' + Math.random().toString(36).substring(2, 10).toUpperCase());
         var device_name_atual = (typeof window.getDeviceName === 'function') ? window.getDeviceName() : 'Web App';
         var device_type_atual = (typeof window.getDeviceType === 'function') ? window.getDeviceType() : 'web';
@@ -839,7 +791,7 @@ async function processarUpgradeDispositivos(novosDispositivos, valor, metodoPaga
                 tipo: 'upgrade',
                 assinatura_id: assinatura.id,
                 metodo_pagamento: metodoPagamento,
-                // ✅ CORREÇÃO 2: Enviar dados do dispositivo para o criar-preferencia.php passar pro MP
+                // ✅ NOVOS CAMPOS: Dados do dispositivo para o webhook registrar
                 device_id: device_id_atual,
                 device_name: device_name_atual,
                 device_type: device_type_atual
@@ -1296,119 +1248,46 @@ function verificarRetornoPagamento() {
         externalReference 
     });
     
-    // ✅ CORREÇÃO CRÍTICA: Só processa se collection_status for "approved"
-    // Evita ativar assinatura quando pagamento foi recusado/cancelado/pendente
-    if (collectionStatus && collectionStatus !== 'null' && collectionStatus === 'approved') {
-        console.log('[Pagamento] ✅ Pagamento APROVADO detectado!');
-        
-        // Limpar cache PRO antigo
+    if (collectionStatus || paymentId || preferenceId) {
+        console.log('[Pagamento] ✅ Retorno do Mercado Pago detectado!');
         localStorage.removeItem('kayla_pro');
         localStorage.removeItem('kayla_pro_key');
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
-        
-        // ✅ CORREÇÃO: Inicializar LIMITES se não existir
-        if (typeof window.LIMITES === 'undefined') {
-            window.LIMITES = {
-                proAtivo: false,
-                maxClientes: 3,
-                maxProdutos: 10,
-                maxVendas: 3,
-                bloqueadoPorDispositivo: false
-            };
-        }
-        
         LIMITES.proAtivo = false;
-        
-        toast('✅ Pagamento aprovado! Ativando sua conta...', 'success');
-        
+        toast('✅ Pagamento detectado! Verificando status...', 'success');
         setTimeout(async function() {
-            console.log('[Pagamento] Verificando status...');
-            
-            // Aguardar webhook processar
-            for (var tentativa = 0; tentativa < 5; tentativa++) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                // ✅ CORREÇÃO: Chamar verificarStatusPro que está em subscription.js
-                if (typeof window.verificarStatusPro === 'function') {
-                    await window.verificarStatusPro();
-                }
-                
-                var statusAtivo = LIMITES.proAtivo;
-                console.log('[Pagamento] Tentativa ' + (tentativa + 1) + ' - PRO ativo:', statusAtivo);
-                
-                if (statusAtivo) {
-                    break;
-                }
-            }
-            
+            console.log('[Pagamento] Chamando verificarStatusPro()...');
+            await verificarStatusPro();
             if (LIMITES.proAtivo) {
                 toast('🎉 Plano PRO ativado com sucesso!', 'success');
                 atualizarBadgePlano();
-                
-                // Verificar se precisa registrar dispositivo atual
-                if (typeof window.getAssinaturaAtiva === 'function' && 
-                    typeof window.registrarDispositivoAtual === 'function') {
-                    var assinatura = await window.getAssinaturaAtiva();
-                    if (assinatura) {
-                        var deviceId = window.getDeviceId ? window.getDeviceId() : null;
-                        var dispositivos = await window.listarDispositivos ? 
-                            await window.listarDispositivos(assinatura.id) : [];
-                        var dispositivoRegistrado = dispositivos.some(function(d) { 
-                            return d.device_id === deviceId && d.ativo; 
-                        });
-                        
-                        if (!dispositivoRegistrado) {
-                            console.log('[Pagamento] Registrando dispositivo atual...');
-                            await window.registrarDispositivoAtual();
-                        }
-                    }
-                }
-                
                 if (typeof mudarAba === 'function') {
                     mudarAba('settings');
                 }
             } else {
-                toast('⚠️ Pagamento aprovado mas assinatura ainda não ativa. Aguarde alguns segundos e recarregue.', 'warning');
-                
-                // Tentar mais uma vez após 10 segundos
+                toast('⚠️ Pagamento registrado, mas assinatura ainda não ativa. Aguarde 10 segundos e recarregue a página.', 'warning');
                 setTimeout(async function() {
-                    if (typeof window.verificarStatusPro === 'function') {
-                        await window.verificarStatusPro();
-                    }
+                    await verificarStatusPro();
                     if (LIMITES.proAtivo) {
                         toast('🎉 Plano PRO ativado!', 'success');
                         atualizarBadgePlano();
-                        if (typeof mudarAba === 'function') mudarAba('settings');
-                    } else {
-                        toast('⚠️ Entre em contato com o suporte se o problema persistir.', 'error');
+                        if (typeof mudarAba === 'function') {
+                            mudarAba('settings');
+                        }
                     }
                 }, 10000);
             }
-            
-            // Limpar URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }, 2000);
-        
-    } else if (collectionStatus && collectionStatus !== 'null') {
-        // ✅ CORREÇÃO: Pagamento NÃO foi aprovado (rejected, cancelled, pending, etc)
-        console.warn('[Pagamento] Status do pagamento:', collectionStatus);
-        
-        var mensagemStatus = {
-            'rejected': '❌ Pagamento recusado pelo Mercado Pago.',
-            'cancelled': '❌ Pagamento cancelado.',
-            'pending': '⏳ Pagamento pendente de confirmação.',
-            'in_process': '⏳ Pagamento em processamento.',
-            'null': '⚠️ Status não informado.'
-        };
-        
-        toast(mensagemStatus[collectionStatus] || ('⚠️ Status: ' + collectionStatus), 'warning');
-        
-        // Limpar URL após 3 segundos
-        setTimeout(function() {
-            window.history.replaceState({}, document.title, window.location.pathname);
         }, 3000);
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
-    // Se collectionStatus for null/undefined, ignora silenciosamente (não é retorno de pagamento)
 }
+
+if (typeof window !== 'undefined') {
+    verificarRetornoPagamento();
+    window.addEventListener('DOMContentLoaded', function() {
+        setTimeout(verificarRetornoPagamento, 500);
+    });
+}
+
 console.log('✅ Payments.js carregado');
