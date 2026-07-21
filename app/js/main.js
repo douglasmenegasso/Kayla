@@ -146,11 +146,6 @@ function renderizarConfig() {
     
     var isPro = (window.LIMITES && LIMITES.proAtivo);
     var devices = localStorage.getItem('kayla_pro_devices') || '0/0';
-    // Corrigir exibição: se não é PRO, mostrar 0/X ou 0/0 para não confundir
-    if (!isPro) {
-        var partes = devices.split('/');
-        devices = '0/' + (partes[1] || '0');
-    }
     var planoTexto = isPro ? '📎 PRO' : '🆓 GRÁTIS';
     var planoCor = isPro ? 'var(--accent)' : 'var(--text2)';
     
