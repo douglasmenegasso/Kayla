@@ -51,18 +51,18 @@ function adicionarClienteComVerificacao() {
 }
 
 function abrirModalCliente(clienteId) {
-    if (!verificarLimite('clientes')) return;
-    var cliente = clienteId ? clientes.find(function(c) { return c.id === clienteId; }) : null;
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">' + (cliente ? '✏️ Editar Cliente' : '👥 Cadastrar Cliente') + '</div>';
-    html += '<div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="cliente-nome" value="' + (cliente ? cliente.nome : '') + '" onkeypress="if(event.key===\'Enter\')salvarCliente(\'' + (cliente ? cliente.id : '') + '\')"></div>';
-    html += '<div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="cliente-telefone" value="' + (cliente ? cliente.telefone || '' : '') + '"></div>';
-    html += '<div class="form-group"><label class="form-label">Endereço</label><input class="form-input" id="cliente-endereco" value="' + (cliente ? cliente.endereco || '' : '') + '"></div>';
-    html += '<button class="btn btn-primary" onclick="salvarCliente(\'' + (cliente ? cliente.id : '') + '\')">💾 Salvar</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-    setTimeout(function() { document.getElementById('cliente-nome').focus(); }, 100);
+if (!verificarLimite('clientes')) return;
+var cliente = clienteId ? clientes.find(function(c) { return c.id === clienteId; }) : null;
+var html = '<div class="modal-handle"></div>';
+html += '<div class="modal-title">' + (cliente ? '✏️ Editar Cliente' : '👥 Cadastrar Cliente') + '</div>';
+html += '<div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="cliente-nome" value="' + (cliente ? cliente.nome : '') + '" onkeypress="if(event.key===\'Enter\')salvarCliente(\'' + (cliente ? cliente.id : '') + '\')"></div>';
+html += '<div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="cliente-telefone" value="' + (cliente ? cliente.telefone || '' : '') + '"></div>';
+html += '<div class="form-group"><label class="form-label">Endereço</label><input class="form-input" id="cliente-endereco" value="' + (cliente ? cliente.endereco || '' : '') + '"></div>';
+html += '<button class="btn btn-primary" onclick="salvarCliente(\'' + (cliente ? cliente.id : '') + '\')">💾 Salvar</button>';
+html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+document.getElementById('modal-body').innerHTML = html;
+document.getElementById('modal-overlay').classList.add('show');
+setTimeout(function() { document.getElementById('cliente-nome').focus(); }, 100);
 }
 
 function editarCliente(clienteId) {
