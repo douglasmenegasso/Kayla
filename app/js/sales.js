@@ -78,6 +78,18 @@ function selecionarClienteVenda(id) {
     mudarAba('scan');
 }
 
+function iniciarPedidoCliente(clienteId) {
+    var cliente = clientes.find(function(c) { return c.id === clienteId; });
+    if (!cliente) { toast('Cliente não encontrado', 'error'); return; }
+    clienteAtual = cliente;
+    pedidoItens = [];
+    pedidoEmEdicao = null;
+    toast('🛒 Vendendo para: ' + cliente.nome, 'success');
+    mudarAba('scan');
+}
+
+window.iniciarPedidoCliente = iniciarPedidoCliente;
+
 function trocarCliente() {
     clienteAtual = null;
     pedidoItens = [];
