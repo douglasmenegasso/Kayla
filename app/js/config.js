@@ -231,5 +231,52 @@ async function gerarHtmlListaDispositivos() {
     return html;
 }
 
+// ====================================================================
+// 🏢 DADOS DA EMPRESA (editar / salvar / carregar)
+// ====================================================================
+function carregarConfigEmpresa() {
+    if (!currentUser || !currentUser.id) return;
+    try {
+        var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
+        configEmpresa = salvo ? (JSON.parse(salvo) || {}) : {};
+    } catch(e) {
+        console.warn('[Empresa] Erro ao carregar:', e);
+        configEmpresa = {};
+    }
+}
+
+function editarEmpresa() {
+    carregarConfigEmpresa();
+    var esc = function(v){ return (v || '').replace(/"/g, '&quot;'); };
+
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🏢 Dados da Empresa</div>';
+    html += '<div class="modal-sub">Esses dados aparecem no PDF dos pedidos</div>';
+    html += '<div class="form-group"><label class="form-label">Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
+    html += '<div class="form-group"><label class="form-label">CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
+    html += '<div class="form-group"><label class="form-label">Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
+    html += '<div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
+    html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+    setTimeout(function(){ var el = document.getElementById('emp-nome'); if (el) el.focus(); }, 100);
+}
+
+function salvarEmpresa() {
+    if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
+    var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    configEmpresa = { nome: g('emp-nome'), cnpj: g('emp-cnpj'), endereco: g('emp-endereco'), telefone: g('emp-telefone') };
+    try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e) { console.warn('[Empresa] Erro ao salvar:', e); }
+    toast('✅ Dados da empresa salvos!', 'success');
+    fecharModal();
+    if (typeof mudarAba === 'function') mudarAba('settings');
+}
+
+window.carregarConfigEmpresa = carregarConfigEmpresa;
+window.editarEmpresa = editarEmpresa;
+window.salvarEmpresa = salvarEmpresa;
+
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas');
-// Atualizado por Manus (AI) via conta douglasmenegasso em 2026-07-02
+
