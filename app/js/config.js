@@ -278,5 +278,56 @@ window.carregarConfigEmpresa = carregarConfigEmpresa;
 window.editarEmpresa = editarEmpresa;
 window.salvarEmpresa = salvarEmpresa;
 
+// ====================================================================
+// 🔔 ALERTA DE INATIVIDADE (chama o "carteiro" checar-saude)
+//    Só lê o último pedido e manda 1 e-mail. Não mexe em pagamento/ativação.
+// ====================================================================
+async function checarAlertaInatividade(forcar) {
+  try {
+    if (!currentUser || !supabaseClient || !isOnline) return; // sem login/offline: não faz nada
+    var userId = currentUser.id;
+    var hoje = new Date().toDateString();
+    var chave = 'kayla_alert_chk_' + userId;
+
+    if (!forcar && localStorage.getItem(chave) === hoje) return; // já checou hoje
+
+    var r = await supabaseClient.from('pedidos').select('created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    var ultimo = (r && r.data) ? r.data.created_at : null;
+
+    var dias = 0, dataLegivel = '(sem vendas)';
+    if (ultimo) {
+      var d = new Date(ultimo);
+      dias = Math.floor((Date.now() - d.getTime()) / 86400000);
+      dataLegivel = d.toLocaleDateString('pt-BR');
+    } else if (!forcar) {
+      localStorage.setItem(chave, hoje);           // sem vendas = implantação: não alerta
+      console.log('[Alerta] Sem vendas ainda (sem alerta).');
+      return;
+    }
+
+    var LIMITE = 5;
+    if (!forcar && dias < LIMITE) {
+      localStorage.setItem(chave, hoje);           // venda recente: tudo certo
+      console.log('[Alerta] Última venda há ' + dias + ' dia(s). Tudo certo.');
+      return;
+    }
+
+    console.log('[Alerta] Disparando e-mail (dias=' + dias + ', forcar=' + !!forcar + ')');
+    var resp = await fetch(SUPABASE_EDGE_URL + '/checar-saude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+      body: JSON.stringify({ dias: dias, data_legivel: dataLegivel })
+    });
+    var json = {}; try { json = await resp.json(); } catch (e) {}
+    console.log('[Alerta] Resposta do carteiro:', json);
+
+    if (!forcar) localStorage.setItem(chave, hoje);
+  } catch (e) {
+    console.warn('[Alerta] Erro ignorado (não afeta o app):', e);
+  }
+}
+window.checarAlertaInatividade = checarAlertaInatividade;
+setInterval(function () { checarAlertaInatividade(); }, 30000); // pulso a cada 30s (trabalho real 1x/dia)
+
 console.log('[Config] Kayla v' + appVersion + ' - Configurações carregadas');
 
