@@ -1,6 +1,7 @@
 // ============ GERAÇÃO DE PDF ============
 
 async function gerarPDFPedido(pedido) {
+    if (typeof carregarConfigEmpresa === 'function') carregarConfigEmpresa();
     // 🚫 Bloqueio por dispositivo
     if (LIMITES.bloqueadoPorDispositivo) {
         toast('🔒 Ação bloqueada. Limite de dispositivos atingido. Libere um dispositivo nas Configurações.', 'error');
