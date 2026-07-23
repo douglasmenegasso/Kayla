@@ -57,7 +57,8 @@ async function validarKeyBackend(keyCode) {
 }
 
 async function ativarPro() {
-    var chave = document.getElementById('pro-key').value.trim().toUpperCase();
+    var inputEl = document.getElementById('pro-key') || document.getElementById('pro-key-manual');
+    var chave = inputEl ? inputEl.value.trim().toUpperCase() : '';
     if (!chave || !chave.startsWith('PRO-')) {
         toast('Chave inválida', 'error');
         return;
@@ -1315,5 +1316,6 @@ if (typeof window !== 'undefined') {
         setTimeout(verificarRetornoPagamento, 500);
     });
 }
+window.ativarProManual = ativarPro;
 
 console.log('✅ Payments.js carregado');
