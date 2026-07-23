@@ -1,5 +1,7 @@
 // ============ PRODUTOS ============
 
+var html5QrCodeProduto = null;
+
 function renderizarProdutos() {
     var limiteProdutos = LIMITES.proAtivo ? '∞' : (LIMITES.maxProdutos || LIMITES.freeProdutos || 5);
     
@@ -50,11 +52,18 @@ function adicionarProdutoComVerificacao() {
 }
 
 function abrirModalProduto() {
+    if (html5QrCodeProduto) { try { html5QrCodeProduto.stop(); } catch(e){} html5QrCodeProduto = null; }
     if (!verificarLimite('produtos')) return;
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🏷️ Cadastrar Produto</div>';
     html += '<div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="produto-nome-manual" onkeypress="if(event.key===\'Enter\')salvarProduto()"></div>';
-    html += '<div class="form-group"><label class="form-label">Código *</label><input class="form-input" id="produto-codigo-manual" onkeypress="if(event.key===\'Enter\')salvarProduto()"></div>';
+    html += '<div class="form-group"><label class="form-label">Código *</label>';
+    html += '<div style="display:flex;gap:8px">';
+    html += '<input class="form-input" id="produto-codigo-manual" style="flex:1" placeholder="Escaneie ou digite" onkeypress="if(event.key===\'Enter\')salvarProduto()">';
+    html += '<button class="btn btn-primary" style="margin:0;white-space:nowrap" onclick="escanearCodigoProduto()">📷</button>';
+    html += '</div>';
+    html += '<div id="reader-produto" style="display:none;margin-top:8px"></div>';
+    html += '</div>';
     html += '<div class="form-group"><label class="form-label">Preço (R$) *</label><input class="form-input" id="produto-preco-manual" type="number" step="0.01" onkeypress="if(event.key===\'Enter\')salvarProduto()"></div>';
     html += '<button class="btn btn-primary" onclick="salvarProduto()">💾 Salvar</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
@@ -62,6 +71,42 @@ function abrirModalProduto() {
     document.getElementById('modal-overlay').classList.add('show');
     setTimeout(function() { document.getElementById('produto-nome-manual').focus(); }, 100);
 }
+
+function escanearCodigoProduto() {
+    var readerDiv = document.getElementById('reader-produto');
+    if (!readerDiv) return;
+    if (html5QrCodeProduto) {
+        html5QrCodeProduto.stop().then(function() {
+            html5QrCodeProduto = null;
+            readerDiv.style.display = 'none';
+        }).catch(function() { html5QrCodeProduto = null; readerDiv.style.display = 'none'; });
+        return;
+    }
+    readerDiv.style.display = 'block';
+    html5QrCodeProduto = new Html5Qrcode("reader-produto");
+    html5QrCodeProduto.start(
+        { facingMode: "environment" },
+        { fps: 5, qrbox: { width: 250, height: 250 } },
+        function(decodedText) {
+            var campo = document.getElementById('produto-codigo-manual');
+            if (campo) campo.value = decodedText;
+            toast('✅ Código lido: ' + decodedText, 'success');
+            if (html5QrCodeProduto) {
+                html5QrCodeProduto.stop().then(function() {
+                    html5QrCodeProduto = null;
+                    readerDiv.style.display = 'none';
+                }).catch(function() { html5QrCodeProduto = null; readerDiv.style.display = 'none'; });
+            }
+            var preco = document.getElementById('produto-preco-manual');
+            if (preco) preco.focus();
+        }
+    ).catch(function(err) {
+        console.warn('Erro ao iniciar scanner do produto:', err);
+        readerDiv.style.display = 'none';
+        toast('📷 Câmera indisponível. Digite o código manualmente.', 'warning');
+    });
+}
+window.escanearCodigoProduto = escanearCodigoProduto;
 
 async function salvarProduto() {
     // 🚫 Bloqueio por dispositivo
