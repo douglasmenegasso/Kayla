@@ -141,6 +141,7 @@ function mudarAba(aba) {
 
 // Renderizar tela de Configurações
 function renderizarConfig() {
+    if (typeof carregarConfigEmpresa === 'function') carregarConfigEmpresa();
     var html = '<div class="card"><div class="card-title">⚙️ Configurações</div>';
     html += '<div class="form-group"><label class="form-label"> Usuário</label><div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:12px">' + (currentUser ? currentUser.email : 'Não logado') + '</div></div>';
     
