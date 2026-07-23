@@ -7,10 +7,10 @@ function abrirCadastro(tipo) {
     html += '<div class="modal-sub">Preencha seus dados</div>';
     
     // Campo Nome adicionado
-    html += '<div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="reg-nome" placeholder="Seu nome completo" onkeypress="if(event.key===\'Enter\')document.getElementById(\'reg-email\').focus()"></div>';
-    html += '<div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="reg-email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')document.getElementById(\'reg-senha\').focus()"></div>';
-    html += '<div class="form-group"><label class="form-label">Senha *</label><input class="form-input" id="reg-senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')document.getElementById(\'reg-senha2\').focus()"></div>';
-    html += '<div class="form-group"><label class="form-label">Confirmar Senha *</label><input class="form-input" id="reg-senha2" type="password" placeholder="Repita a senha" onkeypress="if(event.key===\'Enter\')fazerCadastro()"></div>';
+    html += '<div class="form-group"><label class="form-label">Nome *</label><input class="form-input" id="cadastro-nome" placeholder="Seu nome completo" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-email\').focus()"></div>';
+    html += '<div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" id="cadastro-email" type="email" placeholder="seu@email.com" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-senha\').focus()"></div>';
+    html += '<div class="form-group"><label class="form-label">Senha *</label><input class="form-input" id="cadastro-senha" type="password" placeholder="Mínimo 6 caracteres" onkeypress="if(event.key===\'Enter\')document.getElementById(\'cadastro-senha2\').focus()"></div>';
+    html += '<div class="form-group"><label class="form-label">Confirmar Senha *</label><input class="form-input" id="cadastro-senha2" type="password" placeholder="Repita a senha" onkeypress="if(event.key===\'Enter\')fazerCadastro()"></div>';
     html += '<div style="background:var(--bg3);padding:12px;border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--text2)">💡 Dica: Use uma senha forte com pelo menos 6 caracteres</div>';
     html += '<button class="btn btn-primary" onclick="fazerCadastro()">✅ Criar Conta</button>';
     html += '<button class="btn btn-outline" onclick="abrirLogin()">Já tenho conta</button>';
@@ -18,7 +18,7 @@ function abrirCadastro(tipo) {
     
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
-    setTimeout(function() { document.getElementById('reg-nome').focus(); }, 100);
+    setTimeout(function() { document.getElementById('cadastro-nome').focus(); }, 100);
 }
 
 async function fazerCadastro() {
