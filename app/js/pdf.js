@@ -26,7 +26,7 @@ async function gerarPDFPedido(pedido) {
 
         // ========== CABEÇALHO E INFORMAÇÕES DA EMPRESA ==========
         var nomeEmpresa = configEmpresa.nome || 'Kayla - Venda Consignada';
-        var logoLocal = localStorage.getItem('kayla_logo_local');
+        var logoLocal = configEmpresa.logo || localStorage.getItem('kayla_logo_local') || '';
         var y = 15;
 
         // Logo e nome da empresa
