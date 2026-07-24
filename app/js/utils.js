@@ -12,6 +12,8 @@ function toast(msg, tipo) {
 
 function fecharModal(e) {
     if (!e || e.target.id === 'modal-overlay') {
+        try { if (typeof html5QrCodeProduto !== 'undefined' && html5QrCodeProduto) { html5QrCodeProduto.stop(); html5QrCodeProduto = null; } } catch(err){}
+        try { if (typeof html5QrCodeDevolucao !== 'undefined' && html5QrCodeDevolucao) { html5QrCodeDevolucao.stop(); html5QrCodeDevolucao = null; } } catch(err){}
         document.getElementById('modal-overlay').classList.remove('show');
         document.getElementById('modal-body').innerHTML = '';
     }
