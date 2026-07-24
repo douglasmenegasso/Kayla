@@ -112,10 +112,11 @@ function onScanSuccess(decodedText) {
 async function processarCodigo(codigo) {
     var produto = produtos.find(function(p) { return p.codigo === codigo; });
     if (!produto) {
-        toast('Produto não cadastrado!', 'warning');
-        setTimeout(function() { abrirModalProdutoSelecao(codigo); }, 1000);
-        return;
-    }
+    try { if (html5QrCode) { html5QrCode.stop(); html5QrCode = null; } } catch(e){}
+    toast('Produto não cadastrado! Abrindo cadastro...', 'warning');
+    setTimeout(function() { abrirModalProdutoSelecao(codigo); }, 600);
+    return;
+}
     
     if (clienteAtual && isOnline && supabaseClient) {
         try {
@@ -187,11 +188,20 @@ function retomarScanner() { if (html5QrCode) html5QrCode.resume(); }
 // ... (O resto das funções de modal como abrirModalProdutoSelecao, etc permanecem IGUAIS)
 
 function abrirModalProdutoSelecao(codigo) {
+    console.log('[Venda] abrirModalProdutoSelecao chamado com código:', codigo);
     if (typeof abrirModalProduto !== 'function') {
+        console.error('[Venda] abrirModalProduto não é função!');
         toast('Cadastro de produto indisponível', 'error');
         return;
     }
-    abrirModalProduto();
+    try {
+        abrirModalProduto();
+        console.log('[Venda] abrirModalProduto executado com sucesso');
+    } catch(e) {
+        console.error('[Venda] Erro ao abrir modal de produto:', e);
+        toast('Erro ao abrir cadastro: ' + e.message, 'error');
+        return;
+    }
     setTimeout(function() {
         var campoCodigo = document.getElementById('produto-codigo-manual');
         if (campoCodigo && codigo) { campoCodigo.value = codigo; }
