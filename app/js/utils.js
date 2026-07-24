@@ -115,10 +115,29 @@ function verificarConexao() {
     atualizarBadgeConexao();
 }
 
-function carregarConfigEmpresa() {
-    var config = localStorage.getItem('kayla_config_empresa');
-    if (config) {
-        try { configEmpresa = JSON.parse(config); } catch(e) {}
+async function carregarConfigEmpresa() {
+    // 1) Tenta do Supabase
+    if (typeof carregarEmpresaSupabase === 'function') {
+        var dados = await carregarEmpresaSupabase();
+        if (dados) {
+            configEmpresa = {
+                nome: dados.nome || '',
+                cnpj: dados.cnpj || '',
+                endereco: dados.endereco || '',
+                telefone: dados.telefone || '',
+                logo: dados.logo || ''
+            };
+            // Salva cópia local como fallback offline
+            try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
+            return;
+        }
+    }
+    // 2) Fallback: localStorage
+    try {
+        var salvo = localStorage.getItem('kayla_empresa_' + (currentUser ? currentUser.id : 'local'));
+        configEmpresa = salvo ? (JSON.parse(salvo) || {}) : {};
+    } catch(e) {
+        configEmpresa = {};
     }
 }
 
