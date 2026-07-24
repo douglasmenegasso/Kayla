@@ -114,8 +114,8 @@ function mostrarHistoricoVersoes() {
 // Navegação entre abas
 function mudarAba(aba) {
     console.log('🔄 Mudando para aba:', aba);
+    try { if (typeof html5QrCode !== 'undefined' && html5QrCode) { html5QrCode.stop(); html5QrCode = null; } } catch(e){}
     var content = document.getElementById('content');
-    if (content) content.scrollTop = 0;
     
     document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
     var idx = ['scan','clients','products','orders','history','settings'].indexOf(aba) + 1;
