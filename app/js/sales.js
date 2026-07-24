@@ -186,4 +186,19 @@ function retomarScanner() { if (html5QrCode) html5QrCode.resume(); }
 
 // ... (O resto das funções de modal como abrirModalProdutoSelecao, etc permanecem IGUAIS)
 
+function abrirModalProdutoSelecao(codigo) {
+    if (typeof abrirModalProduto !== 'function') {
+        toast('Cadastro de produto indisponível', 'error');
+        return;
+    }
+    abrirModalProduto();
+    setTimeout(function() {
+        var campoCodigo = document.getElementById('produto-codigo-manual');
+        if (campoCodigo && codigo) { campoCodigo.value = codigo; }
+        var campoNome = document.getElementById('produto-nome-manual');
+        if (campoNome) campoNome.focus();
+    }, 250);
+}
+window.abrirModalProdutoSelecao = abrirModalProdutoSelecao;
+
 console.log('✅ Sales.js carregado (Modo Somente Leitura Ativo e Scanner Global)');
