@@ -232,15 +232,28 @@ async function gerarHtmlListaDispositivos() {
 }
 
 // ====================================================================
-// 🏢 DADOS DA EMPRESA (editar / salvar / carregar)
+// 🏢 DADOS DA EMPRESA (editar / salvar / carregar) — COM SUPABASE + LOGO
 // ====================================================================
-function carregarConfigEmpresa() {
+async function carregarConfigEmpresa() {
+    if (typeof carregarEmpresaSupabase === 'function') {
+        var dados = await carregarEmpresaSupabase();
+        if (dados) {
+            configEmpresa = {
+                nome: dados.nome || '',
+                cnpj: dados.cnpj || '',
+                endereco: dados.endereco || '',
+                telefone: dados.telefone || '',
+                logo: dados.logo || ''
+            };
+            try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
+            return;
+        }
+    }
     if (!currentUser || !currentUser.id) return;
     try {
         var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
         configEmpresa = salvo ? (JSON.parse(salvo) || {}) : {};
     } catch(e) {
-        console.warn('[Empresa] Erro ao carregar:', e);
         configEmpresa = {};
     }
 }
@@ -248,28 +261,65 @@ function carregarConfigEmpresa() {
 function editarEmpresa() {
     carregarConfigEmpresa();
     var esc = function(v){ return (v || '').replace(/"/g, '&quot;'); };
-
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🏢 Dados da Empresa</div>';
     html += '<div class="modal-sub">Esses dados aparecem no PDF dos pedidos</div>';
-    html += '<div class="form-group"><label class="form-label">Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
-    html += '<div class="form-group"><label class="form-label">CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
-    html += '<div class="form-group"><label class="form-label">Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
-    html += '<div class="form-group"><label class="form-label">Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
+    html += '<div class="form-group"><label class="form-label">📷 Logotipo da Empresa</label>';
+    if (configEmpresa.logo) {
+        html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2)"></div>';
+    }
+    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">Formato: PNG ou JPG • A imagem será comprimida automaticamente</div>';
+    html += '<input type="file" id="emp-logo" accept="image/*" onchange="uploadLogoEmpresa()">';
+    html += '</div>';
+    html += '<div class="form-group"><label class="form-label">📛 Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
+    html += '<div class="form-group"><label class="form-label">🆔 CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
+    html += '<div class="form-group"><label class="form-label">📍 Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
+    html += '<div class="form-group"><label class="form-label">📞 Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
     html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
-
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
     setTimeout(function(){ var el = document.getElementById('emp-nome'); if (el) el.focus(); }, 100);
 }
 
-function salvarEmpresa() {
+function uploadLogoEmpresa() {
+    var input = document.getElementById('emp-logo');
+    var file = input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        toast('Apenas imagens são aceitas', 'error');
+        input.value = '';
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        toast('Imagem muito grande. Máximo 5MB', 'error');
+        input.value = '';
+        return;
+    }
+    comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
+        configEmpresa.logo = dataUrl;
+        toast('✅ Logo carregada! Clique em Salvar.', 'success');
+        editarEmpresa();
+    });
+}
+
+async function salvarEmpresa() {
     if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
     var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
-    configEmpresa = { nome: g('emp-nome'), cnpj: g('emp-cnpj'), endereco: g('emp-endereco'), telefone: g('emp-telefone') };
-    try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e) { console.warn('[Empresa] Erro ao salvar:', e); }
-    toast('✅ Dados da empresa salvos!', 'success');
+    configEmpresa.nome = g('emp-nome');
+    configEmpresa.cnpj = g('emp-cnpj');
+    configEmpresa.endereco = g('emp-endereco');
+    configEmpresa.telefone = g('emp-telefone');
+    var ok = false;
+    if (typeof salvarEmpresaSupabase === 'function') {
+        ok = await salvarEmpresaSupabase(configEmpresa);
+    }
+    try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
+    if (ok) {
+        toast('✅ Dados salvos na nuvem!', 'success');
+    } else {
+        toast('⚠️ Salvo apenas neste dispositivo (offline)', 'warning');
+    }
     fecharModal();
     if (typeof mudarAba === 'function') mudarAba('settings');
 }
@@ -277,7 +327,7 @@ function salvarEmpresa() {
 window.carregarConfigEmpresa = carregarConfigEmpresa;
 window.editarEmpresa = editarEmpresa;
 window.salvarEmpresa = salvarEmpresa;
-
+window.uploadLogoEmpresa = uploadLogoEmpresa;
 // ====================================================================
 // 🔔 ALERTA DE INATIVIDADE (chama o "carteiro" checar-saude)
 //    Só lê o último pedido e manda 1 e-mail. Não mexe em pagamento/ativação.
