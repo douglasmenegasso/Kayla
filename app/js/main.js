@@ -114,7 +114,7 @@ function mostrarHistoricoVersoes() {
 // Navegação entre abas
 function mudarAba(aba) {
     console.log('🔄 Mudando para aba:', aba);
-    try { if (typeof html5QrCode !== 'undefined' && html5QrCode) { html5QrCode.stop(); html5QrCode = null; } } catch(e){}
+        try { if (typeof html5QrCode !== 'undefined' && html5QrCode) { try { var _s = html5QrCode.stop(); if (_s && _s.catch) _s.catch(function(){}); } catch(e2){} html5QrCode = null; } } catch(e){}
     var content = document.getElementById('content');
     
     document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
