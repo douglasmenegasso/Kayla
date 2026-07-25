@@ -309,8 +309,8 @@ function editarEmpresa() {
   html += '<div class="modal-title">🏢 Dados da Empresa</div>';
   html += '<div class="modal-sub">Esses dados e a logo ficam na nuvem (aparecem em qualquer aparelho e no PDF)</div>';
   html += '<div class="form-group"><label class="form-label">📷 Logotipo da Empresa</label>';
-  if (configEmpresa.logo) {
-    html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff"></div>';
+    if (configEmpresa.logo) {
+    html += '<div style="margin-bottom:8px"><img id="emp-logo-preview" src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff"></div>';
   }
   html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">PNG ou JPG • é comprimida automaticamente</div>';
   html += '<input type="file" id="emp-logo" accept="image/*" onchange="uploadLogoEmpresa()">';
@@ -334,12 +334,22 @@ function uploadLogoEmpresa() {
   if (typeof comprimirImagem !== 'function') { toast('Recarregue a página (Ctrl+F5) e tente de novo.', 'error'); input.value=''; return; }
   if (!file.type.startsWith('image/')) { toast('Apenas imagens são aceitas', 'error'); input.value=''; return; }
   if (file.size > 5*1024*1024) { toast('Imagem muito grande. Máximo 5MB', 'error'); input.value=''; return; }
-  comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
+    comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
     configEmpresa.logo = dataUrl;
+    var preview = document.getElementById('emp-logo-preview');
+    if (preview) {
+      preview.src = dataUrl;
+    } else {
+      var logoInput = document.getElementById('emp-logo');
+      if (logoInput) {
+        var div = document.createElement('div');
+        div.style.marginBottom = '8px';
+        div.innerHTML = '<img id="emp-logo-preview" src="' + dataUrl + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff">';
+        logoInput.parentNode.insertBefore(div, logoInput);
+      }
+    }
     toast('✅ Logo carregada! Agora clique em "Salvar na Nuvem".', 'success');
-    editarEmpresa();
   });
-}
 
 async function salvarEmpresa() {
   if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
