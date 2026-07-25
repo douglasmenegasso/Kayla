@@ -267,4 +267,162 @@ window.abrirModalAdicionarProduto = abrirModalAdicionarProduto;
 window.filtrarProdutosVenda = filtrarProdutosVenda;
 window.adicionarProdutoManual = adicionarProdutoManual;
 
+// ============ CARRINHO (reconstruído) ============
+function refreshScan() {
+    try { if (html5QrCode) { html5QrCode.stop(); } } catch(e){}
+    html5QrCode = null;
+    var c = document.getElementById('content');
+    if (c) c.innerHTML = renderizarVenda();
+    if (clienteAtual) setTimeout(function(){ try { iniciarScanner(); } catch(e){} }, 300);
+}
+
+function calcularTotal() {
+    var t = 0;
+    pedidoItens.forEach(function(i){ t += (parseFloat(i.preco)||0) * (parseInt(i.qtd)||0); });
+    return t;
+}
+
+function adicionarItem(produto, qtd) {
+    pedidoItens.push({
+        produto_id: produto.id,
+        nome: produto.nome,
+        codigo: produto.codigo,
+        preco: parseFloat(produto.preco) || 0,
+        qtd: parseInt(qtd) || 1
+    });
+    refreshScan();
+}
+
+function alterarQtd(idx, delta) {
+    var it = pedidoItens[idx];
+    if (!it) return;
+    it.qtd = (parseInt(it.qtd) || 0) + delta;
+    if (it.qtd <= 0) pedidoItens.splice(idx, 1);
+    refreshScan();
+}
+
+function removerItem(idx) {
+    pedidoItens.splice(idx, 1);
+    refreshScan();
+}
+
+function cancelarPedido() {
+    if (pedidoItens.length === 0) { toast('Nada para cancelar', 'warning'); return; }
+    confirmar('❌ Cancelar Pedido', 'Descartar o pedido atual?', function(ok){
+        if (!ok) return;
+        pedidoItens = [];
+        pedidoEmEdicao = null;
+        refreshScan();
+        toast('Pedido cancelado', 'warning');
+    });
+}
+
+function finalizarPedido() {
+    if (!clienteAtual) { toast('Selecione um cliente', 'error'); return; }
+    if (!pedidoItens || pedidoItens.length === 0) { toast('Pedido vazio', 'error'); return; }
+    var total = calcularTotal();
+    var totalUn = 0;
+    pedidoItens.forEach(function(i){ totalUn += (parseInt(i.qtd) || 0); });
+    var msg = 'Cliente: ' + clienteAtual.nome + '\nItens: ' + totalUn + '\nTotal: R$ ' + total.toFixed(2).replace('.',',') + '\n\nConfirmar envio do pedido?';
+    confirmar('📦 Enviar Pedido', msg, function(ok){
+        if (!ok) return;
+        (async function(){
+            try {
+                var itensJson = pedidoItens.map(function(i){
+                    var p = parseFloat(i.preco)||0, q = parseInt(i.qtd)||0;
+                    return { produto_id: i.produto_id, nome: i.nome, codigo: i.codigo, preco: p, qtd: q, total: p*q };
+                });
+                var userId = currentUser ? currentUser.id : 'local';
+                if (isOnline && supabaseClient) {
+                    if (pedidoEmEdicao) {
+                        await supabaseClient.from('pedido_itens').delete().eq('pedido_id', pedidoEmEdicao);
+                        await supabaseClient.from('pedidos').update({ itens: totalUn, total: total, itens_json: JSON.stringify(itensJson), status: 'aberto' }).eq('id', pedidoEmEdicao);
+                        var rows = itensJson.map(function(it){ return Object.assign({ pedido_id: pedidoEmEdicao, user_id: userId, created_at: new Date().toISOString() }, it); });
+                        await supabaseClient.from('pedido_itens').insert(rows);
+                        await carregarDados();
+                        toast('✅ Pedido atualizado!', 'success');
+                    } else {
+                        var ped = { user_id: userId, cliente_id: clienteAtual.id, cliente_nome: clienteAtual.nome, itens: totalUn, total: total, status: 'aberto', itens_json: JSON.stringify(itensJson), created_at: new Date().toISOString() };
+                        var r = await supabaseClient.from('pedidos').insert(ped).select().single();
+                        if (r.error) { toast('Erro: ' + r.error.message, 'error'); return; }
+                        var rows2 = itensJson.map(function(it){ return Object.assign({ pedido_id: r.data.id, user_id: userId, created_at: new Date().toISOString() }, it); });
+                        await supabaseClient.from('pedido_itens').insert(rows2);
+                        await carregarDados();
+                        toast('✅ Pedido enviado!', 'success');
+                    }
+                } else {
+                    var idL = pedidoEmEdicao || ('local_' + Date.now());
+                    var pedL = { id: idL, user_id: userId, cliente_id: clienteAtual.id, cliente_nome: clienteAtual.nome, itens: totalUn, total: total, status: 'aberto', itens_json: JSON.stringify(itensJson), created_at: new Date().toISOString() };
+                    if (pedidoEmEdicao) { var ix = pedidos.findIndex(function(p){ return p.id === pedidoEmEdicao; }); if (ix >= 0) pedidos[ix] = pedL; else pedidos.unshift(pedL); }
+                    else pedidos.unshift(pedL);
+                    salvarDadosLocais();
+                    toast('✅ Pedido salvo (offline)!', 'success');
+                }
+                pedidoItens = [];
+                pedidoEmEdicao = null;
+                refreshScan();
+            } catch(e) {
+                console.error('Erro ao enviar pedido:', e);
+                toast('Erro ao enviar: ' + e.message, 'error');
+            }
+        })();
+    });
+}
+
+function abrirModalDuplicado(produto, itemExistente) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">⚠️ Produto já no pedido</div>';
+    html += '<div class="modal-sub">' + produto.nome + ' (atual: ' + itemExistente.qtd + 'x)</div>';
+    html += '<div class="form-group"><label class="form-label">Quantas unidades a mais?</label><input class="form-input" id="dup-qtd" type="number" value="1" min="1"></div>';
+    html += '<button class="btn btn-primary" onclick="adicionarMaisUnidadesModal(\'' + produto.id + '\')">➕ Adicionar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+    setTimeout(function(){ var el = document.getElementById('dup-qtd'); if (el) { el.focus(); el.select(); } }, 100);
+}
+
+function adicionarMaisUnidadesModal(produtoId) {
+    var el = document.getElementById('dup-qtd');
+    var q = parseInt(el ? el.value : 1) || 1;
+    var it = pedidoItens.find(function(i){ return i.produto_id === produtoId; });
+    if (it) { it.qtd += q; refreshScan(); }
+    else { var p = produtos.find(function(x){ return x.id === produtoId; }); if (p) adicionarItem(p, q); }
+    fecharModal();
+    toast('✅ +' + q + ' unidade(s)', 'success');
+}
+
+function abrirModalItemDevolvido(produto, itemDevolvido, dataDevolucao, qtdDevolvida) {
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">↩️ Item já devolvido</div>';
+    html += '<div class="modal-sub">' + produto.nome + '</div>';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;color:var(--text2)">Este produto foi devolvido em <strong>' + new Date(dataDevolucao).toLocaleDateString('pt-BR') + '</strong> (' + qtdDevolvida + 'x).</div>';
+    html += '<div style="font-size:13px;color:var(--warning);margin-top:8px">Deseja adicioná-lo ao pedido mesmo assim?</div>';
+    html += '</div>';
+    html += '<button class="btn btn-primary" onclick="confirmarReenvioItem(\'' + produto.id + '\')">✅ Sim, adicionar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Não, cancelar</button>';
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+
+function confirmarReenvioItem(produtoId) {
+    var p = produtos.find(function(x){ return x.id === produtoId; });
+    if (!p) { toast('Produto não encontrado', 'error'); fecharModal(); return; }
+    adicionarItem(p, 1);
+    fecharModal();
+    toast('✅ ' + p.nome + ' adicionado', 'success');
+}
+
+window.refreshScan = refreshScan;
+window.calcularTotal = calcularTotal;
+window.adicionarItem = adicionarItem;
+window.alterarQtd = alterarQtd;
+window.removerItem = removerItem;
+window.cancelarPedido = cancelarPedido;
+window.finalizarPedido = finalizarPedido;
+window.abrirModalDuplicado = abrirModalDuplicado;
+window.adicionarMaisUnidadesModal = adicionarMaisUnidadesModal;
+window.abrirModalItemDevolvido = abrirModalItemDevolvido;
+window.confirmarReenvioItem = confirmarReenvioItem;
+
 console.log('✅ Sales.js carregado (Modo Somente Leitura Ativo e Scanner Global)');
