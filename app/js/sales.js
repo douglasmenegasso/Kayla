@@ -211,4 +211,60 @@ function abrirModalProdutoSelecao(codigo) {
 }
 window.abrirModalProdutoSelecao = abrirModalProdutoSelecao;
 
+// ============ ADICIONAR PRODUTO MANUAL (lista) ============
+function abrirModalAdicionarProduto() {
+    if (!clienteAtual) { toast('Selecione um cliente primeiro', 'warning'); return; }
+    if (!produtos || produtos.length === 0) { toast('Nenhum produto cadastrado', 'warning'); return; }
+    var html = '<div class="modal-handle"></div>';
+    html += '<div class="modal-title">🏷️ Escolha o Produto</div>';
+    html += '<div class="form-group"><input class="form-input" id="busca-produto-venda" placeholder="🔍 Buscar por nome ou código" oninput="filtrarProdutosVenda(this.value)"></div>';
+    html += '<div id="lista-produtos-venda" style="max-height:50vh;overflow-y:auto">' + renderListaProdutosVenda('') + '</div>';
+    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+    setTimeout(function(){ var el = document.getElementById('busca-produto-venda'); if (el) el.focus(); }, 100);
+}
+
+function renderListaProdutosVenda(filtro) {
+    var f = (filtro || '').toLowerCase().trim();
+    var lista = produtos.filter(function(p){
+        if (!f) return true;
+        return (p.nome || '').toLowerCase().indexOf(f) >= 0 || (p.codigo || '').toLowerCase().indexOf(f) >= 0;
+    });
+    if (lista.length === 0) return '<div class="empty-state">Nenhum produto encontrado</div>';
+    var h = '<div class="item-list">';
+    lista.forEach(function(p){
+        h += '<div class="item-card" style="cursor:pointer" onclick="adicionarProdutoManual(\'' + p.id + '\')">';
+        h += '<div class="item-info"><div class="item-name">' + p.nome + '</div>';
+        h += '<div class="item-detail">' + (p.codigo || '') + ' • R$ ' + (parseFloat(p.preco)||0).toFixed(2).replace('.',',') + '</div></div>';
+        h += '<div style="font-weight:700;color:var(--accent)">+ Add</div>';
+        h += '</div>';
+    });
+    h += '</div>';
+    return h;
+}
+
+function filtrarProdutosVenda(valor) {
+    var cont = document.getElementById('lista-produtos-venda');
+    if (cont) cont.innerHTML = renderListaProdutosVenda(valor);
+}
+
+function adicionarProdutoManual(produtoId) {
+    var produto = produtos.find(function(p){ return p.id === produtoId; });
+    if (!produto) { toast('Produto não encontrado', 'error'); return; }
+    if (!clienteAtual) { toast('Selecione um cliente primeiro', 'warning'); return; }
+    if (typeof adicionarItem === 'function') {
+        adicionarItem(produto, 1);
+    } else {
+        pedidoItens.push({ produto_id: produto.id, nome: produto.nome, codigo: produto.codigo, preco: parseFloat(produto.preco)||0, qtd: 1 });
+    }
+    toast('✅ ' + produto.nome, 'success');
+    fecharModal();
+    if (typeof mudarAba === 'function') mudarAba('scan');
+}
+
+window.abrirModalAdicionarProduto = abrirModalAdicionarProduto;
+window.filtrarProdutosVenda = filtrarProdutosVenda;
+window.adicionarProdutoManual = adicionarProdutoManual;
+
 console.log('✅ Sales.js carregado (Modo Somente Leitura Ativo e Scanner Global)');
