@@ -232,100 +232,127 @@ async function gerarHtmlListaDispositivos() {
 }
 
 // ====================================================================
-// 🏢 DADOS DA EMPRESA (editar / salvar / carregar) — LOGO + NUVEM (v2)
+// 🏢 DADOS DA EMPRESA (editar / salvar / carregar) — LOGO + NUVEM (final)
 // ====================================================================
+if (typeof window.comprimirImagem !== 'function') {
+  window.comprimirImagem = function(file, maxWidth, maxHeight, quality, callback) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var width = img.width, height = img.height;
+        if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
+        if (height > maxHeight) { width = Math.round(width * maxHeight / height); height = maxHeight; }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        callback(canvas.toDataURL('image/png', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+}
+if (typeof window.salvarEmpresaSupabase !== 'function') {
+  window.salvarEmpresaSupabase = async function(dados) {
+    if (!currentUser || !supabaseClient) return false;
+    try {
+      var userId = currentUser.id;
+      var payload = { nome: dados.nome||'', cnpj: dados.cnpj||'', endereco: dados.endereco||'', telefone: dados.telefone||'', logo: dados.logo||'', updated_at: new Date().toISOString() };
+      var { data: existente } = await supabaseClient.from('empresa').select('id').eq('user_id', userId).maybeSingle();
+      if (existente) {
+        await supabaseClient.from('empresa').update(payload).eq('user_id', userId);
+      } else {
+        payload.user_id = userId;
+        await supabaseClient.from('empresa').insert(payload);
+      }
+      return true;
+    } catch(e) { console.error('[Empresa] Erro Supabase:', e); return false; }
+  };
+}
+if (typeof window.carregarEmpresaSupabase !== 'function') {
+  window.carregarEmpresaSupabase = async function() {
+    if (!currentUser || !supabaseClient) return null;
+    try {
+      var { data } = await supabaseClient.from('empresa').select('*').eq('user_id', currentUser.id).maybeSingle();
+      return data;
+    } catch(e) { console.error('[Empresa] Erro load Supabase:', e); return null; }
+  };
+}
+
 function carregarConfigEmpresa() {
-    if (currentUser && currentUser.id) {
+  if (currentUser && currentUser.id) {
+    try {
+      var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
+      if (salvo) configEmpresa = JSON.parse(salvo) || {};
+    } catch(e) { configEmpresa = configEmpresa || {}; }
+  }
+  if (currentUser && supabaseClient && typeof carregarEmpresaSupabase === 'function') {
+    carregarEmpresaSupabase().then(function(dados) {
+      if (dados) {
+        configEmpresa = { nome: dados.nome||'', cnpj: dados.cnpj||'', endereco: dados.endereco||'', telefone: dados.telefone||'', logo: dados.logo||'' };
+        try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
         try {
-            var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
-            if (salvo) configEmpresa = JSON.parse(salvo) || {};
-        } catch(e) { configEmpresa = configEmpresa || {}; }
-    }
-    if (currentUser && supabaseClient && typeof carregarEmpresaSupabase === 'function') {
-        carregarEmpresaSupabase().then(function(dados) {
-            if (dados) {
-                configEmpresa = {
-                    nome: dados.nome || '',
-                    cnpj: dados.cnpj || '',
-                    endereco: dados.endereco || '',
-                    telefone: dados.telefone || '',
-                    logo: dados.logo || ''
-                };
-                try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
-                try {
-                    var naConfig = document.querySelector('.nav-btn:nth-child(6).active');
-                    if (naConfig && typeof renderizarConfig === 'function') {
-                        var c = document.getElementById('content');
-                        if (c) c.innerHTML = renderizarConfig();
-                    }
-                } catch(e){}
-            }
-        }).catch(function(){});
-    }
+          if (document.querySelector('.nav-btn:nth-child(6).active') && typeof renderizarConfig === 'function') {
+            var c = document.getElementById('content'); if (c) c.innerHTML = renderizarConfig();
+          }
+        } catch(e){}
+      }
+    }).catch(function(){});
+  }
 }
 
 function editarEmpresa() {
-    carregarConfigEmpresa();
-    var esc = function(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); };
-    var html = '<div class="modal-handle"></div>';
-    html += '<div class="modal-title">🏢 Dados da Empresa</div>';
-    html += '<div class="modal-sub">Esses dados e a logo ficam na nuvem (aparecem em qualquer aparelho)</div>';
-    html += '<div class="form-group"><label class="form-label">📷 Logotipo da Empresa</label>';
-    if (configEmpresa.logo) {
-        html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff"></div>';
-    }
-    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">PNG ou JPG • A imagem é comprimida automaticamente</div>';
-    html += '<input type="file" id="emp-logo" accept="image/*" onchange="uploadLogoEmpresa()">';
-    html += '</div>';
-    html += '<div class="form-group"><label class="form-label">📛 Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
-    html += '<div class="form-group"><label class="form-label">🆔 CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
-    html += '<div class="form-group"><label class="form-label">📍 Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
-    html += '<div class="form-group"><label class="form-label">📞 Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
-    html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar na Nuvem</button>';
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
-    document.getElementById('modal-body').innerHTML = html;
-    document.getElementById('modal-overlay').classList.add('show');
-    setTimeout(function(){ var el = document.getElementById('emp-nome'); if (el) el.focus(); }, 100);
+  carregarConfigEmpresa();
+  var esc = function(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); };
+  var html = '<div class="modal-handle"></div>';
+  html += '<div class="modal-title">🏢 Dados da Empresa</div>';
+  html += '<div class="modal-sub">Esses dados e a logo ficam na nuvem (aparecem em qualquer aparelho e no PDF)</div>';
+  html += '<div class="form-group"><label class="form-label">📷 Logotipo da Empresa</label>';
+  if (configEmpresa.logo) {
+    html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff"></div>';
+  }
+  html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">PNG ou JPG • é comprimida automaticamente</div>';
+  html += '<input type="file" id="emp-logo" accept="image/*" onchange="uploadLogoEmpresa()">';
+  html += '</div>';
+  html += '<div class="form-group"><label class="form-label">📛 Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
+  html += '<div class="form-group"><label class="form-label">🆔 CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
+  html += '<div class="form-group"><label class="form-label">📍 Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
+  html += '<div class="form-group"><label class="form-label">📞 Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
+  html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar na Nuvem</button>';
+  html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('show');
+  setTimeout(function(){ var el = document.getElementById('emp-nome'); if (el) el.focus(); }, 100);
 }
 
 function uploadLogoEmpresa() {
-    var input = document.getElementById('emp-logo');
-    if (!input) return;
-    var file = input.files[0];
-    if (!file) return;
-    if (typeof comprimirImagem !== 'function') { toast('Recarregue a página (Ctrl+F5) e tente de novo.', 'error'); input.value=''; return; }
-    if (!file.type.startsWith('image/')) { toast('Apenas imagens são aceitas', 'error'); input.value = ''; return; }
-    if (file.size > 5 * 1024 * 1024) { toast('Imagem muito grande. Máximo 5MB', 'error'); input.value = ''; return; }
-    comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
-        configEmpresa.logo = dataUrl;
-        toast('✅ Logo carregada! Agora clique em "Salvar na Nuvem".', 'success');
-        editarEmpresa();
-    });
+  var input = document.getElementById('emp-logo');
+  if (!input) return;
+  var file = input.files[0];
+  if (!file) return;
+  if (typeof comprimirImagem !== 'function') { toast('Recarregue a página (Ctrl+F5) e tente de novo.', 'error'); input.value=''; return; }
+  if (!file.type.startsWith('image/')) { toast('Apenas imagens são aceitas', 'error'); input.value=''; return; }
+  if (file.size > 5*1024*1024) { toast('Imagem muito grande. Máximo 5MB', 'error'); input.value=''; return; }
+  comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
+    configEmpresa.logo = dataUrl;
+    toast('✅ Logo carregada! Agora clique em "Salvar na Nuvem".', 'success');
+    editarEmpresa();
+  });
 }
 
 async function salvarEmpresa() {
-    if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
-    var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
-    var logoAtual = configEmpresa.logo || '';
-    configEmpresa = {
-        nome: g('emp-nome'),
-        cnpj: g('emp-cnpj'),
-        endereco: g('emp-endereco'),
-        telefone: g('emp-telefone'),
-        logo: logoAtual
-    };
-    var ok = false;
-    if (typeof salvarEmpresaSupabase === 'function') {
-        ok = await salvarEmpresaSupabase(configEmpresa);
-    }
-    try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
-    if (ok) {
-        toast('✅ Dados + logo salvos na nuvem!', 'success');
-    } else {
-        toast('⚠️ Salvo só neste aparelho (sem internet)', 'warning');
-    }
-    fecharModal();
-    if (typeof mudarAba === 'function') mudarAba('settings');
+  if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
+  var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var logoAtual = configEmpresa.logo || '';
+  configEmpresa = { nome: g('emp-nome'), cnpj: g('emp-cnpj'), endereco: g('emp-endereco'), telefone: g('emp-telefone'), logo: logoAtual };
+  var ok = false;
+  if (typeof salvarEmpresaSupabase === 'function') { ok = await salvarEmpresaSupabase(configEmpresa); }
+  try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
+  if (ok) toast('✅ Dados + logo salvos na nuvem!', 'success');
+  else toast('⚠️ Salvo só neste aparelho (sem internet)', 'warning');
+  fecharModal();
+  if (typeof mudarAba === 'function') mudarAba('settings');
 }
 
 window.carregarConfigEmpresa = carregarConfigEmpresa;
