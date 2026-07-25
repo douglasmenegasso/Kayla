@@ -254,4 +254,27 @@ async function gerarPDFPedido(pedido) {
 }
 
 // (O modal de upgrade permanece igual)
+
+// ============ PONTE: PDF POR ID (reconstruído) ============
+function gerarPDFPedidoPorId(pedidoId) {
+    var pedido = null;
+    try { pedido = pedidos.find(function(p){ return String(p.id) === String(pedidoId); }); } catch(e){}
+    if (!pedido) { toast('Pedido não encontrado', 'error'); return; }
+    return gerarPDFPedido(pedido);
+}
+window.gerarPDFPedidoPorId = gerarPDFPedidoPorId;
+
+// Modal de upgrade (reconstruído — só cria se não existir em outro arquivo)
+if (typeof window.mostrarModalUpgradePDF !== 'function') {
+    window.mostrarModalUpgradePDF = function() {
+        var html = '<div class="modal-handle"></div>';
+        html += '<div class="modal-title">🔒 Recurso PRO</div>';
+        html += '<div class="modal-sub">A geração de PDF está disponível apenas no plano PRO</div>';
+        html += '<button class="btn btn-primary" onclick="fecharModal(); mostrarPlanos()">🚀 Ver Planos</button>';
+        html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
+    };
+}
+
 console.log('✅ PDF.js carregado (Modo Somente Leitura Ativo)');
