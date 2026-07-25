@@ -232,50 +232,56 @@ async function gerarHtmlListaDispositivos() {
 }
 
 // ====================================================================
-// 🏢 DADOS DA EMPRESA (editar / salvar / carregar) — COM SUPABASE + LOGO
+// 🏢 DADOS DA EMPRESA (editar / salvar / carregar) — LOGO + NUVEM (v2)
 // ====================================================================
-async function carregarConfigEmpresa() {
-    if (typeof carregarEmpresaSupabase === 'function') {
-        var dados = await carregarEmpresaSupabase();
-        if (dados) {
-            configEmpresa = {
-                nome: dados.nome || '',
-                cnpj: dados.cnpj || '',
-                endereco: dados.endereco || '',
-                telefone: dados.telefone || '',
-                logo: dados.logo || ''
-            };
-            try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
-            return;
-        }
+function carregarConfigEmpresa() {
+    if (currentUser && currentUser.id) {
+        try {
+            var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
+            if (salvo) configEmpresa = JSON.parse(salvo) || {};
+        } catch(e) { configEmpresa = configEmpresa || {}; }
     }
-    if (!currentUser || !currentUser.id) return;
-    try {
-        var salvo = localStorage.getItem('kayla_empresa_' + currentUser.id);
-        configEmpresa = salvo ? (JSON.parse(salvo) || {}) : {};
-    } catch(e) {
-        configEmpresa = {};
+    if (currentUser && supabaseClient && typeof carregarEmpresaSupabase === 'function') {
+        carregarEmpresaSupabase().then(function(dados) {
+            if (dados) {
+                configEmpresa = {
+                    nome: dados.nome || '',
+                    cnpj: dados.cnpj || '',
+                    endereco: dados.endereco || '',
+                    telefone: dados.telefone || '',
+                    logo: dados.logo || ''
+                };
+                try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
+                try {
+                    var naConfig = document.querySelector('.nav-btn:nth-child(6).active');
+                    if (naConfig && typeof renderizarConfig === 'function') {
+                        var c = document.getElementById('content');
+                        if (c) c.innerHTML = renderizarConfig();
+                    }
+                } catch(e){}
+            }
+        }).catch(function(){});
     }
 }
 
 function editarEmpresa() {
     carregarConfigEmpresa();
-    var esc = function(v){ return (v || '').replace(/"/g, '&quot;'); };
+    var esc = function(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); };
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🏢 Dados da Empresa</div>';
-    html += '<div class="modal-sub">Esses dados aparecem no PDF dos pedidos</div>';
+    html += '<div class="modal-sub">Esses dados e a logo ficam na nuvem (aparecem em qualquer aparelho)</div>';
     html += '<div class="form-group"><label class="form-label">📷 Logotipo da Empresa</label>';
     if (configEmpresa.logo) {
-        html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2)"></div>';
+        html += '<div style="margin-bottom:8px"><img src="' + configEmpresa.logo + '" style="max-width:200px;max-height:100px;border-radius:8px;border:2px solid var(--bg2);background:#fff"></div>';
     }
-    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">Formato: PNG ou JPG • A imagem será comprimida automaticamente</div>';
+    html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">PNG ou JPG • A imagem é comprimida automaticamente</div>';
     html += '<input type="file" id="emp-logo" accept="image/*" onchange="uploadLogoEmpresa()">';
     html += '</div>';
     html += '<div class="form-group"><label class="form-label">📛 Nome / Razão Social</label><input class="form-input" id="emp-nome" value="' + esc(configEmpresa.nome) + '" placeholder="Ex: Minha Empresa"></div>';
     html += '<div class="form-group"><label class="form-label">🆔 CNPJ / CPF</label><input class="form-input" id="emp-cnpj" value="' + esc(configEmpresa.cnpj) + '" placeholder="00.000.000/0000-00"></div>';
     html += '<div class="form-group"><label class="form-label">📍 Endereço</label><input class="form-input" id="emp-endereco" value="' + esc(configEmpresa.endereco) + '" placeholder="Rua, número, cidade - UF"></div>';
     html += '<div class="form-group"><label class="form-label">📞 Telefone</label><input class="form-input" id="emp-telefone" value="' + esc(configEmpresa.telefone) + '" placeholder="(00) 00000-0000"></div>';
-    html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar</button>';
+    html += '<button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar na Nuvem</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
@@ -284,21 +290,15 @@ function editarEmpresa() {
 
 function uploadLogoEmpresa() {
     var input = document.getElementById('emp-logo');
+    if (!input) return;
     var file = input.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-        toast('Apenas imagens são aceitas', 'error');
-        input.value = '';
-        return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-        toast('Imagem muito grande. Máximo 5MB', 'error');
-        input.value = '';
-        return;
-    }
+    if (typeof comprimirImagem !== 'function') { toast('Recarregue a página (Ctrl+F5) e tente de novo.', 'error'); input.value=''; return; }
+    if (!file.type.startsWith('image/')) { toast('Apenas imagens são aceitas', 'error'); input.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { toast('Imagem muito grande. Máximo 5MB', 'error'); input.value = ''; return; }
     comprimirImagem(file, 400, 200, 0.8, function(dataUrl) {
         configEmpresa.logo = dataUrl;
-        toast('✅ Logo carregada! Clique em Salvar.', 'success');
+        toast('✅ Logo carregada! Agora clique em "Salvar na Nuvem".', 'success');
         editarEmpresa();
     });
 }
@@ -306,19 +306,23 @@ function uploadLogoEmpresa() {
 async function salvarEmpresa() {
     if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
     var g = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
-    configEmpresa.nome = g('emp-nome');
-    configEmpresa.cnpj = g('emp-cnpj');
-    configEmpresa.endereco = g('emp-endereco');
-    configEmpresa.telefone = g('emp-telefone');
+    var logoAtual = configEmpresa.logo || '';
+    configEmpresa = {
+        nome: g('emp-nome'),
+        cnpj: g('emp-cnpj'),
+        endereco: g('emp-endereco'),
+        telefone: g('emp-telefone'),
+        logo: logoAtual
+    };
     var ok = false;
     if (typeof salvarEmpresaSupabase === 'function') {
         ok = await salvarEmpresaSupabase(configEmpresa);
     }
     try { localStorage.setItem('kayla_empresa_' + currentUser.id, JSON.stringify(configEmpresa)); } catch(e){}
     if (ok) {
-        toast('✅ Dados salvos na nuvem!', 'success');
+        toast('✅ Dados + logo salvos na nuvem!', 'success');
     } else {
-        toast('⚠️ Salvo apenas neste dispositivo (offline)', 'warning');
+        toast('⚠️ Salvo só neste aparelho (sem internet)', 'warning');
     }
     fecharModal();
     if (typeof mudarAba === 'function') mudarAba('settings');
@@ -328,6 +332,7 @@ window.carregarConfigEmpresa = carregarConfigEmpresa;
 window.editarEmpresa = editarEmpresa;
 window.salvarEmpresa = salvarEmpresa;
 window.uploadLogoEmpresa = uploadLogoEmpresa;
+
 // ====================================================================
 // 🔔 ALERTA DE INATIVIDADE (chama o "carteiro" checar-saude)
 //    Só lê o último pedido e manda 1 e-mail. Não mexe em pagamento/ativação.
