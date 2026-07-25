@@ -24,51 +24,70 @@ async function gerarPDFPedido(pedido) {
             format: 'a4'
         });
 
-        // ========== CABEÇALHO E INFORMAÇÕES DA EMPRESA ==========
+    // ========== CABEÇALHO E INFORMAÇÕES DA EMPRESA ==========
+        
         var nomeEmpresa = configEmpresa.nome || 'Kayla - Venda Consignada';
         var logoLocal = configEmpresa.logo || localStorage.getItem('kayla_logo_local') || '';
         var y = 15;
 
-        // Logo e nome da empresa
+        // Mede a logo e calcula tamanho MANTENDO a proporção (NUNCA estica)
+        var logoW = 0, logoH = 0;
         if (logoLocal) {
             try {
-                doc.addImage(logoLocal, 'PNG', 15, y, 25, 15);
-                doc.setFontSize(18);
-                doc.setTextColor(124, 92, 252);
-                doc.setFont('helvetica', 'bold');
-                doc.text(nomeEmpresa, 50, y + 11);
-            } catch(e) {
-                doc.setFontSize(22);
-                doc.setTextColor(124, 92, 252);
-                doc.setFont('helvetica', 'bold');
-                doc.text(nomeEmpresa, 105, y + 10, { align: 'center' });
-            }
+                var dims = await new Promise(function(resolve) {
+                    var img = new Image();
+                    img.onload = function() {
+                        var maxW = 30, maxH = 24; // caixa máxima em mm
+                        var nw = img.naturalWidth || img.width || 1;
+                        var nh = img.naturalHeight || img.height || 1;
+                        var aspect = nw / nh;
+                        var w, h;
+                        if ((maxW / maxH) > aspect) { h = maxH; w = h * aspect; }
+                        else { w = maxW; h = w / aspect; }
+                        resolve({ w: w, h: h });
+                    };
+                    img.onerror = function() { resolve({ w: 0, h: 0 }); };
+                    img.src = logoLocal;
+                });
+                logoW = dims.w; logoH = dims.h;
+            } catch(e) { logoW = 0; logoH = 0; }
+        }
+
+        if (logoLocal && logoW > 0) {
+            // Logo à esquerda (proporcional)
+            try { doc.addImage(logoLocal, 'PNG', 15, y, logoW, logoH); } catch(e) {}
+            // À direita da logo: NOME em cima, infos embaixo
+            var textX = 15 + logoW + 6;
+            doc.setFontSize(18);
+            doc.setTextColor(124, 92, 252);
+            doc.setFont('helvetica', 'bold');
+            doc.text(nomeEmpresa, textX, y + 8);
+            doc.setFontSize(8);
+            doc.setTextColor(80);
+            doc.setFont('helvetica', 'normal');
+            var infoY = y + 13;
+            if (configEmpresa.cnpj) { doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, textX, infoY); infoY += 4; }
+            if (configEmpresa.endereco) { doc.text(configEmpresa.endereco, textX, infoY); infoY += 4; }
+            if (configEmpresa.telefone) { doc.text('Tel: ' + configEmpresa.telefone, textX, infoY); infoY += 4; }
+            y = 15 + Math.max(logoH, 18);
         } else {
+            // Sem logo: tudo centralizado
             doc.setFontSize(22);
             doc.setTextColor(124, 92, 252);
             doc.setFont('helvetica', 'bold');
             doc.text(nomeEmpresa, 105, y + 10, { align: 'center' });
-        }
-
-        // Informações da empresa
-        y = 35;
-        doc.setFontSize(8);
-        doc.setTextColor(80);
-        doc.setFont('helvetica', 'normal');
-
-        if (logoLocal) {
-            var xInfo = 15;
-            if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, xInfo, y);
-            if (configEmpresa.endereco) doc.text(configEmpresa.endereco, xInfo, y + 4);
-            if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, xInfo, y + 8);
-        } else {
-            if (configEmpresa.cnpj) doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, y, { align: 'center' });
-            if (configEmpresa.endereco) doc.text(configEmpresa.endereco, 105, y + 4, { align: 'center' });
-            if (configEmpresa.telefone) doc.text('Tel: ' + configEmpresa.telefone, 105, y + 8, { align: 'center' });
+            doc.setFontSize(8);
+            doc.setTextColor(80);
+            doc.setFont('helvetica', 'normal');
+            var cy = y + 16;
+            if (configEmpresa.cnpj) { doc.text('CNPJ/CPF: ' + configEmpresa.cnpj, 105, cy, { align: 'center' }); cy += 4; }
+            if (configEmpresa.endereco) { doc.text(configEmpresa.endereco, 105, cy, { align: 'center' }); cy += 4; }
+            if (configEmpresa.telefone) { doc.text('Tel: ' + configEmpresa.telefone, 105, cy, { align: 'center' }); cy += 4; }
+            y = cy + 2;
         }
 
         // Linha separadora
-        y += 14;
+        y += 4;
         doc.setDrawColor(200, 200, 200);
         doc.setLineWidth(0.5);
         doc.line(15, y, 195, y);
