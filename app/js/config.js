@@ -350,6 +350,7 @@ function uploadLogoEmpresa() {
     }
     toast('✅ Logo carregada! Agora clique em "Salvar na Nuvem".', 'success');
   });
+}
 
 async function salvarEmpresa() {
   if (!currentUser || !currentUser.id) { toast('Faça login primeiro', 'error'); return; }
