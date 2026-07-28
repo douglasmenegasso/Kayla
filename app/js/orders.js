@@ -159,10 +159,9 @@ async function devolverPedido(pedidoId) {
     html += '</div>';
     html += '</div>';
     
-    html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
+    html += '<button class="btn btn-outline" onclick="fecharDevolucao()">Fechar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
-    
     setTimeout(function() {
         carregarItensParaDevolucao(pedidoId);
     }, 100);
@@ -939,5 +938,12 @@ function verPedido(pedidoId) {
     toast('Detalhes indisponíveis', 'error');
 }
 window.verPedido = verPedido;
+
+function fecharDevolucao() {
+    try { if (typeof html5QrCodeDevolucao !== 'undefined' && html5QrCodeDevolucao) { html5QrCodeDevolucao.stop(); html5QrCodeDevolucao = null; } } catch(e){}
+    fecharModal();
+    if (typeof mudarAba === 'function') mudarAba('orders');
+}
+window.fecharDevolucao = fecharDevolucao;
 
 console.log('✅ Orders.js carregado (Modo Somente Leitura Ativo)');
