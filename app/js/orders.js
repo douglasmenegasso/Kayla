@@ -925,4 +925,10 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     document.getElementById('modal-overlay').classList.add('show');
 }
 
+function verPedido(pedidoId) {
+    if (typeof verDetalhesPedidoHistorico === 'function') return verDetalhesPedidoHistorico(pedidoId);
+    toast('Detalhes indisponíveis', 'error');
+}
+window.verPedido = verPedido;
+
 console.log('✅ Orders.js carregado (Modo Somente Leitura Ativo)');
