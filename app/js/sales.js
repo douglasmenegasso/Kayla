@@ -344,7 +344,7 @@ function finalizarPedido() {
                     if (pedidoEmEdicao) {
                         await supabaseClient.from('pedido_itens').delete().eq('pedido_id', pedidoEmEdicao);
                         await supabaseClient.from('pedidos').update({ itens: totalUn, total: total, itens_json: JSON.stringify(itensJson), status: 'aberto' }).eq('id', pedidoEmEdicao);
-                        var rows = itensJson.map(function(it){ return Object.assign({ pedido_id: pedidoEmEdicao, user_id: userId, created_at: new Date().toISOString() }, it); });
+                        var rows = itensJson.map(function(it){ return Object.assign({ pedido_id: pedidoEmEdicao, created_at: new Date().toISOString() }, it); });
                         await supabaseClient.from('pedido_itens').insert(rows);
                         await carregarDados();
                         toast('✅ Pedido atualizado!', 'success');
@@ -352,7 +352,7 @@ function finalizarPedido() {
                         var ped = { user_id: userId, cliente_id: clienteAtual.id, cliente_nome: clienteAtual.nome, itens: totalUn, total: total, status: 'aberto', itens_json: JSON.stringify(itensJson), created_at: new Date().toISOString() };
                         var r = await supabaseClient.from('pedidos').insert(ped).select().single();
                         if (r.error) { toast('Erro: ' + r.error.message, 'error'); return; }
-                        var rows2 = itensJson.map(function(it){ return Object.assign({ pedido_id: r.data.id, user_id: userId, created_at: new Date().toISOString() }, it); });
+                        var rows2 = itensJson.map(function(it){ return Object.assign({ pedido_id: r.data.id, created_at: new Date().toISOString() }, it); });
                         await supabaseClient.from('pedido_itens').insert(rows2);
                         await carregarDados();
                         toast('✅ Pedido enviado!', 'success');
