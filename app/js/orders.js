@@ -227,14 +227,14 @@ async function carregarItensParaDevolucao(pedidoId) {
      if (jsonItens.length > 0 && isOnline && supabaseClient) {
          try {
              console.log('[Devolução] sem linhas no banco -> criando ' + jsonItens.length + ' a partir do resumo');
-             var userId = currentUser ? currentUser.id : 'local';
+             var isUuid = function(s){ return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s); };
              var rows = jsonItens.map(function(it){
                  var p = parseFloat(it.preco) || 0, q = parseInt(it.qtd) || 1;
-                 return { pedido_id: pedidoId, user_id: userId, produto_id: it.produto_id || null, nome: it.nome || 'Sem nome', codigo: it.codigo || '', preco: p, qtd: q, total: parseFloat(it.total) || (p * q), created_at: new Date().toISOString() };
+                 return { pedido_id: pedidoId, produto_id: isUuid(it.produto_id) ? it.produto_id : null, nome: it.nome || 'Sem nome', codigo: it.codigo || '', preco: p, qtd: q, total: parseFloat(it.total) || (p * q), created_at: new Date().toISOString() };
              });
              var ins = await supabaseClient.from('pedido_itens').insert(rows).select();
              if (!ins.error && ins.data && ins.data.length > 0) { itens = ins.data; }
-             else { itens = jsonItens; }
+             else { console.warn('[Devolução] insert falhou:', ins && ins.error); itens = jsonItens; }
          } catch(e) { console.error('[Devolução] erro ao sincronizar:', e); itens = jsonItens; }
      } else {
          itens = jsonItens;
@@ -807,6 +807,14 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         } catch(e) {
             console.error('Erro ao buscar detalhes:', e);
         }
+    }
+
+    // Fallback: se pedido_itens estiver vazio, mostra pelo resumo (itens_json)
+    if (itensVendidos.length === 0 && pedido.itens_json) {
+        try {
+            var jsonV = JSON.parse(pedido.itens_json);
+            if (jsonV && jsonV.length > 0) itensVendidos = jsonV;
+        } catch(e) {}
     }
     
     // Calcular totais de devolução - USANDO CÓDIGO E NOME
