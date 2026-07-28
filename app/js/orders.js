@@ -3,17 +3,100 @@
 var html5QrCodeDevolucao = null;
 
 function renderizarPedidos() {
-    var html = '<div class="card"><div class="card-title">📋 Pedidos (' + pedidos.length + ')</div></div>';
+    var stInfo = function(s){ if (s === 'finalizado') return {c:'fi', t:'FINALIZADO'}; if (s === 'devolvido') return {c:'de', t:'DEVOLVIDO'}; return {c:'ab', t:'ENVIADO'}; };
+
+    var html = '<style>'
+      + '.ped-busca-wrap{margin-bottom:12px}'
+      + '.ped-grupo{background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;transition:border-color .2s ease,box-shadow .2s ease}'
+      + '.ped-grupo[open]{border-color:var(--accent);box-shadow:0 8px 24px rgba(124,92,252,.12)}'
+      + '.ped-grupo>summary{list-style:none;cursor:pointer;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;transition:background .15s ease}'
+      + '.ped-grupo>summary::-webkit-details-marker{display:none}'
+      + '.ped-grupo>summary:hover{background:var(--bg3)}'
+      + '.ped-grupo>summary:active{transform:scale(.995)}'
+      + '.ped-grupo-main{flex:1;min-width:0}'
+      + '.ped-grupo-nome{font-size:16px;font-weight:800;color:var(--accent);line-height:1.2}'
+      + '.ped-grupo-res{font-size:12px;color:var(--text2);margin-top:3px}'
+      + '.ped-grupo-right{display:flex;align-items:center;gap:8px;flex-shrink:0}'
+      + '.ped-grupo-pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}'
+      + '.ped-pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px}'
+      + '.ped-pill.ab{background:rgba(255,152,0,.15);color:var(--warning)}'
+      + '.ped-pill.fi{background:rgba(34,197,94,.15);color:var(--success)}'
+      + '.ped-pill.de{background:rgba(255,23,68,.15);color:var(--error)}'
+      + '.ped-grupo-chevron{width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:transform .25s ease,color .2s ease;font-size:12px}'
+      + '.ped-grupo[open] .ped-grupo-chevron{transform:rotate(180deg);color:var(--accent)}'
+      + '.ped-grupo-corpo{padding:4px 12px 12px;animation:pedFade .25s ease}'
+      + '@keyframes pedFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}'
+      + '.ped-linha{background:#1a1a24;border-radius:10px;padding:12px;margin-top:8px}'
+      + '.ped-linha-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}'
+      + '.ped-linha-id{font-weight:700;font-size:13px;color:var(--text1,#fff)}'
+      + '.ped-linha-meta{font-size:11px;color:var(--text2);margin-top:2px}'
+      + '.ped-status{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap}'
+      + '.ped-status.ab{background:rgba(255,152,0,.15);color:var(--warning)}'
+      + '.ped-status.fi{background:rgba(34,197,94,.15);color:var(--success)}'
+      + '.ped-status.de{background:rgba(255,23,68,.15);color:var(--error)}'
+      + '.ped-linha-acoes{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}'
+      + '</style>';
+
+    html += '<div class="card"><div class="card-title">📋 Pedidos (' + pedidos.length + ')</div>';
     if (pedidos.length === 0) {
-        html += '<div class="card"><div class="empty-state">Nenhum pedido</div></div>';
-    } else {
-        html += '<div class="item-list">';
-        pedidos.forEach(function(p) {
+        html += '<div class="empty-state">Nenhum pedido</div></div>';
+        return html;
+    }
+
+    // Agrupa por cliente
+    var grupos = {};
+    pedidos.forEach(function(p){ var n = p.cliente_nome || 'Sem nome'; (grupos[n] = grupos[n] || []).push(p); });
+    var nomes = Object.keys(grupos);
+
+    html += '<div style="font-size:12px;color:var(--text2);margin:-4px 0 10px">' + nomes.length + ' cliente(s)</div>';
+    html += '<div class="ped-busca-wrap"><input class="form-input" id="ped-busca-cliente" placeholder="🔍 Buscar cliente" oninput="filtrarPedidosCliente(this.value)"></div>';
+    html += '</div>';
+
+    // Ordena clientes pelo pedido mais recente
+    nomes.sort(function(a,b){
+        var ma = Math.max.apply(null, grupos[a].map(function(p){ return new Date(p.created_at).getTime(); }));
+        var mb = Math.max.apply(null, grupos[b].map(function(p){ return new Date(p.created_at).getTime(); }));
+        return mb - ma;
+    });
+
+    nomes.forEach(function(nome){
+        var lista = grupos[nome].slice().sort(function(a,b){ return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); });
+        var totItens = 0, totValor = 0, cAb = 0, cFi = 0, cDe = 0;
+        lista.forEach(function(p){
+            totItens += parseInt(p.itens) || 0;
+            totValor += parseFloat(p.total) || 0;
+            if (p.status === 'finalizado') cFi++; else if (p.status === 'devolvido') cDe++; else cAb++;
+        });
+        var nomeHtml = nome.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var nomeAttr = nome.toLowerCase().replace(/"/g,'&quot;');
+
+        html += '<details class="ped-grupo" data-cliente-nome="' + nomeAttr + '">';
+        html += '<summary>';
+        html += '<div class="ped-grupo-main">';
+        html += '<div class="ped-grupo-nome">' + nomeHtml + '</div>';
+        html += '<div class="ped-grupo-res">' + lista.length + ' pedido(s) • ' + totItens + ' itens • R$ ' + totValor.toFixed(2).replace('.',',') + '</div>';
+        html += '</div>';
+        html += '<div class="ped-grupo-right">';
+        html += '<div class="ped-grupo-pills">';
+        if (cAb > 0) html += '<span class="ped-pill ab">' + cAb + ' ABERTO</span>';
+        if (cFi > 0) html += '<span class="ped-pill fi">' + cFi + ' FINAL.</span>';
+        if (cDe > 0) html += '<span class="ped-pill de">' + cDe + ' DEVOLV.</span>';
+        html += '</div>';
+        html += '<div class="ped-grupo-chevron">▼</div>';
+        html += '</div>';
+        html += '</summary>';
+        html += '<div class="ped-grupo-corpo">';
+
+        lista.forEach(function(p){
             var data = new Date(p.created_at).toLocaleDateString('pt-BR');
-            var corStatus = p.status === 'aberto' ? 'var(--warning)' : (p.status === 'finalizad o' ? 'var(--success)' : 'var(--error)');
-            var textoStatus = p.status === 'aberto' ? 'ENVIADO' : (p.status === 'finalizado' ? 'FINALIZADO' : 'DEVOLVIDO');
-            html += '<div class="item-card"><div class="item-info"><div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + p.cliente_nome + '</div><div class="item-detail">Pedido #' + p.id.toString().substr(0,8) + ' • ' + data + '<br>' + p.itens + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div><span style="color:' + corStatus + ';font-weight:600;font-size:12px">' + textoStatus + '</span></div>';
-            html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">';
+            var si = stInfo(p.status);
+            html += '<div class="ped-linha">';
+            html += '<div class="ped-linha-top">';
+            html += '<div><div class="ped-linha-id">Pedido #' + p.id.toString().substr(0,8) + '</div>';
+            html += '<div class="ped-linha-meta">' + data + ' • ' + (parseInt(p.itens)||0) + ' itens • R$ ' + parseFloat(p.total).toFixed(2).replace('.',',') + '</div></div>';
+            html += '<span class="ped-status ' + si.c + '">' + si.t + '</span>';
+            html += '</div>';
+            html += '<div class="ped-linha-acoes">';
             html += '<button class="btn btn-sm btn-primary" onclick="verPedido(\'' + p.id + '\')">Ver</button>';
             if (p.status === 'aberto') {
                 html += '<button class="btn btn-sm btn-outline" onclick="editarPedido(\'' + p.id + '\')">✏️ Editar</button>';
@@ -22,9 +105,12 @@ function renderizarPedidos() {
             }
             html += '<button class="btn btn-sm btn-outline" onclick="gerarPDFPedidoPorId(\'' + p.id + '\')">📄 PDF</button>';
             html += '</div>';
+            html += '</div>';
         });
-        html += '</div>';
-    }
+
+        html += '</div></details>';
+    });
+
     return html;
 }
 
@@ -937,5 +1023,15 @@ function fecharDevolucao() {
     if (typeof mudarAba === 'function') mudarAba('orders');
 }
 window.fecharDevolucao = fecharDevolucao;
+
+function filtrarPedidosCliente(valor) {
+    var v = (valor || '').toLowerCase().trim();
+    var gruposEls = document.querySelectorAll('.ped-grupo[data-cliente-nome]');
+    gruposEls.forEach(function(el){
+        var nome = (el.getAttribute('data-cliente-nome') || '');
+        el.style.display = (!v || nome.indexOf(v) >= 0) ? '' : 'none';
+    });
+}
+window.filtrarPedidosCliente = filtrarPedidosCliente;
 
 console.log('✅ Orders.js carregado (Modo Somente Leitura Ativo)');
