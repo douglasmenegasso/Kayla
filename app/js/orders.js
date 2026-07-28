@@ -219,13 +219,27 @@ async function carregarItensParaDevolucao(pedidoId) {
     }
     
     if (itens.length === 0) {
-        var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
-        if (pedido && pedido.itens_json) {
-            try {
-                itens = JSON.parse(pedido.itens_json);
-            } catch(e) {}
-        }
-    }
+     var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
+     var jsonItens = [];
+     if (pedido && pedido.itens_json) {
+         try { jsonItens = JSON.parse(pedido.itens_json) || []; } catch(e) { jsonItens = []; }
+     }
+     if (jsonItens.length > 0 && isOnline && supabaseClient) {
+         try {
+             console.log('[Devolução] sem linhas no banco -> criando ' + jsonItens.length + ' a partir do resumo');
+             var userId = currentUser ? currentUser.id : 'local';
+             var rows = jsonItens.map(function(it){
+                 var p = parseFloat(it.preco) || 0, q = parseInt(it.qtd) || 1;
+                 return { pedido_id: pedidoId, user_id: userId, produto_id: it.produto_id || null, nome: it.nome || 'Sem nome', codigo: it.codigo || '', preco: p, qtd: q, total: parseFloat(it.total) || (p * q), created_at: new Date().toISOString() };
+             });
+             var ins = await supabaseClient.from('pedido_itens').insert(rows).select();
+             if (!ins.error && ins.data && ins.data.length > 0) { itens = ins.data; }
+             else { itens = jsonItens; }
+         } catch(e) { console.error('[Devolução] erro ao sincronizar:', e); itens = jsonItens; }
+     } else {
+         itens = jsonItens;
+     }
+ }
     
     var html = '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="margin-bottom:12px"><strong>📦 Itens do Pedido (' + itens.length + ')</strong></div>';
