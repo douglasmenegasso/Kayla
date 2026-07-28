@@ -366,8 +366,9 @@ async function removerItemPorCodigo(pedidoId) {
             await carregarDados();
         }
         
-        toast('✅ Item devolvido: ' + item.nome, 'success');
-        carregarItensParaDevolucao(pedidoId);
+        toast('✅ Item devolvido e registrado!', 'success');
+        if (novosItensCount <= 0) { fecharModal(); if (typeof mudarAba === 'function') mudarAba('orders'); }
+        else { carregarItensParaDevolucao(pedidoId); }
         
     } catch(e) {
         toast('Erro: ' + e.message, 'error');
