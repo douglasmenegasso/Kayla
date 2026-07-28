@@ -771,12 +771,60 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     var pedido = pedidos.find(function(p) { return p.id === pedidoId; });
     if (!pedido) return;
 
-    var html = '<div class="modal-handle"></div>';
+    // ===== Coleta de dados (sem montar HTML ainda) =====
+    var itensVendidos = [];
+    var historicoDevolucoes = [];
+    if (isOnline && supabaseClient) {
+        try {
+            var result = await supabaseClient
+                .from('pedido_itens').select('*').eq('pedido_id', pedidoId)
+                .order('created_at', { ascending: true });
+            if (result.data) itensVendidos = result.data;
+            if (pedido.historico_devolucoes) historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
+        } catch(e) { console.error('Erro ao buscar detalhes:', e); }
+    }
+    if (itensVendidos.length === 0 && pedido.itens_json) {
+        try { var jsonV = JSON.parse(pedido.itens_json); if (jsonV && jsonV.length > 0) itensVendidos = jsonV; } catch(e) {}
+    }
+
+    var totalDevolvido = 0;
+    var itensDevolvidosMap = {};
+    historicoDevolucoes.forEach(function(dev) {
+        if (dev.itens) {
+            dev.itens.forEach(function(itemDev) {
+                var codigoKey = 'cod_' + (itemDev.codigo || '');
+                var nomeKey = 'nome_' + (itemDev.nome || '').toLowerCase().trim();
+                var produtoIdKey = 'id_' + (itemDev.produto_id || '');
+                if (!itensDevolvidosMap[codigoKey]) itensDevolvidosMap[codigoKey] = 0;
+                if (!itensDevolvidosMap[nomeKey]) itensDevolvidosMap[nomeKey] = 0;
+                if (!itensDevolvidosMap[produtoIdKey]) itensDevolvidosMap[produtoIdKey] = 0;
+                itensDevolvidosMap[codigoKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[nomeKey] += (itemDev.qtd || 0);
+                itensDevolvidosMap[produtoIdKey] += (itemDev.qtd || 0);
+                totalDevolvido += parseFloat(itemDev.total || 0);
+            });
+        }
+    });
+
+    // ===== Monta a tela =====
+    var html = '<style>'
+        + '.detalhe-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-weight:700;font-size:13px;cursor:pointer;transition:transform .12s ease,background .18s ease,color .18s ease,box-shadow .18s ease,border-color .18s ease;}'
+        + '.detalhe-tab:hover{transform:translateY(-1px);}'
+        + '.detalhe-tab:active{transform:translateY(0) scale(.98);}'
+        + '.detalhe-tab.ativo{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 6px 16px rgba(124,92,252,.35);}'
+        + '.detalhe-tab-count{padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;background:var(--bg2);color:var(--text2);}'
+        + '.detalhe-tab.ativo .detalhe-tab-count{background:rgba(255,255,255,.22);color:#fff;}'
+        + '.detalhe-aba-panel{animation:detalheFade .22s ease;}'
+        + '.detalhe-scroll{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px;}'
+        + '@keyframes detalheFade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}'
+        + '</style>';
+
+    html += '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📋 Detalhes do Pedido</div>';
     html += '<div class="modal-sub" style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:4px">' + pedido.cliente_nome + '</div>';
     html += '<div class="modal-sub">Pedido #' + pedidoId.toString().substr(0,8) + '</div>';
 
-    // Informações básicas
+    // Cabeçalho
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
     html += '<div><div style="font-size:12px;color:var(--text2)">Data</div><div style="font-weight:600">' + new Date(pedido.created_at).toLocaleDateString('pt-BR') + '</div></div>';
@@ -785,127 +833,59 @@ async function verDetalhesPedidoHistorico(pedidoId) {
     html += '<div><div style="font-size:12px;color:var(--text2)">Itens</div><div style="font-weight:600">' + pedido.itens + ' unidades</div></div>';
     html += '</div></div>';
 
-    // Carregar itens vendidos
-    var itensVendidos = [];
-    var historicoDevolucoes = [];
-
-    if (isOnline && supabaseClient) {
-        try {
-            var result = await supabaseClient
-                .from('pedido_itens')
-                .select('*')
-                .eq('pedido_id', pedidoId)
-                .order('created_at', { ascending: true });
-
-            if (result.data) {
-                itensVendidos = result.data;
-            }
-
-            if (pedido.historico_devolucoes) {
-                historicoDevolucoes = JSON.parse(pedido.historico_devolucoes);
-            }
-        } catch(e) {
-            console.error('Erro ao buscar detalhes:', e);
-        }
-    }
-
-    // Fallback: se pedido_itens estiver vazio, mostra pelo resumo (itens_json)
-    if (itensVendidos.length === 0 && pedido.itens_json) {
-        try {
-            var jsonV = JSON.parse(pedido.itens_json);
-            if (jsonV && jsonV.length > 0) itensVendidos = jsonV;
-        } catch(e) {}
-    }
-
-    // Calcular totais de devolução - USANDO CÓDIGO E NOME
-    var totalDevolvido = 0;
-    var itensDevolvidosMap = {};
-
-    historicoDevolucoes.forEach(function(dev) {
-        if (dev.itens) {
-            dev.itens.forEach(function(itemDev) {
-                // Criar chave com código E nome para garantir correspondência
-                var codigoKey = 'cod_' + (itemDev.codigo || '');
-                var nomeKey = 'nome_' + (itemDev.nome || '').toLowerCase().trim();
-                var produtoIdKey = 'id_' + (itemDev.produto_id || '');
-
-                if (!itensDevolvidosMap[codigoKey]) itensDevolvidosMap[codigoKey] = 0;
-                if (!itensDevolvidosMap[nomeKey]) itensDevolvidosMap[nomeKey] = 0;
-                if (!itensDevolvidosMap[produtoIdKey]) itensDevolvidosMap[produtoIdKey] = 0;
-
-                itensDevolvidosMap[codigoKey] += (itemDev.qtd || 0);
-                itensDevolvidosMap[nomeKey] += (itemDev.qtd || 0);
-                itensDevolvidosMap[produtoIdKey] += (itemDev.qtd || 0);
-
-                totalDevolvido += parseFloat(itemDev.total || 0);
-            });
-        }
-    });
-
-    console.log('🔍 Itens devolvidos map:', itensDevolvidosMap);
-
-    // Mostrar itens vendidos
+    // Resumo financeiro (SEMPRE no topo)
+    var liquido = parseFloat(pedido.total) - totalDevolvido;
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="margin-bottom:12px"><strong>📦 Itens Vendidos (' + itensVendidos.length + ')</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="color:var(--text2)">Total Vendido</span><strong style="color:var(--success);font-size:16px">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="color:var(--text2)">Total Devolvido</span><strong style="color:var(--warning);font-size:16px">R$ ' + totalDevolvido.toFixed(2).replace('.',',') + '</strong></div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:2px solid var(--border)"><span style="font-weight:700">Líquido a Receber</span><strong style="color:var(--accent);font-size:20px">R$ ' + liquido.toFixed(2).replace('.',',') + '</strong></div>';
+    html += '</div>';
 
+    // Barra de abas
+    html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+    html += '<button id="detalhe-tab-vendidos" type="button" class="detalhe-tab ativo" onclick="alternarAbaDetalhes(\'vendidos\')">📦 Vendidos <span class="detalhe-tab-count">' + itensVendidos.length + '</span></button>';
+    html += '<button id="detalhe-tab-historico" type="button" class="detalhe-tab" onclick="alternarAbaDetalhes(\'historico\')">↩️ Devoluções <span class="detalhe-tab-count">' + historicoDevolucoes.length + '</span></button>';
+    html += '</div>';
+
+    // Painel VENDIDOS
+    html += '<div id="detalhe-aba-vendidos" class="detalhe-aba-panel">';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
     if (itensVendidos.length === 0) {
         html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhum item encontrado</p>';
     } else {
-        html += '<div class="item-list">';
+        html += '<div class="detalhe-scroll">';
         itensVendidos.forEach(function(item) {
             var qtdVendida = parseInt(item.qtd) || 0;
-
-            // Buscar quantidade devolvida usando múltiplas chaves
             var qtdDevolvida = 0;
             qtdDevolvida += (itensDevolvidosMap['cod_' + (item.codigo || '')] || 0);
             qtdDevolvida += (itensDevolvidosMap['nome_' + (item.nome || '').toLowerCase().trim()] || 0);
             qtdDevolvida += (itensDevolvidosMap['id_' + (item.produto_id || '')] || 0);
-
-            // Evitar contar duplicado se as chaves forem iguais
             if (qtdDevolvida > qtdVendida) qtdDevolvida = qtdVendida;
-
             var qtdRestante = qtdVendida - qtdDevolvida;
             var itemTotal = parseFloat(item.total) || (parseFloat(item.preco) * qtdVendida) || 0;
-
-            console.log('📊 Item:', item.nome, '| Vendido:', qtdVendida, '| Devolvido:', qtdDevolvida, '| Restante:', qtdRestante);
-
             html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
             html += '<div style="font-weight:600;font-size:14px;margin-bottom:4px">' + (item.nome || 'Sem nome') + '</div>';
             html += '<div style="font-size:12px;color:#a0a0b0;margin-bottom:8px">Código: ' + (item.codigo || 'N/A') + '</div>';
-
             html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px">';
-            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
-            html += '<div style="font-size:11px;color:var(--text2)">Vendido</div>';
-            html += '<div style="font-weight:700;color:var(--success);font-size:16px">' + qtdVendida + 'x</div>';
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--text2)">Vendido</div><div style="font-weight:700;color:var(--success);font-size:16px">' + qtdVendida + 'x</div></div>';
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--text2)">Devolvido</div><div style="font-weight:700;color:' + (qtdDevolvida > 0 ? 'var(--warning)' : 'var(--text2)') + ';font-size:16px">' + qtdDevolvida + 'x</div></div>';
+            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--text2)">Restante</div><div style="font-weight:700;color:var(--accent);font-size:16px">' + qtdRestante + 'x</div></div>';
             html += '</div>';
-
-            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
-            html += '<div style="font-size:11px;color:var(--text2)">Devolvido</div>';
-            html += '<div style="font-weight:700;color:' + (qtdDevolvida > 0 ? 'var(--warning)' : 'var(--text2)') + ';font-size:16px">' + qtdDevolvida + 'x</div>';
-            html += '</div>';
-
-            html += '<div style="background:#252530;padding:8px;border-radius:6px;text-align:center">';
-            html += '<div style="font-size:11px;color:var(--text2)">Restante</div>';
-            html += '<div style="font-weight:700;color:var(--accent);font-size:16px">' + qtdRestante + 'x</div>';
-            html += '</div>';
-            html += '</div>';
-
-            html += '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
-            html += '<div style="font-size:12px;color:var(--text2)">R$ ' + parseFloat(item.preco || 0).toFixed(2).replace('.',',') + ' un</div>';
-            html += '<div style="font-weight:700;color:var(--accent)">R$ ' + itemTotal.toFixed(2).replace('.',',') + '</div>';
-            html += '</div>';
-
+            html += '<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:12px;color:var(--text2)">R$ ' + parseFloat(item.preco || 0).toFixed(2).replace('.',',') + ' un</div><div style="font-weight:700;color:var(--accent)">R$ ' + itemTotal.toFixed(2).replace('.',',') + '</div></div>';
             html += '</div>';
         });
         html += '</div>';
     }
-    html += '</div>';
+    html += '</div></div>';
 
-    // Mostrar histórico de devoluções
-    if (historicoDevolucoes.length > 0) {
-        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-        html += '<div style="margin-bottom:12px"><strong>↩️ Histórico de Devoluções (' + historicoDevolucoes.length + ' itens)</strong></div>';
-        historicoDevolucoes.forEach(function(dev, idx) {
+    // Painel DEVOLUÇÕES
+    html += '<div id="detalhe-aba-historico" class="detalhe-aba-panel" style="display:none">';
+    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+    if (historicoDevolucoes.length === 0) {
+        html += '<p style="color:var(--text2);text-align:center;padding:20px">Nenhuma devolução registrada</p>';
+    } else {
+        html += '<div class="detalhe-scroll">';
+        historicoDevolucoes.forEach(function(dev) {
             var data = new Date(dev.data).toLocaleString('pt-BR');
             html += '<div style="background:#1a1a24;padding:12px;margin-bottom:8px;border-radius:8px">';
             html += '<div style="font-size:11px;color:var(--text2);margin-bottom:8px">' + data + (dev.motivo ? ' • ' + dev.motivo : '') + '</div>';
@@ -918,20 +898,31 @@ async function verDetalhesPedidoHistorico(pedidoId) {
         });
         html += '</div>';
     }
+    html += '</div></div>';
 
-    // Resumo final
-    html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Vendido:</span><strong style="color:var(--success)">R$ ' + parseFloat(pedido.total).toFixed(2).replace('.',',') + '</strong></div>';
-    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Total Devolvido:</span><strong style="color:var(--warning)">R$ ' + totalDevolvido.toFixed(2).replace('.',',') + '</strong></div>';
-    html += '<div style="display:flex;justify-content:space-between;padding-top:12px;border-top:2px solid var(--border)"><span>Líquido:</span><strong style="color:var(--accent);font-size:18px">R$ ' + (parseFloat(pedido.total) - totalDevolvido).toFixed(2).replace('.',',') + '</strong></div>';
-    html += '</div>';
-
+    // Botões finais
     html += '<button class="btn btn-primary" onclick="gerarPDFPedidoPorId(\'' + pedidoId + '\')" style="margin-bottom:8px;width:100%">📄 Gerar PDF</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()" style="width:100%">Fechar</button>';
 
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
 }
+
+function alternarAbaDetalhes(qual) {
+    var tv = document.getElementById('detalhe-tab-vendidos');
+    var th = document.getElementById('detalhe-tab-historico');
+    var pv = document.getElementById('detalhe-aba-vendidos');
+    var ph = document.getElementById('detalhe-aba-historico');
+    if (!tv || !th || !pv || !ph) return;
+    var v = (qual === 'vendidos');
+    tv.className = 'detalhe-tab' + (v ? ' ativo' : '');
+    th.className = 'detalhe-tab' + (v ? '' : ' ativo');
+    pv.style.display = v ? 'block' : 'none';
+    ph.style.display = v ? 'none' : 'block';
+    var ativo = v ? pv : ph;
+    ativo.classList.remove('detalhe-aba-panel'); void ativo.offsetWidth; ativo.classList.add('detalhe-aba-panel');
+}
+window.alternarAbaDetalhes = alternarAbaDetalhes;
 
 function verPedido(pedidoId) {
     if (typeof verDetalhesPedidoHistorico === 'function') return verDetalhesPedidoHistorico(pedidoId);
