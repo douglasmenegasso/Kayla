@@ -253,6 +253,13 @@ function adicionarProdutoManual(produtoId) {
     var produto = produtos.find(function(p){ return p.id === produtoId; });
     if (!produto) { toast('Produto não encontrado', 'error'); return; }
     if (!clienteAtual) { toast('Selecione um cliente primeiro', 'warning'); return; }
+    var itemExistente = pedidoItens.find(function(i){ return i.produto_id === produto.id; });
+    if (itemExistente) {
+        // Já está no carrinho: usa o MESMO aviso do scanner (somar unidades), não cria linha nova
+        if (typeof abrirModalDuplicado === 'function') { abrirModalDuplicado(produto, itemExistente); }
+        else { itemExistente.qtd += 1; toast('✅ +1 ' + produto.nome, 'success'); fecharModal(); if (typeof mudarAba === 'function') mudarAba('scan'); }
+        return;
+    }
     if (typeof adicionarItem === 'function') {
         adicionarItem(produto, 1);
     } else {
