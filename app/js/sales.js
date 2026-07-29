@@ -345,7 +345,8 @@ function finalizarPedido() {
                         await supabaseClient.from('pedido_itens').delete().eq('pedido_id', pedidoEmEdicao);
                         await supabaseClient.from('pedidos').update({ itens: totalUn, total: total, itens_json: JSON.stringify(itensJson), status: 'aberto' }).eq('id', pedidoEmEdicao);
                         var rows = itensJson.map(function(it){ return Object.assign({ pedido_id: pedidoEmEdicao, created_at: new Date().toISOString() }, it); });
-                        await supabaseClient.from('pedido_itens').insert(rows);
+                        var insEdit = await supabaseClient.from('pedido_itens').insert(rows);
+                        if (insEdit.error) { console.error('Erro ao salvar itens (edição):', insEdit.error); toast('Erro ao salvar itens: ' + insEdit.error.message, 'error'); return; }
                         await carregarDados();
                         toast('✅ Pedido atualizado!', 'success');
                     } else {
@@ -353,7 +354,8 @@ function finalizarPedido() {
                         var r = await supabaseClient.from('pedidos').insert(ped).select().single();
                         if (r.error) { toast('Erro: ' + r.error.message, 'error'); return; }
                         var rows2 = itensJson.map(function(it){ return Object.assign({ pedido_id: r.data.id, created_at: new Date().toISOString() }, it); });
-                        await supabaseClient.from('pedido_itens').insert(rows2);
+                        var insNew = await supabaseClient.from('pedido_itens').insert(rows2);
+                        if (insNew.error) { console.error('Erro ao salvar itens:', insNew.error); await supabaseClient.from('pedidos').delete().eq('id', r.data.id); toast('Erro ao salvar itens: ' + insNew.error.message, 'error'); return; }
                         await carregarDados();
                         toast('✅ Pedido enviado!', 'success');
                     }
