@@ -479,11 +479,13 @@ function mostrarQRCodePIX(dados, pagamentoId) {
     html += '<li style="margin-bottom:8px">Escolha pagar com PIX</li>';
     html += '<li style="margin-bottom:8px">Escaneie o QR Code ou copie o código</li>';
     html += '<li style="margin-bottom:8px">Confirme o pagamento</li>';
-    html += '<li>Aprovação é instantânea!</li>';
+        html += '<li>Aprovação é instantânea!</li>';
     html += '</ol></div>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Fechar</button>';
     
     document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-overlay').classList.add('show');
+    iniciarPollingPIX(pagamentoId);
 }
 
 // ============ RESTO DAS FUNÇÕES (Upgrade, Dispositivos, etc) ============
@@ -1316,5 +1318,32 @@ if (typeof window !== 'undefined') {
     });
 }
 window.ativarProManual = ativarPro;
+
+// ============ VIGÍLIA DO PIX (fecha e ativa sozinho quando aprova) ============
+var _pixPollingTimer = null;
+function iniciarPollingPIX(pagamentoId) {
+    if (!pagamentoId || !supabaseClient) return;
+    if (_pixPollingTimer) { clearInterval(_pixPollingTimer); _pixPollingTimer = null; }
+    var tentativas = 0;
+    var maxTentativas = 100; // 100 x 3s = 5 minutos
+    _pixPollingTimer = setInterval(async function() {
+        tentativas++;
+        try {
+            var r = await supabaseClient.from('pagamentos').select('status').eq('id', pagamentoId).maybeSingle();
+            if (r && r.data && r.data.status === 'aprovado') {
+                clearInterval(_pixPollingTimer); _pixPollingTimer = null;
+                console.log('[PIX] aprovado detectado pela vigília:', pagamentoId);
+                try { fecharModal(); } catch(e){}
+                toast('✅ Pagamento aprovado! Ativando PRO...', 'success');
+                if (typeof window.verificarStatusPro === 'function') { try { await window.verificarStatusPro(); } catch(e){} }
+                if (typeof atualizarBadgePlano === 'function') atualizarBadgePlano();
+                try { var _c = document.getElementById('content'); if (_c && typeof renderizarConfig === 'function' && document.querySelector('.nav-btn:nth-child(6).active')) _c.innerHTML = renderizarConfig(); } catch(e){}
+                return;
+            }
+        } catch(e) { console.warn('[PIX] erro na vigília:', e); }
+        if (tentativas >= maxTentativas) { clearInterval(_pixPollingTimer); _pixPollingTimer = null; }
+    }, 3000);
+}
+window.iniciarPollingPIX = iniciarPollingPIX;
 
 console.log('✅ Payments.js carregado');
