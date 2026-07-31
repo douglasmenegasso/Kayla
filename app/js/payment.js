@@ -155,7 +155,6 @@ function mostrarPlanos() {
     html += '<li>✅ Tudo do plano mensal</li>';
     html += '<li>✅ Economia de R$ 38,90</li>';
     html += '<li>✅ Suporte VIP</li>';
-    html += '<li>✅ Recursos exclusivos</li>';
     html += '</ul></div>';
     
     html += '<div class="card" style="background:var(--bg3);padding:12px;margin-bottom:12px">';
