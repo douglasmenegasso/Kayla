@@ -3,7 +3,6 @@
 // Configurações do Mercado Pago
 window.MP_CONFIG = {
     publicKey: 'APP_USR-9354ca9d-2fb4-4b37-a38b-0c3e17b22d31',
-    accessToken: 'APP_USR-7869129183763307-061321-3ed21b75e416efaa19bdb7e796dd2d63-3471016369',
     webhooksUrl: 'https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/webhook-mp'
 };
 
@@ -970,30 +969,43 @@ async function removerDispositivo(deviceId, assinaturaId, elementoHtml) {
 
 // ============ NOVAS FUNÇÕES DE DOWNGRADE E RENOVAÇÃO ============
 
+// Crédito proporcional aos dias não usados (R$ 5/dispositivo/mês = ~R$ 0,17/dia)
+function calcularCreditoProporcional(assinatura, qtdRemovida) {
+    var MS_POR_DIA = 86400000;
+    var dataFim = new Date(assinatura.data_fim).getTime();
+    var diasRestantes = Math.max(0, Math.ceil((dataFim - Date.now()) / MS_POR_DIA));
+    var creditoPorDispositivo = (5 * diasRestantes) / 30;
+    var valorCredito = Math.round(qtdRemovida * creditoPorDispositivo * 100) / 100;
+    return { diasRestantes: diasRestantes, creditoPorDispositivo: creditoPorDispositivo, valorCredito: valorCredito };
+}
+
 async function cancelarDispositivos(novosDispositivos) {
     if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
     var assinatura = await getAssinaturaAtiva();
     if (!assinatura) { toast('Nenhuma assinatura ativa encontrada', 'error'); return; }
     if (novosDispositivos >= assinatura.dispositivos_max) { toast('Você só pode reduzir o número de dispositivos.', 'warning'); return; }
-    
+
     var dispositivosRemovidos = assinatura.dispositivos_max - novosDispositivos;
-    var valorCredito = dispositivosRemovidos * 5; 
-    valorCredito = Math.round(valorCredito * 100) / 100;
-    
+    var calc = calcularCreditoProporcional(assinatura, dispositivosRemovidos);
+    var valorCredito = calc.valorCredito;
+
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">📉 Reduzir Dispositivos</div>';
     html += '<div class="modal-sub">Removendo <strong>' + dispositivosRemovidos + '</strong> dispositivo(s) (de ' + assinatura.dispositivos_max + ' para ' + novosDispositivos + ')</div>';
-    
+
     html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
-    html += '<div style="display:flex;justify-content:space-between;padding-top:0px;border-top:0px;align-items:center">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
     html += '<div style="display:flex;flex-direction:column;align-items:flex-start">';
     html += '<span style="font-weight:700;font-size:16px;color:var(--success)">Crédito a receber:</span>';
-    html += '<span style="font-size:11px;color:var(--text2);margin-top:4px">* Crédito referente ao mês atual (R$ 5,00 por dispositivo)</span>';
+    html += '<span style="font-size:11px;color:var(--text2);margin-top:4px;max-width:230px">Proporcional a <strong>' + calc.diasRestantes + ' dia(s)</strong> restantes (R$ ' + calc.creditoPorDispositivo.toFixed(2).replace('.', ',') + ' por dispositivo)</span>';
     html += '</div>';
     html += '<strong style="color:var(--success);font-size:20px">R$ ' + valorCredito.toFixed(2).replace('.', ',') + '</strong>';
     html += '</div>';
+    html += '<div style="margin-top:12px;padding:10px;background:rgba(124,92,252,0.08);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text2);line-height:1.5">';
+    html += 'ℹ️ Este crédito é <strong>proporcional aos dias não usados</strong> até o vencimento e entra <strong>automaticamente como desconto na sua próxima renovação</strong>. Não é devolvido em dinheiro nem em PIX.';
     html += '</div>';
-    
+    html += '</div>';
+
     html += '<button class="btn btn-primary" onclick="confirmarCancelamentoDispositivos(' + novosDispositivos + ', ' + valorCredito + ', \'' + assinatura.id + '\')">✅ Confirmar Redução</button>';
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html; document.getElementById('modal-overlay').classList.add('show');
@@ -1015,14 +1027,16 @@ function iniciarCancelamentoDispositivos() {
     if (!currentUser) { toast('Faça login primeiro', 'error'); return; }
     getAssinaturaAtiva().then(function(assinatura) {
         if (!assinatura || assinatura.dispositivos_max <= 1) { toast('Você já está no mínimo de 1 dispositivo.', 'warning'); return; }
-        
-        var html = '<div class="modal-handle"></div><div class="modal-title">📉 Reduzir Dispositivos</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div><div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
+
+        var html = '<div class="modal-handle"></div><div class="modal-title">📉 Reduzir Dispositivos</div><div class="modal-sub">Atual: ' + assinatura.dispositivos_max + ' dispositivo(s)</div>';
+        html += '<div style="margin:0 0 10px;padding:10px;background:rgba(124,92,252,0.08);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text2);line-height:1.5">ℹ️ O crédito é <strong>proporcional aos dias que faltam</strong> até o vencimento e vale <strong>só na próxima renovação</strong> (não volta em dinheiro/PIX).</div>';
+        html += '<div class="card" style="background:var(--bg3);padding:16px;margin-bottom:16px">';
         for (var i = 1; i < assinatura.dispositivos_max; i++) {
             var qtdRemovida = assinatura.dispositivos_max - i;
-            var economizando = qtdRemovida * 5;
+            var calc = calcularCreditoProporcional(assinatura, qtdRemovida);
             html += '<div class="item-card" style="margin-bottom:8px;cursor:pointer;border:1px solid var(--border)" onclick="cancelarDispositivos(' + i + ')">';
             html += '<div class="item-info"><div class="item-name">' + i + ' dispositivo(s)</div>';
-            html += '<div class="item-detail">Remover <strong>' + qtdRemovida + '</strong> dispositivo(s) • Economia de R$ ' + economizando.toFixed(2).replace('.', ',') + '/mês</div></div>';
+            html += '<div class="item-detail">Remove <strong>' + qtdRemovida + '</strong> • Crédito na renovação: <strong style="color:var(--success)">R$ ' + calc.valorCredito.toFixed(2).replace('.', ',') + '</strong> (' + calc.diasRestantes + 'd restantes)</div></div>';
             html += '<div style="font-weight:700;color:var(--accent)">Selecionar →</div></div>';
         }
         html += '</div><button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
