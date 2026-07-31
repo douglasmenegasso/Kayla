@@ -2,7 +2,7 @@
 
 // Configurações do Mercado Pago
 window.MP_CONFIG = {
-    publicKey: 'TEST-0c124e93-bb15-4e38-a96e-ea85a45523db',
+    publicKey: 'APP_USR-0886411a-6e88-462e-a0b0-005631a137d9',
     accessToken: 'TEST-7869129183763307-061321-c06646dcbfe57f8f3183d3b60c97a6cf-3471016369',
     webhooksUrl: 'https://xwwklngrkvdwgiinycvt.supabase.co/functions/v1/webhook-mp'
 };
