@@ -1087,8 +1087,11 @@ async function confirmarRenovacao(novosDispositivos, valorPagar) {
         
         localStorage.setItem('kayla_pro_expires', novaDataFim.toISOString());
         localStorage.setItem('kayla_pro_devices', Math.min(assinatura.dispositivos_usados, novosDispositivos) + '/' + novosDispositivos);
-        fecharModal(); if (typeof mudarAba === 'function') mudarAba('settings');
-        toast('✅ Assinatura renovada com sucesso!', 'success');
+                fecharModal();
+        try { var _c = document.getElementById('content'); if (_c && typeof renderizarConfig === 'function' && document.querySelector('.nav-btn:nth-child(6).active')) _c.innerHTML = renderizarConfig(); } catch(e){}
+        if (typeof atualizarBadgePlano === 'function') atualizarBadgePlano();
+        if (typeof mudarAba === 'function') mudarAba('settings');
+        toast('✅ Redução concluída!', 'success');
     } catch(e) { toast('Erro ao renovar', 'error'); }
 }
 
