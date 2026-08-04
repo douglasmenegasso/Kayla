@@ -174,17 +174,10 @@ async function processarCodigo(codigo) {
 
 // ✅ CORREÇÃO 1: Exportar a função iniciarScanner para o escopo global
 function iniciarScanner() {
-    if (html5QrCode) { html5QrCode.stop(); html5QrCode = null; }
     var reader = document.getElementById('reader');
     if (!reader) return;
-    html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start({ facingMode: "environment" }, { fps: 5, qrbox: { width: 300, height: 300 } }, onScanSuccess)
-        .catch(function(err) { reader.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px">Câmera indisponível</p>'; });
+    iniciarScannerKayla('reader', onScanSuccess);
 }
-window.iniciarScanner = iniciarScanner; // <--- ESSA LINHA É A CORREÇÃO
-
-function retomarScanner() { if (html5QrCode) html5QrCode.resume(); }
-
 // ... (O resto das funções de modal como abrirModalProdutoSelecao, etc permanecem IGUAIS)
 
 function abrirModalProdutoSelecao(codigo) {
