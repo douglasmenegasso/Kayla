@@ -178,6 +178,8 @@ function iniciarScanner() {
     if (!reader) return;
     iniciarScannerKayla('reader', onScanSuccess);
 }
+window.iniciarScanner = iniciarScanner;
+
 // ... (O resto das funções de modal como abrirModalProdutoSelecao, etc permanecem IGUAIS)
 
 function abrirModalProdutoSelecao(codigo) {
