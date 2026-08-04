@@ -52,7 +52,7 @@ function adicionarProdutoComVerificacao() {
 }
 
 function abrirModalProduto() {
-    if (typeof html5QrCodeProduto !== 'undefined' && html5QrCodeProduto) { try { html5QrCodeProduto.stop(); } catch(e){} html5QrCodeProduto = null; }
+    if (typeof pararScannerKayla === 'function') { pararScannerKayla(); }
     if (!verificarLimite('produtos')) return;
     var html = '<div class="modal-handle"></div>';
     html += '<div class="modal-title">🏷️ Cadastrar Produto</div>';
