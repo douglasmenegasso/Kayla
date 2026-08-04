@@ -73,35 +73,18 @@ function abrirModalProduto() {
 }
 
 function escanearCodigoProduto() {
-    try { if (typeof html5QrCode !== 'undefined' && html5QrCode) { html5QrCode.stop(); html5QrCode = null; } } catch(e){}
     var readerDiv = document.getElementById('reader-produto');
     if (!readerDiv) return;
-    if (html5QrCodeProduto) {
-        html5QrCodeProduto.stop().then(function(){ html5QrCodeProduto = null; readerDiv.style.display = 'none'; }).catch(function(){ html5QrCodeProduto = null; readerDiv.style.display = 'none'; });
-        return;
-    }
-    readerDiv.style.display = 'block';
-    html5QrCodeProduto = new Html5Qrcode("reader-produto");
-    html5QrCodeProduto.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        function(decodedText) {
-            var campo = document.getElementById('produto-codigo-manual');
-            if (campo) { campo.value = decodedText; }
-            toast('✅ Código lido: ' + decodedText, 'success');
-            if (html5QrCodeProduto) {
-                html5QrCodeProduto.stop().then(function(){ html5QrCodeProduto = null; readerDiv.style.display = 'none'; }).catch(function(){ html5QrCodeProduto = null; readerDiv.style.display = 'none'; });
-            }
-            var preco = document.getElementById('produto-preco-manual');
-            if (preco) preco.focus();
-        }
-    ).catch(function(err) {
-        console.warn('Erro ao iniciar scanner do produto:', err);
-        readerDiv.style.display = 'none';
-        toast('📷 Câmera indisponível. Digite o código manualmente.', 'warning');
+    if (readerDiv.dataset.ativo === '1') { pararScannerKayla(); readerDiv.dataset.ativo='0'; readerDiv.style.display='none'; return; }
+    readerDiv.style.display='block'; readerDiv.dataset.ativo='1';
+    iniciarScannerKayla('reader-produto', function(decodedText){
+        var campo=document.getElementById('produto-codigo-manual');
+        if(campo){campo.value=decodedText;}
+        toast('✅ Código lido: '+decodedText,'success');
+        pararScannerKayla(); readerDiv.dataset.ativo='0'; readerDiv.style.display='none';
+        var preco=document.getElementById('produto-preco-manual'); if(preco)preco.focus();
     });
 }
-window.escanearCodigoProduto = escanearCodigoProduto;
 
 async function salvarProduto() {
     // 🚫 Bloqueio por dispositivo
