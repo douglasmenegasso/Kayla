@@ -258,28 +258,11 @@ async function devolverPedido(pedidoId) {
 function abrirScannerDevolucao(pedidoId) {
     var readerDiv = document.getElementById('scanner-reader-devolucao');
     if (!readerDiv) return;
-
-    if (html5QrCodeDevolucao) {
-        html5QrCodeDevolucao.stop();
-        html5QrCodeDevolucao = null;
-    }
-
-    readerDiv.style.display = 'block';
-
-    html5QrCodeDevolucao = new Html5Qrcode("scanner-reader-devolucao");
-    html5QrCodeDevolucao.start(
-        { facingMode: "environment" },
-        { fps: 5, qrbox: { width: 250, height: 250 } },
-        function(decodedText) {
-            var input = document.getElementById('scanner-codigo-devolucao');
-            if (input) {
-                input.value = decodedText;
-                removerItemPorCodigo(pedidoId);
-            }
-        }
-    ).catch(function(err) {
-        console.warn('Erro ao iniciar scanner de devolução:', err);
-        toast('Erro ao acessar a câmera.', 'error');
+    if (readerDiv.dataset.ativo === '1') { pararScannerKayla(); readerDiv.dataset.ativo='0'; readerDiv.style.display='none'; return; }
+    readerDiv.style.display='block'; readerDiv.dataset.ativo='1';
+    iniciarScannerKayla('scanner-reader-devolucao', function(decodedText){
+        var input=document.getElementById('scanner-codigo-devolucao');
+        if(input){ input.value=decodedText; removerItemPorCodigo(pedidoId); }
     });
 }
 
