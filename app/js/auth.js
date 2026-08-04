@@ -491,7 +491,12 @@ async function loginSucesso(user, senha, lembrarMe) {
 
 async function fazerLogout() {
     console.log('[AUTH] Logout iniciado');
-    
+
+    // ✅ CORREÇÃO: zerar currentUser ANTES do signOut.
+    // Assim o evento SIGNED_OUT (config.js) NÃO roda o localStorage.clear()
+    // e a "impressão digital" do aparelho (que mantém o PRO) sobrevive ao logout.
+    currentUser = null;
+
     if (supabaseClient && isOnline) {
         try {
             await supabaseClient.auth.signOut();
@@ -499,15 +504,15 @@ async function fazerLogout() {
             console.warn('[AUTH] Erro ao fazer logout no Supabase:', e);
         }
     }
-    
-    // Limpar sessão
+
+    // Limpar sessão (sem apagar a impressão digital do aparelho)
     localStorage.removeItem('kayla_lembrar_me');
     localStorage.removeItem('kayla_email');
     localStorage.removeItem('kayla_user');
     localStorage.removeItem('kayla_senha_hash');
     localStorage.removeItem('perfilAcesso');
-    
-    // Limpar status PRO local
+
+    // Limpar status PRO local (será recalculado no próximo login)
     if (typeof resetarStatusLocal === 'function') {
         resetarStatusLocal();
     } else {
@@ -516,16 +521,15 @@ async function fazerLogout() {
         localStorage.removeItem('kayla_pro_expires');
         localStorage.removeItem('kayla_pro_devices');
     }
-    
-    currentUser = null;
+
     clienteAtual = null;
     pedidoItens = [];
-    
+
     toast('Logout realizado', 'success');
-    
+
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
-    
+
     console.log('[AUTH] Logout completo');
 }
 
