@@ -470,9 +470,20 @@ async function loginSucesso(user, senha, lembrarMe) {
         carregarDadosLocais();
     }
 
-    // Verifica se tem assinatura válida e define a badge
-    // NÃO registra o dispositivo automaticamente — o usuário deve ativar manualmente
+    // Verifica se tem assinatura válida
     await verificarStatusPro();
+    
+    // ✅ CORREÇÃO: Registrar dispositivo no login (resolve o problema do PRO sumir ao relogar)
+    if (isOnline && supabaseClient && typeof registrarDispositivoAtual === 'function') {
+        try {
+            console.log('[AUTH] Registrando dispositivo atual...');
+            await registrarDispositivoAtual();
+            // Re-verificar status após registrar o dispositivo
+            await verificarStatusPro();
+        } catch(e) {
+            console.warn('[AUTH] Erro ao registrar dispositivo:', e);
+        }
+    }
     
     fecharModal();
     toast('Bem-vindo!', 'success');
