@@ -6,6 +6,26 @@ function _hasBD(){ return typeof BarcodeDetector!=='undefined'; }
 
 function beep(){ try{ const c=new (window.AudioContext||window.webkitAudioContext)(); const o=c.createOscillator(); const g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=1800;o.type='square'; g.gain.setValueAtTime(0.3,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.12); o.start(c.currentTime); o.stop(c.currentTime+0.12);}catch(e){} }
 
+function _mostrarErro(box,err){
+  var msg='📷 Câmera indisponível. Digite o código manualmente.';
+  if(err){
+    if(err.name==='NotAllowedError'||err.name==='SecurityError'){
+      msg='🔒 Câmera negada. iPhone: Ajustes → Safari → Câmera → Permitir.';
+    } else if(err.name==='NoMediaDevices'){
+      msg='📱 Abra o app pelo SAFARI (não pelo ícone da tela inicial) para usar a câmera.';
+    } else if(err.name==='NotFoundError'){
+      msg='📷 Nenhuma câmera encontrada neste aparelho.';
+    } else if(err.message==='ZXing not loaded'){
+      msg='📷 Leitor não carregou (internet?). Toque de novo ou digite o código.';
+    } else {
+      msg='📷 Erro: '+(err.name||'')+' - '+(err.message||'');
+    }
+  }
+  if(box) box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px;font-size:12px">'+msg+'</p>';
+  if(typeof toast==='function') toast(msg,'warning');
+  console.error('[Scanner]',err);
+}
+
 function _carregarZXing(){
   if(typeof ZXing!=='undefined') return Promise.resolve(true);
   return new Promise(function(res){
@@ -14,12 +34,14 @@ function _carregarZXing(){
     s.onload=function(){ res(typeof ZXing!=='undefined'); };
     s.onerror=function(){ res(false); };
     document.head.appendChild(s);
-    setTimeout(function(){ res(typeof ZXing!=='undefined'); }, 8000);
+    setTimeout(function(){ res(typeof ZXing!=='undefined'); },8000);
   });
 }
 
 async function _getStream(){
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ var e=new Error('Sem mediaDevices'); e.name='NoMediaDevices'; throw e; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    var e=new Error('mediaDevices indisponível'); e.name='NoMediaDevices'; throw e;
+  }
   var cons={ video:{ facingMode:{ideal:'environment'}, width:{ideal:1280,max:1920}, height:{ideal:720,max:1080} } };
   try{ return await navigator.mediaDevices.getUserMedia(cons); }
   catch(e){
@@ -32,7 +54,10 @@ async function _playVideo(video,stream){
   video.srcObject=stream;
   video.setAttribute('playsinline','');
   video.setAttribute('webkit-playsinline','');
+  video.setAttribute('muted','');
+  video.setAttribute('autoplay','');
   video.muted=true;
+  video.playsInline=true;
   await new Promise(function(res,rej){
     var t=setTimeout(function(){rej(new Error('timeout'));},10000);
     var go=function(){clearTimeout(t);video.play().then(res).catch(rej);};
@@ -88,46 +113,29 @@ async function iniciarScannerKayla(containerId,onCode){
     video.setAttribute('webkit-playsinline','');
     video.setAttribute('muted','');
     video.setAttribute('autoplay','');
-    video.muted=true;
     box.appendChild(video);
   }
   box.style.display='block';
-  var wrap=function(code){
-    var now=Date.now();
-    if(code===_lastCode&&(now-_lastScan)<3000)return;
-    _lastCode=code;_lastScan=now;beep();onCode(code);
-  };
   try{
-    if(_hasBD()){
-      // Android / navegadores com leitor nativo
-      _stream=await _getStream();
-      await _playVideo(video,_stream);
-      await _bdLoop(video,wrap);
-    } else {
-      // iPhone (Safari): deixa o ZXing abrir E controlar a câmera
+    _stream=await _getStream();
+    await _playVideo(video,_stream);
+    var wrap=function(code){
+      var now=Date.now();
+      if(code===_lastCode&&(now-_lastScan)<3000)return;
+      _lastCode=code;_lastScan=now;beep();onCode(code);
+    };
+    if(_hasBD()){ await _bdLoop(video,wrap); }
+    else{
       var ok=await _carregarZXing();
       if(!ok) throw new Error('ZXing not loaded');
       _reader=_makeZXing();
       if(!_reader) throw new Error('ZXing not loaded');
-      if(typeof _reader.decodeFromConstraints==='function'){
-        await _reader.decodeFromConstraints({video:{facingMode:'environment'}}, video, function(r){ if(!r||!_active)return; wrap(r.getText()); });
-      } else {
-        _stream=await _getStream();
-        await _playVideo(video,_stream);
-        _reader.decodeFromStream(_stream,video,function(r){ if(!r||!_active)return; wrap(r.getText()); });
-      }
+      _reader.decodeFromStream(_stream,video,function(r){ if(!r||!_active)return; wrap(r.getText()); });
     }
   }catch(err){
     _active=false;
     pararScannerKayla();
-    var msg='📷 Câmera indisponível. Digite o código manualmente.';
-    if(err){
-      if(err.name==='NotAllowedError'||err.name==='SecurityError') msg='🔒 Câmera negada. No iPhone: Ajustes → Safari → Câmera → Permitir.';
-      else if(err.name==='NoMediaDevices') msg='📱 Abra o app pelo SAFARI (não pelo ícone) para usar a câmera.';
-    }
-    box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px">'+msg+'</p>';
-    if(typeof toast==='function') toast(msg,'warning');
-    console.error('[Scanner]',err);
+    _mostrarErro(box,err);
   }
 }
 window.iniciarScannerKayla=iniciarScannerKayla;
