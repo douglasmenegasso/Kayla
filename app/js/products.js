@@ -78,13 +78,15 @@ function escanearCodigoProduto() {
     if (readerDiv.dataset.ativo === '1') { pararScannerKayla(); readerDiv.dataset.ativo='0'; readerDiv.style.display='none'; return; }
     readerDiv.style.display='block'; readerDiv.dataset.ativo='1';
     iniciarScannerKayla('reader-produto', function(decodedText){
-        var campo=document.getElementById('produto-codigo-manual');
-        if(campo){campo.value=decodedText;}
-        toast('✅ Código lido: '+decodedText,'success');
+        var campo = document.getElementById('produto-codigo-manual');
+        if (campo) { campo.value = decodedText; }
+        toast('✅ Código lido: ' + decodedText, 'success');
         pararScannerKayla(); readerDiv.dataset.ativo='0'; readerDiv.style.display='none';
-        var preco=document.getElementById('produto-preco-manual'); if(preco)preco.focus();
+        var preco = document.getElementById('produto-preco-manual');
+        if (preco) preco.focus();
     });
 }
+window.escanearCodigoProduto = escanearCodigoProduto;
 
 async function salvarProduto() {
     // 🚫 Bloqueio por dispositivo
