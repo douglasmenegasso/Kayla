@@ -546,24 +546,33 @@ async function fazerLogout() {
 
 async function carregarDados() {
     if (!currentUser) return;
-    
     if (isOnline && supabaseClient) {
         try {
             var userId = currentUser.id;
-            var r;
-            
-            r = await supabaseClient.from('clientes').select('*').eq('user_id', userId).order('nome');
-            if (!r.error) { clientes = r.data || []; salvarDadosLocais(); }
-            
-            r = await supabaseClient.from('produtos').select('*').eq('user_id', userId).order('nome');
-            if (!r.error) { produtos = r.data || []; salvarDadosLocais(); }
-            
-            r = await supabaseClient.from('pedidos').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-            if (!r.error) { pedidos = r.data || []; salvarDadosLocais(); }
-            
+            // Função de paginação: busca TUDO em blocos de 1000
+            async function buscarTudo(tabela, ordem) {
+                var todos = [], page = 0, tam = 1000;
+                while (true) {
+                    var r = await supabaseClient
+                        .from(tabela)
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order(ordem.col, { ascending: ordem.asc })
+                        .range(page * tam, (page + 1) * tam - 1);
+                    if (r.error) { console.error('Erro ' + tabela + ':', r.error); break; }
+                    var dados = r.data || [];
+                    todos = todos.concat(dados);
+                    if (dados.length < tam) break;
+                    page++;
+                }
+                return todos;
+            }
+            clientes = await buscarTudo('clientes', { col: 'nome', asc: true });
+            produtos = await buscarTudo('produtos', { col: 'nome', asc: true });
+            pedidos  = await buscarTudo('pedidos',  { col: 'created_at', asc: false });
+            salvarDadosLocais();
             lastSync = new Date().toISOString();
             localStorage.setItem('kayla_last_sync', lastSync);
-            
         } catch(e) {
             console.error('Erro ao sincronizar:', e);
             carregarDadosLocais();
