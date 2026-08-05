@@ -6,10 +6,10 @@ var HISTORICO_VERSOES = [
         versao: '5.4.2', 
         data: '30/06/2026', 
         mudancas: [
-            '🔒 Trava de licenciamento rigorosa (Anti-2/1)',
+            '🔒 Trava de licenciamento rigorosa',
             '📱 Identificação visual de dispositivo atual',
             '⚡ Alternância rápida entre dispositivos sem Key',
-            '🌐 Diferenciação entre Edge e Chrome',
+            '🌐 Diferenciação entre navegadores',
             '✅ Correção: Renderização do Histórico'
         ] 
     },
@@ -17,8 +17,8 @@ var HISTORICO_VERSOES = [
         versao: '5.4.1', 
         data: '29/06/2026', 
         mudancas: [
-            '✅ Corrigido bug onde o botão de login ficava preso em "Entrando..."',
-            '✅ Tecla Enter agora funciona nos campos de login',
+            '✅ Corrigido bug onde o botão de login ficava preso',
+            '✅ Tecla Enter agora funciona em todos os campos',
             '⚡ Melhoria na detecção do botão de login'
         ] 
     },
