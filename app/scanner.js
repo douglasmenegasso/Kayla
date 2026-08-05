@@ -1,48 +1,13 @@
-// ============ SCANNER ENGINE (Kayla - iOS corrigido) ============
-let _stream=null,_reader=null,_scanRAF=null,_bd=null;
+// ============ SCANNER ENGINE (Kayla) ============
+let _stream=null,_reader=null,_scanRAF=null,_bd=null,_html5=null;
 let _active=false,_lastScan=0,_lastCode='';
 
 function _hasBD(){ return typeof BarcodeDetector!=='undefined'; }
 
 function beep(){ try{ const c=new (window.AudioContext||window.webkitAudioContext)(); const o=c.createOscillator(); const g=c.createGain(); o.connect(g);g.connect(c.destination); o.frequency.value=1800;o.type='square'; g.gain.setValueAtTime(0.3,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.12); o.start(c.currentTime); o.stop(c.currentTime+0.12);}catch(e){} }
 
-function _mostrarErro(box,err){
-  var msg='📷 Câmera indisponível. Digite o código manualmente.';
-  if(err){
-    if(err.name==='NotAllowedError'||err.name==='SecurityError'){
-      msg='🔒 Câmera negada. iPhone: Ajustes → Safari → Câmera → Permitir.';
-    } else if(err.name==='NoMediaDevices'){
-      msg='📱 Abra o app pelo SAFARI (não pelo ícone da tela inicial) para usar a câmera.';
-    } else if(err.name==='NotFoundError'){
-      msg='📷 Nenhuma câmera encontrada neste aparelho.';
-    } else if(err.message==='ZXing not loaded'){
-      msg='📷 Leitor não carregou (internet?). Toque de novo ou digite o código.';
-    } else {
-      msg='📷 Erro: '+(err.name||'')+' - '+(err.message||'');
-    }
-  }
-  if(box) box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px;font-size:12px">'+msg+'</p>';
-  if(typeof toast==='function') toast(msg,'warning');
-  console.error('[Scanner]',err);
-}
-
-function _carregarZXing(){
-  if(typeof ZXing!=='undefined') return Promise.resolve(true);
-  return new Promise(function(res){
-    var s=document.createElement('script');
-    s.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';
-    s.onload=function(){ res(typeof ZXing!=='undefined'); };
-    s.onerror=function(){ res(false); };
-    document.head.appendChild(s);
-    setTimeout(function(){ res(typeof ZXing!=='undefined'); },8000);
-  });
-}
-
 async function _getStream(){
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    var e=new Error('mediaDevices indisponível'); e.name='NoMediaDevices'; throw e;
-  }
-  var cons={ video:{ facingMode:{ideal:'environment'}, width:{ideal:1280,max:1920}, height:{ideal:720,max:1080} } };
+  const cons={ video:{ facingMode:{ideal:'environment'}, width:{ideal:1280,max:1920}, height:{ideal:720,max:1080} } };
   try{ return await navigator.mediaDevices.getUserMedia(cons); }
   catch(e){
     try{ return await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:'environment'}}}); }
@@ -54,36 +19,38 @@ async function _playVideo(video,stream){
   video.srcObject=stream;
   video.setAttribute('playsinline','');
   video.setAttribute('webkit-playsinline','');
-  video.setAttribute('muted','');
-  video.setAttribute('autoplay','');
   video.muted=true;
-  video.playsInline=true;
-  await new Promise(function(res,rej){
-    var t=setTimeout(function(){rej(new Error('timeout'));},10000);
-    var go=function(){clearTimeout(t);video.play().then(res).catch(rej);};
+  await new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(new Error('timeout')),10000);
+    const go=()=>{clearTimeout(t);video.play().then(res).catch(rej);};
     video.readyState>=3?go():video.addEventListener('canplay',go,{once:true});
   });
 }
 
 function _makeZXing(){
   if(typeof ZXing==='undefined') return null;
-  var h=new Map();
-  h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.ITF]);
-  h.set(ZXing.DecodeHintType.TRY_HARDER,true);
-  return new ZXing.BrowserMultiFormatReader(h,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1500});
+  try{
+    var h=null;
+    if(ZXing.DecodeHintType&&ZXing.BarcodeFormat){
+      h=new Map();
+      h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.ITF]);
+      h.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    }
+    return new ZXing.BrowserMultiFormatReader(h,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1500});
+  }catch(e){ console.error('[Scanner] ZXing init falhou:',e); return null; }
 }
 
 async function _bdLoop(video,onCode){
   _bd=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code','upc_a','upc_e','code_39','itf']});
-  var last='',lastT=0,fc=0;
+  let last='',lastT=0,fc=0;
   async function tick(){
     if(!_active)return; fc++;
     if(fc%3!==0){_scanRAF=requestAnimationFrame(tick);return;}
     try{
       if(video.readyState>=2){
-        var r=await _bd.detect(video);
+        const r=await _bd.detect(video);
         if(r&&r.length>0){
-          var code=r[0].rawValue;var now=Date.now();
+          const code=r[0].rawValue;const now=Date.now();
           if(code!==last||now-lastT>2500){last=code;lastT=now;onCode(code);}
         }
       }
@@ -97,45 +64,57 @@ function pararScannerKayla(){
   _active=false;
   if(_scanRAF){cancelAnimationFrame(_scanRAF);_scanRAF=null;}
   if(_reader){try{_reader.reset();}catch(e){}_reader=null;}
-  if(_stream){_stream.getTracks().forEach(function(t){t.stop();});_stream=null;}
+  if(_html5){try{_html5.stop();}catch(e){}_html5=null;}
+  if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
   _bd=null;
 }
 
 async function iniciarScannerKayla(containerId,onCode){
   var box=document.getElementById(containerId); if(!box)return;
   pararScannerKayla(); _active=true;
-  var video=box.querySelector('video');
-  if(!video){
-    box.innerHTML='';
-    video=document.createElement('video');
-    video.style.width='100%';video.style.borderRadius='8px';video.style.background='#000';
-    video.setAttribute('playsinline','');
-    video.setAttribute('webkit-playsinline','');
-    video.setAttribute('muted','');
-    video.setAttribute('autoplay','');
-    box.appendChild(video);
-  }
   box.style.display='block';
+  var wrap=function(code){
+    var now=Date.now();
+    if(code===_lastCode&&(now-_lastScan)<3000)return;
+    _lastCode=code;_lastScan=now;beep();onCode(code);
+  };
   try{
-    _stream=await _getStream();
-    await _playVideo(video,_stream);
-    var wrap=function(code){
-      var now=Date.now();
-      if(code===_lastCode&&(now-_lastScan)<3000)return;
-      _lastCode=code;_lastScan=now;beep();onCode(code);
-    };
-    if(_hasBD()){ await _bdLoop(video,wrap); }
-    else{
-      var ok=await _carregarZXing();
-      if(!ok) throw new Error('ZXing not loaded');
+    // 1) Android / navegadores com leitor nativo
+    if(_hasBD()){
+      var video=box.querySelector('video');
+      if(!video){ box.innerHTML=''; video=document.createElement('video'); video.style.width='100%';video.style.borderRadius='8px';video.style.background='#000'; box.appendChild(video); }
+      _stream=await _getStream();
+      await _playVideo(video,_stream);
+      await _bdLoop(video,wrap);
+    }
+    // 2) iPhone / sem leitor nativo -> html5-qrcode (comprovado no iPhone)
+    else if(typeof Html5Qrcode!=='undefined'){
+      box.innerHTML='';
+      _html5=new Html5Qrcode(containerId);
+      var cfg={ fps:10, qrbox:{width:250,height:150} };
+      if(typeof Html5QrcodeSupportedFormats!=='undefined'){
+        cfg.formatsToSupport=[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.QR_CODE];
+      }
+      await _html5.start({facingMode:'environment',width:{ideal:1280},height:{ideal:720}}, cfg, function(txt){ wrap(txt); }, function(){});
+    }
+    // 3) ZXing (último recurso)
+    else if(typeof ZXing!=='undefined'){
+      var v2=box.querySelector('video');
+      if(!v2){ box.innerHTML=''; v2=document.createElement('video'); v2.style.width='100%';v2.style.borderRadius='8px';v2.style.background='#000'; box.appendChild(v2); }
+      _stream=await _getStream();
+      await _playVideo(v2,_stream);
       _reader=_makeZXing();
       if(!_reader) throw new Error('ZXing not loaded');
-      _reader.decodeFromStream(_stream,video,function(r){ if(!r||!_active)return; wrap(r.getText()); });
+      _reader.decodeFromStream(_stream,v2,function(r){ if(!r||!_active)return; wrap(r.getText()); });
+    }
+    else{
+      throw new Error('no decoder');
     }
   }catch(err){
     _active=false;
-    pararScannerKayla();
-    _mostrarErro(box,err);
+    try{ if(_html5){_html5.stop();_html5=null;} }catch(e){}
+    box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px">📷 Câmera indisponível. Digite o código manualmente.</p>';
+    console.error('[Scanner]',err);
   }
 }
 window.iniciarScannerKayla=iniciarScannerKayla;
