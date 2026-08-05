@@ -217,7 +217,7 @@ function abrirModalAdicionarProduto() {
     html += '<button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>';
     document.getElementById('modal-body').innerHTML = html;
     document.getElementById('modal-overlay').classList.add('show');
-    setTimeout(function(){ var el = document.getElementById('busca-produto-venda'); if (el) el.focus(); }, 100);
+// setTimeout(function(){ var el = document.getElementById('busca-produto-venda'); if (el) el.focus(); }, 100);
 }
 
 function renderListaProdutosVenda(filtro) {
