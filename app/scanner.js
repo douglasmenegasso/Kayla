@@ -1,5 +1,5 @@
 // ============ SCANNER ENGINE (Kayla) ============
-let _stream=null,_reader=null,_scanRAF=null,_bd=null,_html5=null;
+let _stream=null,_scanRAF=null,_bd=null,_html5=null;
 let _active=false,_lastScan=0,_lastCode='';
 
 function _hasBD(){ return typeof BarcodeDetector!=='undefined'; }
@@ -27,19 +27,6 @@ async function _playVideo(video,stream){
   });
 }
 
-function _makeZXing(){
-  if(typeof ZXing==='undefined') return null;
-  try{
-    var h=null;
-    if(ZXing.DecodeHintType&&ZXing.BarcodeFormat){
-      h=new Map();
-      h.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.CODE_128,ZXing.BarcodeFormat.QR_CODE,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.CODE_39,ZXing.BarcodeFormat.ITF]);
-      h.set(ZXing.DecodeHintType.TRY_HARDER,true);
-    }
-    return new ZXing.BrowserMultiFormatReader(h,{delayBetweenScanAttempts:80,delayBetweenScanSuccess:1500});
-  }catch(e){ console.error('[Scanner] ZXing init falhou:',e); return null; }
-}
-
 async function _bdLoop(video,onCode){
   _bd=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code','upc_a','upc_e','code_39','itf']});
   let last='',lastT=0,fc=0;
@@ -63,59 +50,46 @@ async function _bdLoop(video,onCode){
 function pararScannerKayla(){
   _active=false;
   if(_scanRAF){cancelAnimationFrame(_scanRAF);_scanRAF=null;}
-  if(_reader){try{_reader.reset();}catch(e){}_reader=null;}
   if(_html5){try{_html5.stop();}catch(e){}_html5=null;}
   if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
   _bd=null;
 }
 
 async function iniciarScannerKayla(containerId,onCode){
-  var box=document.getElementById(containerId); if(!box)return;
+  const box=document.getElementById(containerId); if(!box)return;
   pararScannerKayla(); _active=true;
   box.style.display='block';
-  var wrap=function(code){
-    var now=Date.now();
+  const wrap=(code)=>{
+    const now=Date.now();
     if(code===_lastCode&&(now-_lastScan)<3000)return;
     _lastCode=code;_lastScan=now;beep();onCode(code);
   };
-  try{
-    // 1) Android / navegadores com leitor nativo
-    if(_hasBD()){
-      var video=box.querySelector('video');
+
+  // 1) Leitor nativo (Android/Chrome)
+  if(_hasBD()){
+    try{
+      let video=box.querySelector('video');
       if(!video){ box.innerHTML=''; video=document.createElement('video'); video.style.width='100%';video.style.borderRadius='8px';video.style.background='#000'; box.appendChild(video); }
       _stream=await _getStream();
       await _playVideo(video,_stream);
       await _bdLoop(video,wrap);
-    }
-    // 2) iPhone / sem leitor nativo -> html5-qrcode (comprovado no iPhone)
-    else if(typeof Html5Qrcode!=='undefined'){
+      return;
+    }catch(e){ console.warn('[Scanner] nativo falhou:',e); pararScannerKayla(); _active=true; }
+  }
+
+  // 2) html5-qrcode (iPhone/Safari) — já carregado no index.html
+  if(typeof Html5Qrcode!=='undefined'){
+    try{
       box.innerHTML='';
       _html5=new Html5Qrcode(containerId);
-      var cfg={ fps:10, qrbox:{width:250,height:150} };
-      if(typeof Html5QrcodeSupportedFormats!=='undefined'){
-        cfg.formatsToSupport=[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.QR_CODE];
-      }
-      await _html5.start({facingMode:'environment',width:{ideal:1280},height:{ideal:720}}, cfg, function(txt){ wrap(txt); }, function(){});
-    }
-    // 3) ZXing (último recurso)
-    else if(typeof ZXing!=='undefined'){
-      var v2=box.querySelector('video');
-      if(!v2){ box.innerHTML=''; v2=document.createElement('video'); v2.style.width='100%';v2.style.borderRadius='8px';v2.style.background='#000'; box.appendChild(v2); }
-      _stream=await _getStream();
-      await _playVideo(v2,_stream);
-      _reader=_makeZXing();
-      if(!_reader) throw new Error('ZXing not loaded');
-      _reader.decodeFromStream(_stream,v2,function(r){ if(!r||!_active)return; wrap(r.getText()); });
-    }
-    else{
-      throw new Error('no decoder');
-    }
-  }catch(err){
-    _active=false;
-    try{ if(_html5){_html5.stop();_html5=null;} }catch(e){}
-    box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px">📷 Câmera indisponível. Digite o código manualmente.</p>';
-    console.error('[Scanner]',err);
+      await _html5.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:150}},function(txt){wrap(txt);},function(){});
+      return;
+    }catch(e){ console.warn('[Scanner] html5 falhou:',e); pararScannerKayla(); _active=true; }
   }
+
+  // 3) nada funcionou
+  _active=false;
+  box.innerHTML='<p style="color:var(--text3);text-align:center;padding:12px">📷 Câmera indisponível. Digite o código manualmente.</p>';
 }
 window.iniciarScannerKayla=iniciarScannerKayla;
 window.pararScannerKayla=pararScannerKayla;
