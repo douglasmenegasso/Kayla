@@ -1,33 +1,46 @@
 // ============ CLIENTES ============
 
 function renderizarClientes() {
-    var limiteClientes = LIMITES.proAtivo ? '∞' : (LIMITES.maxClientes || LIMITES.freeClientes || 3);
-    
-    var html = '<div class="card"><div class="card-title">👥 Clientes (' + clientes.length + '/' + limiteClientes + ')</div>';
-    
+    var html = '<div class="card"><div class="card-title">👥 Clientes (' + clientes.length + ')</div>';
+    html += '<div class="form-group" style="margin-bottom:12px"><input class="form-input" id="busca-clientes" placeholder="🔍 Buscar por nome ou telefone" oninput="filtrarClientes(this.value)"></div>';
     if (!LIMITES.proAtivo && clientes.length >= (LIMITES.maxClientes || LIMITES.freeClientes || 3)) {
         html += '<div class="limit-warning">⚠️ Limite atingido!</div>';
     }
-    
-    // ✅ CORREÇÃO: Chama função que verifica E mostra modal de planos
     html += '<button class="btn btn-primary" onclick="adicionarClienteComVerificacao()">+ Novo Cliente</button></div>';
-    
     if (clientes.length === 0) {
         html += '<div class="card"><div class="empty-state">Nenhum cliente</div></div>';
     } else {
-        html += '<div class="item-list">';
-        clientes.forEach(function(c) {
-            html += '<div class="item-card"><div class="item-info"><div class="item-name">' + c.nome + '</div><div class="item-detail">' + (c.telefone || 'Sem tel') + '</div></div>';
-            html += '<div style="display:flex;gap:8px">';
-            html += '<button class="btn btn-sm btn-primary" onclick="iniciarPedidoCliente(\'' + c.id + '\')">🛒 Vender</button>';
-            html += '<button class="btn btn-sm btn-outline" onclick="editarCliente(\'' + c.id + '\')">✏️</button>';
-            html += '<button class="btn btn-sm btn-red" onclick="excluirCliente(\'' + c.id + '\')">🗑️</button>';
-            html += '</div></div>';
-        });
+        html += '<div class="item-list" id="lista-clientes">';
+        html += renderizarListaClientes(clientes);
         html += '</div>';
     }
     return html;
 }
+
+function renderizarListaClientes(lista) {
+    if (lista.length === 0) return '<div class="empty-state">Nenhum cliente encontrado</div>';
+    var html = '';
+    lista.forEach(function(c) {
+        html += '<div class="item-card"><div class="item-info"><div class="item-name">' + c.nome + '</div><div class="item-detail">' + (c.telefone || 'Sem tel') + '</div></div>';
+        html += '<div style="display:flex;gap:8px">';
+        html += '<button class="btn btn-sm btn-primary" onclick="iniciarPedidoCliente(\'' + c.id + '\')">🛒 Vender</button>';
+        html += '<button class="btn btn-sm btn-outline" onclick="editarCliente(\'' + c.id + '\')">✏️</button>';
+        html += '<button class="btn btn-sm btn-red" onclick="excluirCliente(\'' + c.id + '\')">🗑️</button>';
+        html += '</div></div>';
+    });
+    return html;
+}
+
+function filtrarClientes(valor) {
+    var v = (valor || '').toLowerCase().trim();
+    var lista = clientes.filter(function(c) {
+        if (!v) return true;
+        return (c.nome || '').toLowerCase().indexOf(v) >= 0 || (c.telefone || '').toLowerCase().indexOf(v) >= 0;
+    });
+    var cont = document.getElementById('lista-clientes');
+    if (cont) cont.innerHTML = renderizarListaClientes(lista);
+}
+window.filtrarClientes = filtrarClientes;
 
 // ✅ NOVA FUNÇÃO: Verifica limite e mostra modal de planos se necessário
 function adicionarClienteComVerificacao() {
