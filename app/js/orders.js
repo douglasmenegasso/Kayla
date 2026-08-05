@@ -758,40 +758,36 @@ function renderizarHistorico() {
     });
 
     html += '<div class="card"><div class="card-title">👥 Clientes</div>';
-    if (Object.keys(pedidosPorCliente).length === 0) {
-        html += '<div class="empty-state">Nenhum cliente</div>';
-    } else {
-        html += '<div class="item-list">';
-
-        var clientesOrdenados = Object.keys(pedidosPorCliente).sort();
-
-        clientesOrdenados.forEach(function(nomeCliente) {
-            var pedidosDoCliente = pedidosPorCliente[nomeCliente];
-            var totalItensCliente = 0;
-            var totalValorCliente = 0;
-            var totalDevolvidoCliente = 0;
-
-            pedidosDoCliente.forEach(function(p) {
-                totalItensCliente += parseInt(p.itens) || 0;
-                totalValorCliente += parseFloat(p.total) || 0;
-
-                if (p.historico_devolucoes) {
-                    try {
-                        var historico = JSON.parse(p.historico_devolucoes);
-                        if (historico) {
-                            historico.forEach(function(dev) {
-                                if (dev.itens) {
-                                    dev.itens.forEach(function(item) {
-                                        totalDevolvidoCliente += (item.qtd || 0);
-                                    });
-                                }
-                            });
-                        }
-                    } catch(e) {}
-                }
-            });
-
-            html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\\'") + '\')" style="cursor:pointer">';
+if (Object.keys(pedidosPorCliente).length === 0) {
+    html += '<div class="empty-state">Nenhum cliente</div>';
+} else {
+    html += '<div class="form-group" style="margin-bottom:12px"><input class="form-input" id="hist-busca-cliente" placeholder="🔍 Buscar cliente" oninput="filtrarHistoricoCliente(this.value)"></div>';
+    html += '<div class="item-list" id="lista-historico-clientes">';
+    var clientesOrdenados = Object.keys(pedidosPorCliente).sort();
+    clientesOrdenados.forEach(function(nomeCliente) {
+        var pedidosDoCliente = pedidosPorCliente[nomeCliente];
+        var totalItensCliente = 0;
+        var totalValorCliente = 0;
+        var totalDevolvidoCliente = 0;
+        pedidosDoCliente.forEach(function(p) {
+            totalItensCliente += parseInt(p.itens) || 0;
+            totalValorCliente += parseFloat(p.total) || 0;
+            if (p.historico_devolucoes) {
+                try {
+                    var historico = JSON.parse(p.historico_devolucoes);
+                    if (historico) {
+                        historico.forEach(function(dev) {
+                            if (dev.itens) {
+                                dev.itens.forEach(function(item) {
+                                    totalDevolvidoCliente += (item.qtd || 0);
+                                });
+                            }
+                        });
+                    }
+                } catch(e) {}
+            }
+        });
+        html += '<div class="item-card" onclick="verPedidosCliente(\'' + nomeCliente.replace(/'/g, "\\\'") + '\')" style="cursor:pointer" data-cliente-nome="' + nomeCliente.toLowerCase() + '">';
             html += '<div class="item-info">';
             html += '<div class="item-name" style="font-size:16px;font-weight:700;color:var(--accent)">' + nomeCliente + '</div>';
             html += '<div class="item-detail">' + pedidosDoCliente.length + ' pedido(s) • ' + totalItensCliente + ' itens • ' + totalDevolvidoCliente + ' devolvidos</div>';
@@ -1016,5 +1012,15 @@ function filtrarPedidosCliente(valor) {
     });
 }
 window.filtrarPedidosCliente = filtrarPedidosCliente;
+
+function filtrarHistoricoCliente(valor) {
+    var v = (valor || '').toLowerCase().trim();
+    var cards = document.querySelectorAll('#lista-historico-clientes .item-card');
+    cards.forEach(function(el) {
+        var nome = el.getAttribute('data-cliente-nome') || '';
+        el.style.display = (!v || nome.indexOf(v) >= 0) ? '' : 'none';
+    });
+}
+window.filtrarHistoricoCliente = filtrarHistoricoCliente;
 
 console.log('✅ Orders.js carregado (Modo Somente Leitura Ativo)');
