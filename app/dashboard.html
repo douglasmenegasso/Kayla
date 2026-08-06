@@ -34,10 +34,9 @@ body{font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh
 .btn-ghost:hover{border-color:var(--purple);color:var(--text)}
 .login-erro{color:var(--red);font-size:.76rem;min-height:1em;text-align:center;line-height:1.5;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);padding:10px;border-radius:8px}
 .login-erro:empty{display:none}
-.login-ok{color:var(--green);font-size:.76rem;text-align:center;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);padding:10px;border-radius:8px}
 .login-help{font-size:.74rem;color:var(--muted);line-height:1.7;background:rgba(139,124,247,.05);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .login-help summary{cursor:pointer;color:var(--purple);font-weight:700;margin-bottom:8px}
-.login-help ol,.login-help ul{padding-left:18px;margin-top:4px}
+.login-help ol{padding-left:18px;margin-top:4px}
 .login-help li{margin:4px 0}
 .login-help b{color:var(--text)}
 .login-help code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-size:.7rem}
@@ -141,30 +140,28 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
     <div class="login-logo">🔐</div>
     <h2>Dashboard Admin</h2>
     <p class="login-sub">Kayla - Painel Administrativo</p>
-    
+
     <div class="login-status checking" id="loginStatus">⏳ Verificando conexão com Supabase...</div>
-    
+
     <label>E-mail<input id="inpEmail" type="email" autocomplete="username" required placeholder="admin@kayla.app"/></label>
     <label>Senha<input id="inpSenha" type="password" autocomplete="current-password" required placeholder="••••••••"/></label>
-    
+
     <button class="btn btn-full" id="btnLogin" type="submit">Entrar</button>
     <p class="login-erro" id="loginErro"></p>
-    
+
     <button type="button" class="btn btn-ghost btn-mini" id="btnConfigLogin" style="align-self:center">⚙️ Configurar conexão Supabase</button>
-    
+
     <details class="login-help">
       <summary>❓ Como criar o usuário (passo a passo)</summary>
       <ol>
         <li>No <b>Supabase</b>, vá em <b>Authentication</b> (menu lateral)</li>
         <li>Clique em <b>Users</b> → <b>Add user</b></li>
-        <li>Preencha o <b>e-mail</b> que deseja usar (ex: <code>admin@kayla.app</code>)</li>
-        <li>Coloque uma <b>senha</b> (mínimo 6 caracteres)</li>
+        <li>Preencha o <b>e-mail</b> (ex: <code>admin@kayla.app</code>) e uma <b>senha</b> (mín. 6 caracteres)</li>
         <li>✅ Marque <b>"Auto Confirm User"</b> (importante!)</li>
-        <li>Clique em <b>Create user</b></li>
-        <li>Agora volte aqui e use esse e-mail e senha para entrar</li>
+        <li>Clique em <b>Create user</b> e volte aqui para entrar</li>
       </ol>
     </details>
-    
+
     <details class="login-help dev-mode">
       <summary>🔧 Modo desenvolvedor (sem login, só para testar)</summary>
       <p>Se quiser testar o dashboard sem configurar login agora:</p>
@@ -219,9 +216,9 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
   <div class="modal modal-sm" role="dialog" aria-modal="true">
     <div class="modal-head"><h3>⚙️ Conexão com o Supabase</h3><button class="btn-close" id="cfgFechar" aria-label="Fechar">✕</button></div>
     <div class="modal-body">
-      <p class="cfg-help">Cole a <b>URL</b> e a <b>chave anon</b> do seu projeto Supabase (em <b>Settings → API</b>).</p>
+      <p class="cfg-help">Cole a <b>URL</b> e a <b>chave</b> do projeto (Supabase → <b>Settings → API</b>; a chave pode ser <code>sb_publishable_…</code> ou <code>eyJ…</code>).</p>
       <label>URL do projeto<input id="cfgUrl" placeholder="https://xxxx.supabase.co"/></label>
-      <label>Chave anon (public)<input id="cfgKey" placeholder="eyJ…"/></label>
+      <label>Chave anon / publishable<input id="cfgKey" placeholder="sb_publishable_… ou eyJ…"/></label>
       <details>
         <summary>🔧 Sobrescrever tabelas (opcional)</summary>
         <div class="cfg-grid">
@@ -243,12 +240,13 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ CONFIGURAÇÃO ═══════════ */
+/* ═══════════ CONFIGURAÇÃO (chave nova sb_publishable) ═══════════ */
 const DEFAULT_CFG={
   url:'https://xwwklngrkvdwgiinycvt.supabase.co',
-  anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4',
+  anonKey:'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S',
   tabelas:{}
 };
+const CFG_STORE='kayla_dash_cfg_v2'; // v2 descarta configs velhas salvas
 const mem={};
 const store={
   get(k){try{return localStorage.getItem(k);}catch(e){return mem[k]??null;}},
@@ -256,7 +254,7 @@ const store={
   del(k){try{localStorage.removeItem(k);}catch(e){delete mem[k];}}
 };
 let cfg;
-try{cfg=Object.assign({},DEFAULT_CFG,JSON.parse(store.get('kayla_dash_cfg')||'{}'));}
+try{cfg=Object.assign({},DEFAULT_CFG,JSON.parse(store.get(CFG_STORE)||'{}'));}
 catch(e){cfg={...DEFAULT_CFG};}
 cfg.tabelas=cfg.tabelas||{};
 
@@ -309,49 +307,36 @@ function deltaHTML(m,delta){
 function setBanner(tipo,html){const b=document.getElementById('bannerModo');b.className='banner '+tipo;b.innerHTML=html;}
 let toastTimer=null;
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
-
 function criarCliente(){
-  if(!cfg.url||!cfg.anonKey)return null;
-  if(!window.supabase)return null;
-  return window.supabase.createClient(cfg.url,cfg.anonKey,{
-    auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
-  });
+  if(!cfg.url||!cfg.anonKey||!window.supabase)return null;
+  return window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+}
+/* Cabeçalhos com token da sessão (resolve RLS que libera só "authenticated") */
+async function authHeaders(){
+  let token=cfg.anonKey;
+  if(sb){try{const {data}=await sb.auth.getSession(); if(data&&data.session)token=data.session.access_token;}catch(e){}}
+  return {apikey:cfg.anonKey,Authorization:'Bearer '+token,Accept:'application/json'};
 }
 
-/* ═══════════ VERIFICAÇÃO DE CONEXÃO ═══════════ */
+/* ===== Verificação de conexão ===== */
 async function testarConexao(){
   const st=document.getElementById('loginStatus');
-  if(!sb){
-    st.className='login-status err';
-    st.innerHTML='❌ <b>Supabase não configurado.</b><br>Clique em "⚙️ Configurar conexão" para adicionar URL e chave.';
-    return false;
-  }
-  st.className='login-status checking';
-  st.innerHTML='⏳ Testando conexão com Supabase...';
+  if(!sb){st.className='login-status err';st.innerHTML='❌ <b>Supabase não configurado.</b><br>Clique em "⚙️ Configurar conexão".';return false;}
+  st.className='login-status checking';st.innerHTML='⏳ Testando conexão com Supabase...';
   try{
-    const resp=await fetch(cfg.url+'/rest/v1/',{
-      headers:{apikey:cfg.anonKey,Authorization:'Bearer '+cfg.anonKey,Accept:'application/json'}
-    });
-    if(!resp.ok){
-      st.className='login-status err';
-      st.innerHTML=`❌ <b>Erro na conexão</b> (HTTP ${resp.status})<br>Verifique a URL e chave anon em ⚙️.`;
-      return false;
-    }
-    st.className='login-status ok';
-    st.innerHTML='✅ <b>Supabase conectado!</b><br>Agora digite seu e-mail e senha abaixo.';
+    const resp=await fetch(cfg.url+'/rest/v1/',{headers:await authHeaders()});
+    if(!resp.ok){st.className='login-status err';st.innerHTML=`❌ <b>Erro na conexão</b> (HTTP ${resp.status})<br>401 = chave inválida/expirada → atualize em ⚙️.`;return false;}
+    st.className='login-status ok';st.innerHTML='✅ <b>Supabase conectado!</b><br>Digite seu e-mail e senha abaixo.';
     return true;
   }catch(e){
-    st.className='login-status err';
-    st.innerHTML=`❌ <b>Não foi possível conectar</b><br>${String(e.message||e).substring(0,100)}`;
+    st.className='login-status err';st.innerHTML='❌ <b>Não foi possível conectar</b><br>'+String(e.message||e).substring(0,100);
     return false;
   }
 }
 
-/* ═══════════ DESCOBERTA DAS TABELAS ═══════════ */
-async function descobrirTabelas(){
-  const resp=await fetch(cfg.url+'/rest/v1/',{
-    headers:{apikey:cfg.anonKey,Authorization:'Bearer '+cfg.anonKey,Accept:'application/json'}
-  });
+/* ===== Descoberta das tabelas (OpenAPI + plano B por sondagem) ===== */
+async function descobrirPorOpenAPI(){
+  const resp=await fetch(cfg.url+'/rest/v1/',{headers:await authHeaders()});
   if(!resp.ok)throw new Error('schema HTTP '+resp.status);
   const spec=await resp.json();
   const defs=spec.definitions||((spec.components||{}).schemas)||{};
@@ -375,11 +360,30 @@ async function descobrirTabelas(){
     downloads:  t.downloads  ||acha(x=>/download/.test(x.nome)),
   };
 }
+async function descobrirPorSondagem(){
+  const cand={
+    usuarios:['usuarios','users','profiles','cadastros','clientes'],
+    assinaturas:['assinaturas','subscriptions','licencas','assinatura','keys','ativacoes'],
+    pagamentos:['pagamentos','payments','vendas','compras','transacoes','receitas'],
+    planos:['planos','plans','produtos'],
+    visitasSite:['visitas_site','acessos_site'],
+    visitasApp:['visitas_app','acessos_app'],
+    visitas:['visitas','acessos','page_views','events'],
+    downloads:['downloads'],
+  };
+  const out={}; TODAS_TABELAS=[];
+  for(const k of Object.keys(cand)){
+    if(cfg.tabelas[k]){out[k]=cfg.tabelas[k];continue;}
+    for(const nome of cand[k]){
+      try{const {error}=await sb.from(nome).select('*').limit(1);
+        if(!error){out[k]=nome;TODAS_TABELAS.push(nome);break;}}catch(e){}
+    }
+  }
+  return out;
+}
 async function fetchAll(tabela){
-  try{
-    const {data,error}=await sb.from(tabela).select('*');
-    return error?[]:(data||[]);
-  }catch(e){return [];}
+  try{const {data,error}=await sb.from(tabela).select('*');return error?[]:(data||[]);}
+  catch(e){return [];}
 }
 function contarPorDia(rows,m){rows.forEach(r=>{const d=iso(pick(r,['created_at','data','timestamp','data_visita']));if(d)m[d]=(m[d]||0)+1;});}
 function construirHistorico(mSite,mApp,mDl){
@@ -405,7 +409,8 @@ function usarVazio(msgHtml){
 async function carregarTudo(){
   if(!sb){usarVazio('⚠️ Supabase não conectado. Configure em ⚙️.');return;}
   try{
-    TAB=await descobrirTabelas();
+    try{ TAB=await descobrirPorOpenAPI(); }
+    catch(e){ TAB=await descobrirPorSondagem(); }
     USUARIOS=[]; const idEmail={};
     if(TAB.usuarios){
       (await fetchAll(TAB.usuarios)).forEach(u=>{
@@ -457,7 +462,7 @@ async function carregarTudo(){
     setBanner('real',`✅ <b>Conectado ao Supabase</b> — somente dados reais. Tabelas detectadas: ${usadas||'—'} ${TODAS_TABELAS.length?`(todas no banco: <span class="mut">${TODAS_TABELAS.join(', ')}</span>)`:''}`);
   }catch(e){
     console.error('Erro ao carregar:',e);
-    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b>. Se as tabelas tiverem RLS, libere leitura (SELECT) para <code>anon</code>.');
+    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b>. 401 = chave inválida (atualize em ⚙️). Se as tabelas tiverem RLS, libere SELECT para <code>anon</code>/<code>authenticated</code>.');
   }
 }
 
@@ -596,7 +601,7 @@ cfgBackdrop.addEventListener('click',e=>{if(e.target===cfgBackdrop)fecharConfig(
 document.getElementById('cfgSalvar').addEventListener('click',()=>{
   const url=document.getElementById('cfgUrl').value.trim();
   const key=document.getElementById('cfgKey').value.trim();
-  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha URL e chave anon.';return;}
+  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha URL e chave.';return;}
   cfg={url,anonKey:key,tabelas:{
     usuarios:document.getElementById('cfgTabUsu').value.trim(),
     pagamentos:document.getElementById('cfgTabPag').value.trim(),
@@ -604,10 +609,10 @@ document.getElementById('cfgSalvar').addEventListener('click',()=>{
     visitasSite:document.getElementById('cfgTabVSite').value.trim(),
     visitasApp:document.getElementById('cfgTabVApp').value.trim(),
     downloads:document.getElementById('cfgTabDl').value.trim()}};
-  store.set('kayla_dash_cfg',JSON.stringify(cfg));
+  store.set(CFG_STORE,JSON.stringify(cfg));
   location.reload();
 });
-document.getElementById('cfgRestaurar').addEventListener('click',()=>{store.del('kayla_dash_cfg');location.reload();});
+document.getElementById('cfgRestaurar').addEventListener('click',()=>{store.del(CFG_STORE);location.reload();});
 
 /* ===== Sessão e Login ===== */
 const telaLogin=document.getElementById('telaLogin');
@@ -618,30 +623,20 @@ async function entrarDashboard(){
   document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   await carregarTudo(); renderTudo();
 }
-
 document.getElementById('formLogin').addEventListener('submit',async e=>{
   e.preventDefault();
   const erro=document.getElementById('loginErro'); erro.textContent='';
   const btn=document.getElementById('btnLogin'); btn.disabled=true; btn.textContent='Entrando...';
   const email=document.getElementById('inpEmail').value.trim();
   const senha=document.getElementById('inpSenha').value;
-  
-  if(!sb){
-    erro.textContent='⚠️ Supabase não configurado. Clique em ⚙️ para configurar a conexão.';
-    btn.disabled=false; btn.textContent='Entrar'; return;
-  }
-  
+  if(!sb){erro.textContent='⚠️ Supabase não configurado. Clique em ⚙️.';btn.disabled=false;btn.textContent='Entrar';return;}
   try{
     const {data,error}=await sb.auth.signInWithPassword({email,password:senha});
     if(error){
       const msg=String(error.message||'');
-      if(msg.toLowerCase().includes('invalid')){
-        erro.textContent='⚠️ E-mail ou senha inválidos. Verifique se criou o usuário em Authentication → Users no Supabase.';
-      } else if(msg.toLowerCase().includes('email')){
-        erro.textContent='⚠️ '+msg+' — Verifique se marcou "Auto Confirm User" ao criar o usuário.';
-      } else {
-        erro.textContent='⚠️ '+msg;
-      }
+      if(msg.toLowerCase().includes('invalid'))erro.textContent='⚠️ E-mail ou senha inválidos. Verifique se criou o usuário em Authentication → Users.';
+      else if(msg.toLowerCase().includes('email'))erro.textContent='⚠️ '+msg+' — Marque "Auto Confirm User" ao criar o usuário.';
+      else erro.textContent='⚠️ '+msg;
       btn.disabled=false; btn.textContent='Entrar'; return;
     }
     await entrarDashboard();
@@ -651,19 +646,16 @@ document.getElementById('formLogin').addEventListener('submit',async e=>{
     btn.disabled=false; btn.textContent='Entrar';
   }
 });
-
 document.getElementById('btnDevMode').addEventListener('click',async()=>{
   store.set('kayla_dev_mode','1');
   await entrarDashboard();
   showToast('🚀 Modo desenvolvedor ativo (sem autenticação)');
 });
-
 document.getElementById('btnSair').addEventListener('click',async()=>{
   store.del('kayla_dev_mode');
   if(sb){try{await sb.auth.signOut();}catch(e){}}
   location.reload();
 });
-
 const btn=document.getElementById('btnAtualizar');
 btn.addEventListener('click',async()=>{
   btn.disabled=true;btn.textContent='🔄 Carregando...';
@@ -675,23 +667,11 @@ btn.addEventListener('click',async()=>{
 /* ===== Init ===== */
 (async function init(){
   sb=criarCliente();
-  
-  // Modo desenvolvedor (sem login)
-  if(store.get('kayla_dev_mode')==='1'){
-    await entrarDashboard();
-    return;
-  }
-  
-  // Verificar se já está logado
+  if(store.get('kayla_dev_mode')==='1'){await entrarDashboard();return;}
   if(sb){
     const {data:{session}}=await sb.auth.getSession();
-    if(session){
-      await entrarDashboard();
-      return;
-    }
+    if(session){await entrarDashboard();return;}
   }
-  
-  // Mostrar tela de login
   mostrarLogin();
   await testarConexao();
 })();
