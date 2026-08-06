@@ -24,8 +24,8 @@ header{
   border-bottom:2px solid var(--purple2);
   padding:20px 32px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
 }
-.header-brand{display:flex;align-items:center;gap:14px}
-.header-brand img{width:44px;height:44px;border-radius:10px;border:1px solid var(--border)}
+.header-brand{display:flex;align-items:center;gap:12px}
+.header-brand .logo{font-size:1.6rem}
 header h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 header p{color:var(--muted);font-size:.8rem;margin-top:2px}
 .header-date{color:var(--muted);font-size:.78rem;background:rgba(139,124,247,.1);border:1px solid rgba(139,124,247,.35);padding:7px 14px;border-radius:999px;text-transform:capitalize}
@@ -59,7 +59,7 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .card-total b{font-weight:700}
 .card-hint{color:var(--muted);font-size:.7rem;transition:color .15s}
 .card:hover .card-hint{color:var(--purple)}
-/* ===== PAINEL / TABELA ===== */
+/* ===== PAINEL / TABELAS ===== */
 .panel{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:20px}
 .chart-box{height:300px;position:relative}
 .table-wrap{overflow-x:auto}
@@ -68,6 +68,8 @@ th{text-transform:uppercase;font-size:.66rem;letter-spacing:.07em;color:var(--mu
 td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.045);white-space:nowrap}
 tbody tr{cursor:pointer;transition:background .15s}
 tbody tr:hover{background:rgba(139,124,247,.09)}
+tbody tr.no-click{cursor:default}
+tbody tr.no-click:hover{background:transparent}
 tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);border-bottom:none;background:rgba(139,124,247,.06)}
 .row-hoje td{background:rgba(139,124,247,.07)}
 .row-hoje td:first-child{box-shadow:inset 3px 0 0 var(--purple)}
@@ -75,16 +77,22 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .up{color:var(--green);font-weight:700}
 .down{color:var(--red);font-weight:700}
 .td-money{color:var(--green);font-weight:700}
+/* ===== BADGES DE STATUS / MÉTODO ===== */
+.status,.metodo{font-size:.66rem;font-weight:800;padding:4px 10px;border-radius:999px;display:inline-block}
+.status.ativo,.status.aprovado{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
+.status.cancelado,.status.recusado{color:var(--red);background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35)}
+.metodo.pix{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
+.metodo.cartao{color:#c3baff;background:rgba(139,124,247,.14);border:1px solid rgba(139,124,247,.4)}
 /* ===== MODAL ===== */
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
-.modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(780px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(820px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 .modal-backdrop.open .modal{transform:none}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card2);z-index:2}
 .modal-head h3{font-size:1rem;font-weight:800;text-transform:capitalize}
 .btn-close{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:.9rem;transition:all .15s}
 .btn-close:hover{color:#fff;border-color:var(--purple);background:rgba(139,124,247,.15)}
-.modal-body{padding:22px;display:flex;flex-direction:column;gap:20px}
+.modal-body{padding:22px;display:flex;flex-direction:column;gap:22px}
 .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .chip{background:#2a2b4d;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .chip span{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
@@ -94,6 +102,7 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .tile{background:#2a2b4d;border:1px solid var(--border);border-left:4px solid var(--c,var(--purple));border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .tile span{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
 .tile b{font-size:1.25rem;font-weight:800}
+.extra h4{font-size:.8rem;margin-bottom:10px;color:#c7cbe0;font-weight:800}
 .pag-info{color:var(--green);font-size:.8rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);padding:10px 14px;border-radius:10px}
 /* ===== TOAST ===== */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(90px);background:#2a2b4d;border:1px solid var(--purple);color:var(--text);padding:11px 20px;border-radius:999px;font-size:.8rem;font-weight:700;transition:transform .35s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4)}
@@ -108,7 +117,7 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 
 <header>
   <div class="header-brand">
-    <img src="https://image.qwenlm.ai/public_source/654d6689-de89-4383-82c0-a9a7bf0d4551/1f2544645-70ae-47c7-9f0b-66a9d1fdc692.png" alt="Logo Dashboard Kayla"/>
+    <span class="logo">📊</span>
     <div>
       <h1>Dashboard Kayla</h1>
       <p>Painel Administrativo - Métricas e Financeiro</p>
@@ -147,26 +156,51 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 
 <script>
 /* =========================================================
-   DADOS DIÁRIOS — substitua este array pelo retorno da sua API.
-   Cada objeto = 1 dia com todas as métricas.
+   ⚠️ DADOS DE EXEMPLO (NÃO são do Supabase).
+   O R$ 45,00 que aparecia em "hoje" na versão anterior era
+   simulado — por isso não existia no seu Supabase. Agora o
+   dia de hoje está zerado para usuários/assinaturas/receita.
+   ➜ Substitua os 4 arrays abaixo pelos dados reais da sua API.
 ========================================================= */
 let HISTORICO = [
-  {data:'2026-08-01', visitasSite:0, visitasApp:4, downloads:0, usuarios:0, assinaturas:0, receita:0,     pix:0, cartao:0},
-  {data:'2026-08-02', visitasSite:1, visitasApp:4, downloads:0, usuarios:1, assinaturas:0, receita:45.00, pix:0, cartao:1},
+  {data:'2026-08-01', visitasSite:0, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
+  {data:'2026-08-02', visitasSite:1, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
   {data:'2026-08-03', visitasSite:0, visitasApp:2, downloads:0, usuarios:1, assinaturas:0, receita:29.90, pix:1, cartao:0},
   {data:'2026-08-04', visitasSite:0, visitasApp:3, downloads:0, usuarios:0, assinaturas:1, receita:45.00, pix:0, cartao:1},
   {data:'2026-08-05', visitasSite:1, visitasApp:5, downloads:0, usuarios:1, assinaturas:0, receita:45.00, pix:0, cartao:1},
   {data:'2026-08-06', visitasSite:0, visitasApp:4, downloads:0, usuarios:0, assinaturas:0, receita:29.90, pix:1, cartao:0},
-  {data:'2026-08-07', visitasSite:1, visitasApp:6, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
+  {data:'2026-08-07', visitasSite:1, visitasApp:6, downloads:0, usuarios:0, assinaturas:0, receita:0,     pix:0, cartao:0}, // HOJE — sem cadastros/assinaturas/vendas
+];
+
+const USUARIOS = [
+  {email:'ana.souza@gmail.com',     cadastro:'2026-08-01', status:'ativo'},
+  {email:'carlos.lima@hotmail.com', cadastro:'2026-08-02', status:'cancelado'},
+  {email:'rafael.costa@gmail.com',  cadastro:'2026-08-03', status:'cancelado'},
+  {email:'juliana.prado@gmail.com', cadastro:'2026-08-05', status:'ativo'},
+];
+
+const ASSINATURAS = [
+  {usuario:'ana.souza@gmail.com',     inicio:'2026-08-01', plano:'Mensal', status:'ativo'},
+  {usuario:'carlos.lima@hotmail.com', inicio:'2026-08-02', plano:'Mensal', status:'cancelado'},
+  {usuario:'juliana.prado@gmail.com', inicio:'2026-08-04', plano:'Mensal', status:'ativo'},
+];
+
+const PAGAMENTOS = [
+  {data:'2026-08-01', usuario:'ana.souza@gmail.com',     valor:45.00, metodo:'cartao', status:'aprovado'},
+  {data:'2026-08-02', usuario:'carlos.lima@hotmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+  {data:'2026-08-03', usuario:'carlos.lima@hotmail.com', valor:29.90, metodo:'pix',    status:'aprovado'},
+  {data:'2026-08-04', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+  {data:'2026-08-05', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+  {data:'2026-08-06', usuario:'ana.souza@gmail.com',     valor:29.90, metodo:'pix',    status:'aprovado'},
 ];
 
 const METRICAS = [
-  {id:'visitasSite', icone:'🌐', titulo:'Visitas Site',     cor:'#60a5fa', tipo:'int'},
-  {id:'visitasApp',  icone:'📱', titulo:'Visitas App',      cor:'#a78bfa', tipo:'int'},
-  {id:'downloads',   icone:'⬇️', titulo:'Downloads',        cor:'#38bdf8', tipo:'int'},
-  {id:'usuarios',    icone:'👥', titulo:'Usuários',         cor:'#f472b6', tipo:'int'},
-  {id:'assinaturas', icone:'💎', titulo:'Assinaturas',      cor:'#22d3ee', tipo:'int'},
-  {id:'receita',     icone:'💰', titulo:'Receita',          cor:'#4ade80', tipo:'money'},
+  {id:'visitasSite', icone:'🌐', titulo:'Visitas Site', cor:'#60a5fa', tipo:'int'},
+  {id:'visitasApp',  icone:'📱', titulo:'Visitas App',  cor:'#a78bfa', tipo:'int'},
+  {id:'downloads',   icone:'⬇️', titulo:'Downloads',    cor:'#38bdf8', tipo:'int'},
+  {id:'usuarios',    icone:'👥', titulo:'Usuários',     cor:'#f472b6', tipo:'int'},
+  {id:'assinaturas', icone:'💎', titulo:'Assinaturas',  cor:'#22d3ee', tipo:'int'},
+  {id:'receita',     icone:'💰', titulo:'Receita',      cor:'#4ade80', tipo:'money'},
 ];
 
 /* ===== Helpers ===== */
@@ -176,6 +210,7 @@ const fmtVal      = (m,v) => m.tipo==='money' ? fmtBRL(v) : v;
 const fmtData     = iso => { const [,m,d]=iso.split('-'); return `${d}/${m}`; };
 const fmtDataLonga= iso => new Date(iso+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
 const weekday     = iso => new Date(iso+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
+const nomeMetodo  = m => m==='pix' ? 'PIX' : 'Cartão';
 
 function totais(){
   return HISTORICO.reduce((t,d)=>{
@@ -206,10 +241,12 @@ function deltaHTML(m,delta){
 /* ===== Cards (resumo de hoje) ===== */
 function renderCards(){
   const hoje=ultimo(), t=totais();
+  const ativos=ASSINATURAS.filter(a=>a.status==='ativo').length;
   document.getElementById('cards').innerHTML = METRICAS.map(m=>{
-    const totalTxt = m.id==='receita'
-      ? `Total: <b>${fmtBRL(t.receita)}</b> · PIX: ${t.pix} | Cartão: ${t.cartao}`
-      : `Total acumulado: <b>${t[m.id]}</b>`;
+    let totalTxt;
+    if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(t.receita)}</b> · PIX: ${t.pix} | Cartão: ${t.cartao}`;
+    else if(m.id==='assinaturas') totalTxt=`Planos ativos: <b>${ativos}</b>`;
+    else                          totalTxt=`Total acumulado: <b>${t[m.id]}</b>`;
     return `<article class="card" data-metric="${m.id}" tabindex="0" role="button" aria-label="Ver histórico de ${m.titulo}">
       <div class="card-top"><span class="ico">${m.icone}</span><h3>${m.titulo}</h3><span class="badge">HOJE</span></div>
       <div class="card-value" style="color:${m.cor}">${fmtVal(m,hoje[m.id])}</div>
@@ -252,12 +289,12 @@ function renderChartGeral(){
   if(chartGeral) chartGeral.destroy();
   chartGeral=new Chart(document.getElementById('chartGeral'),{
     data:{ labels:HISTORICO.map(d=>fmtData(d.data)), datasets:[
-      {type:'bar', label:'Visitas Site',  data:HISTORICO.map(d=>d.visitasSite), backgroundColor:'#60a5fa', borderRadius:4},
-      {type:'bar', label:'Visitas App',   data:HISTORICO.map(d=>d.visitasApp),  backgroundColor:'#a78bfa', borderRadius:4},
-      {type:'bar', label:'Usuários',      data:HISTORICO.map(d=>d.usuarios),    backgroundColor:'#f472b6', borderRadius:4},
-      {type:'bar', label:'Assinaturas',   data:HISTORICO.map(d=>d.assinaturas), backgroundColor:'#22d3ee', borderRadius:4},
-      {type:'bar', label:'Downloads',     data:HISTORICO.map(d=>d.downloads),   backgroundColor:'#38bdf8', borderRadius:4},
-      {type:'line',label:'Receita (R$)',  data:HISTORICO.map(d=>d.receita), borderColor:'#4ade80', backgroundColor:'#4ade80', yAxisID:'y1', tension:.35, pointRadius:3},
+      {type:'bar', label:'Visitas Site', data:HISTORICO.map(d=>d.visitasSite), backgroundColor:'#60a5fa', borderRadius:4},
+      {type:'bar', label:'Visitas App',  data:HISTORICO.map(d=>d.visitasApp),  backgroundColor:'#a78bfa', borderRadius:4},
+      {type:'bar', label:'Usuários',     data:HISTORICO.map(d=>d.usuarios),    backgroundColor:'#f472b6', borderRadius:4},
+      {type:'bar', label:'Assinaturas',  data:HISTORICO.map(d=>d.assinaturas), backgroundColor:'#22d3ee', borderRadius:4},
+      {type:'bar', label:'Downloads',    data:HISTORICO.map(d=>d.downloads),   backgroundColor:'#38bdf8', borderRadius:4},
+      {type:'line',label:'Receita (R$)', data:HISTORICO.map(d=>d.receita), borderColor:'#4ade80', backgroundColor:'#4ade80', yAxisID:'y1', tension:.35, pointRadius:3},
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
       scales:{
@@ -271,6 +308,46 @@ function renderChartGeral(){
       }
     }
   });
+}
+
+/* ===== Seções extras dos modais ===== */
+function secaoUsuarios(){
+  return `<div class="extra"><h4>👥 Usuários Recentes</h4><div class="table-wrap"><table>
+    <thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead>
+    <tbody>${[...USUARIOS].reverse().map(u=>`
+      <tr class="no-click">
+        <td>${u.email}</td>
+        <td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td>
+        <td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td>
+      </tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+function secaoAssinaturas(){
+  return `<div class="extra"><h4>💎 Assinaturas</h4><div class="table-wrap"><table>
+    <thead><tr><th>Usuário</th><th>Início</th><th>Plano</th><th>Status</th></tr></thead>
+    <tbody>${[...ASSINATURAS].reverse().map(a=>`
+      <tr class="no-click">
+        <td>${a.usuario}</td>
+        <td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td>
+        <td>${a.plano}</td>
+        <td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td>
+      </tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+function secaoPagamentos(){
+  return `<div class="extra"><h4>💵 Últimos Pagamentos</h4><div class="table-wrap"><table>
+    <thead><tr><th>Data</th><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
+    <tbody>${[...PAGAMENTOS].reverse().map(p=>`
+      <tr class="no-click">
+        <td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td>
+        <td>${p.usuario}</td>
+        <td class="td-money">${fmtBRL(p.valor)}</td>
+        <td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td>
+        <td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td>
+      </tr>`).join('')}
+    </tbody></table></div></div>`;
 }
 
 /* ===== Modais ===== */
@@ -291,6 +368,11 @@ function openMetricModal(id){
   const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
   const dias=[...HISTORICO].reverse();
 
+  let extra='';
+  if(id==='usuarios')    extra=secaoUsuarios();
+  if(id==='assinaturas') extra=secaoAssinaturas();
+  if(id==='receita')     extra=secaoPagamentos();
+
   abrirModal(`${m.icone} Histórico Diário — ${m.titulo}`, `
     <div class="chips">
       <div class="chip"><span>Hoje</span><b style="color:${m.cor}">${fmtVal(m,hoje[id])}</b></div>
@@ -304,14 +386,15 @@ function openMetricModal(id){
       <tbody>${dias.map(d=>{
         const idx=HISTORICO.indexOf(d), prev=HISTORICO[idx-1];
         const delta=prev ? d[id]-prev[id] : null;
-        return `<tr style="cursor:default">
+        return `<tr class="no-click">
           <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
           <td style="color:${m.cor};font-weight:700">${fmtVal(m,d[id])}</td>
           <td>${deltaHTML(m,delta)}</td>
         </tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><td>TOTAL</td><td class="td-money" style="color:${m.cor}">${fmtVal(m,t[id])}</td><td></td></tr></tfoot>
-    </table></div>`);
+      <tfoot><tr><td>TOTAL</td><td style="color:${m.cor}">${fmtVal(m,t[id])}</td><td></td></tr></tfoot>
+    </table></div>
+    ${extra}`);
 
   modalChart=new Chart(document.getElementById('modalChartCanvas'),{
     type:'bar',
@@ -325,11 +408,21 @@ function openMetricModal(id){
 
 function openDiaModal(iso){
   const d=HISTORICO.find(x=>x.data===iso);
+  const regsDoDia=USUARIOS.filter(u=>u.cadastro===iso);
+  const pagsDoDia=PAGAMENTOS.filter(p=>p.data===iso);
   abrirModal(`📅 ${fmtDataLonga(iso)}`, `
     <div class="tiles">${METRICAS.map(m=>`
       <div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${fmtVal(m,d[m.id])}</b></div>`).join('')}
     </div>
-    ${d.receita>0 ? `<p class="pag-info">💳 Pagamentos do dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>` : `<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento neste dia.</p>`}`);
+    ${d.receita>0 ? `<p class="pag-info">💳 Pagamentos do dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>` : `<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento neste dia.</p>`}
+    ${regsDoDia.length?`<div class="extra"><h4>👥 Cadastros do dia</h4><div class="table-wrap"><table>
+      <thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead>
+      <tbody>${regsDoDia.map(u=>`<tr class="no-click"><td>${u.email}</td><td>${fmtData(u.cadastro)}</td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`).join('')}</tbody>
+    </table></div></div>`:''}
+    ${pagsDoDia.length?`<div class="extra"><h4>💵 Pagamentos do dia</h4><div class="table-wrap"><table>
+      <thead><tr><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
+      <tbody>${pagsDoDia.map(p=>`<tr class="no-click"><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">● Aprovado</span></td></tr>`).join('')}</tbody>
+    </table></div></div>`:''}`);
 }
 
 /* ===== Eventos ===== */
@@ -343,15 +436,11 @@ document.getElementById('tabelaGeral').addEventListener('click',e=>{
   const row=e.target.closest('tr[data-dia]'); if(row) openDiaModal(row.dataset.dia);
 });
 
-/* ===== Atualizar dados (simulação) ===== */
+/* ===== Atualizar (apre recarrega — não inventa dados) ===== */
 const btn=document.getElementById('btnAtualizar');
 btn.addEventListener('click',()=>{
   btn.disabled=true; btn.textContent='🔄 Carregando...';
-  setTimeout(()=>{
-    const hoje=ultimo();
-    if(Math.random()<.6) hoje.visitasApp += 1+Math.floor(Math.random()*3);
-    if(Math.random()<.35) hoje.visitasSite += 1;
-    if(Math.random()<.2) hoje.usuarios += 1;
+  setTimeout(()=>{ // ➜ aqui você chama sua API/Supabase e refaz os arrays
     renderTudo();
     btn.disabled=false; btn.textContent='🔄 Atualizar Dados';
     showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
@@ -367,8 +456,7 @@ function showToast(msg){
 
 /* ===== Init ===== */
 function renderTudo(){ renderCards(); renderTabelaGeral(); renderChartGeral(); }
-const hd=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-document.getElementById('headerDate').textContent='Hoje: '+hd;
+document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 renderTudo();
 </script>
 </body>
