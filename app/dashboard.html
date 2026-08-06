@@ -6,11 +6,12 @@
 <title>Dashboard Kayla</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#171828; --card:#232441; --card2:#20213e; --border:#343560;
   --purple:#8b7cf7; --purple2:#7c6ff0; --text:#e8eaf3; --muted:#9aa0b5;
-  --green:#4ade80; --red:#f87171;
+  --green:#4ade80; --red:#f87171; --amber:#fbbf24;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
@@ -30,7 +31,7 @@ header h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 header p{color:var(--muted);font-size:.8rem;margin-top:2px}
 .header-date{color:var(--muted);font-size:.78rem;background:rgba(139,124,247,.1);border:1px solid rgba(139,124,247,.35);padding:7px 14px;border-radius:999px;text-transform:capitalize}
 main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
-.toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .btn{
   background:linear-gradient(135deg,#7c6ff0,#9a8bff); color:#fff; border:none; cursor:pointer;
   font-family:inherit; font-weight:700; font-size:.82rem; padding:11px 20px; border-radius:10px;
@@ -39,6 +40,10 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,111,240,.5)}
 .btn:disabled{opacity:.6;cursor:wait;transform:none}
 .hint{color:var(--muted);font-size:.74rem}
+/* ===== BANNER DE MODO (DEMO / REAL) ===== */
+.banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.5}
+.banner.demo{color:var(--amber);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4)}
+.banner.real{color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
 .section-title{font-size:.95rem;font-weight:800;letter-spacing:.02em;margin:26px 0 14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
 /* ===== CARDS ===== */
@@ -77,7 +82,8 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .up{color:var(--green);font-weight:700}
 .down{color:var(--red);font-weight:700}
 .td-money{color:var(--green);font-weight:700}
-/* ===== BADGES DE STATUS / MÉTODO ===== */
+.vazio{color:var(--muted);text-align:center;padding:18px 0 !important;font-size:.78rem}
+/* ===== BADGES STATUS / MÉTODO ===== */
 .status,.metodo{font-size:.66rem;font-weight:800;padding:4px 10px;border-radius:999px;display:inline-block}
 .status.ativo,.status.aprovado{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
 .status.cancelado,.status.recusado{color:var(--red);background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35)}
@@ -132,6 +138,8 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
     <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia</span>
   </div>
 
+  <div class="banner demo" id="bannerModo">⏳ Carregando...</div>
+
   <h2 class="section-title">☀️ Resumo de Hoje</h2>
   <section class="cards" id="cards"></section>
 
@@ -155,44 +163,61 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 <div class="toast" id="toast"></div>
 
 <script>
-/* =========================================================
-   ⚠️ DADOS DE EXEMPLO (NÃO são do Supabase).
-   O R$ 45,00 que aparecia em "hoje" na versão anterior era
-   simulado — por isso não existia no seu Supabase. Agora o
-   dia de hoje está zerado para usuários/assinaturas/receita.
-   ➜ Substitua os 4 arrays abaixo pelos dados reais da sua API.
-========================================================= */
-let HISTORICO = [
-  {data:'2026-08-01', visitasSite:0, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
-  {data:'2026-08-02', visitasSite:1, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
-  {data:'2026-08-03', visitasSite:0, visitasApp:2, downloads:0, usuarios:1, assinaturas:0, receita:29.90, pix:1, cartao:0},
-  {data:'2026-08-04', visitasSite:0, visitasApp:3, downloads:0, usuarios:0, assinaturas:1, receita:45.00, pix:0, cartao:1},
-  {data:'2026-08-05', visitasSite:1, visitasApp:5, downloads:0, usuarios:1, assinaturas:0, receita:45.00, pix:0, cartao:1},
-  {data:'2026-08-06', visitasSite:0, visitasApp:4, downloads:0, usuarios:0, assinaturas:0, receita:29.90, pix:1, cartao:0},
-  {data:'2026-08-07', visitasSite:1, visitasApp:6, downloads:0, usuarios:0, assinaturas:0, receita:0,     pix:0, cartao:0}, // HOJE — sem cadastros/assinaturas/vendas
-];
+/* ═════════════════════════════════════════════════════════════
+   ⚠️ DE ONDE VÊM OS DADOS?
+   Sem configurar o Supabase abaixo, o painel entra em MODO
+   DEMONSTRAÇÃO com dados FICTÍCIOS (criados aqui no código, não
+   existem em banco nenhum — por isso você não os achou no Supabase).
+   ➜ Para ver os dados REAIS: cole sua URL + chave anon e ajuste os
+     nomes das tabelas (veja no código do seu site/app qual tabela
+     ele grava os cadastros grátis — ex.: "users"/"usuarios").
+═════════════════════════════════════════════════════════════ */
+const CONFIG_SUPABASE = {
+  url: '',      // ➜ COLE AQUI a URL do projeto (ex.: https://xxxx.supabase.co)
+  anonKey: '',  // ➜ COLE AQUI a chave "anon/public"
+  tabelas: {    // ➜ ajuste aos nomes reais das SUAS tabelas
+    usuarios:    'usuarios',
+    pagamentos:  'pagamentos',
+    assinaturas: 'assinaturas',
+    visitasSite: 'visitas_site',
+    visitasApp:  'visitas_app',
+    downloads:   'downloads',
+  },
+};
 
-const USUARIOS = [
-  {email:'ana.souza@gmail.com',     cadastro:'2026-08-01', status:'ativo'},
-  {email:'carlos.lima@hotmail.com', cadastro:'2026-08-02', status:'cancelado'},
-  {email:'rafael.costa@gmail.com',  cadastro:'2026-08-03', status:'cancelado'},
-  {email:'juliana.prado@gmail.com', cadastro:'2026-08-05', status:'ativo'},
-];
+/* ===== Dados de EXEMPLO (usados apenas em modo demonstração) ===== */
+const DEMO = {
+  historico: [
+    {data:'2026-08-01', visitasSite:0, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
+    {data:'2026-08-02', visitasSite:1, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
+    {data:'2026-08-03', visitasSite:0, visitasApp:2, downloads:0, usuarios:1, assinaturas:0, receita:29.90, pix:1, cartao:0},
+    {data:'2026-08-04', visitasSite:0, visitasApp:3, downloads:0, usuarios:0, assinaturas:1, receita:45.00, pix:0, cartao:1},
+    {data:'2026-08-05', visitasSite:1, visitasApp:5, downloads:0, usuarios:1, assinaturas:0, receita:45.00, pix:0, cartao:1},
+    {data:'2026-08-06', visitasSite:0, visitasApp:4, downloads:0, usuarios:0, assinaturas:0, receita:29.90, pix:1, cartao:0},
+    {data:'2026-08-07', visitasSite:1, visitasApp:6, downloads:0, usuarios:0, assinaturas:0, receita:0,     pix:0, cartao:0},
+  ],
+  usuarios: [
+    {email:'ana.souza@gmail.com',     cadastro:'2026-08-01', status:'ativo'},
+    {email:'carlos.lima@hotmail.com', cadastro:'2026-08-02', status:'cancelado'},
+    {email:'rafael.costa@gmail.com',  cadastro:'2026-08-03', status:'cancelado'},
+    {email:'juliana.prado@gmail.com', cadastro:'2026-08-05', status:'ativo'},
+  ],
+  assinaturas: [
+    {usuario:'ana.souza@gmail.com',     inicio:'2026-08-01', plano:'Mensal', status:'ativo'},
+    {usuario:'carlos.lima@hotmail.com', inicio:'2026-08-02', plano:'Mensal', status:'cancelado'},
+    {usuario:'juliana.prado@gmail.com', inicio:'2026-08-04', plano:'Mensal', status:'ativo'},
+  ],
+  pagamentos: [
+    {data:'2026-08-01', usuario:'ana.souza@gmail.com',     valor:45.00, metodo:'cartao', status:'aprovado'},
+    {data:'2026-08-02', usuario:'carlos.lima@hotmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+    {data:'2026-08-03', usuario:'carlos.lima@hotmail.com', valor:29.90, metodo:'pix',    status:'aprovado'},
+    {data:'2026-08-04', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+    {data:'2026-08-05', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
+    {data:'2026-08-06', usuario:'ana.souza@gmail.com',     valor:29.90, metodo:'pix',    status:'aprovado'},
+  ],
+};
 
-const ASSINATURAS = [
-  {usuario:'ana.souza@gmail.com',     inicio:'2026-08-01', plano:'Mensal', status:'ativo'},
-  {usuario:'carlos.lima@hotmail.com', inicio:'2026-08-02', plano:'Mensal', status:'cancelado'},
-  {usuario:'juliana.prado@gmail.com', inicio:'2026-08-04', plano:'Mensal', status:'ativo'},
-];
-
-const PAGAMENTOS = [
-  {data:'2026-08-01', usuario:'ana.souza@gmail.com',     valor:45.00, metodo:'cartao', status:'aprovado'},
-  {data:'2026-08-02', usuario:'carlos.lima@hotmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-  {data:'2026-08-03', usuario:'carlos.lima@hotmail.com', valor:29.90, metodo:'pix',    status:'aprovado'},
-  {data:'2026-08-04', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-  {data:'2026-08-05', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-  {data:'2026-08-06', usuario:'ana.souza@gmail.com',     valor:29.90, metodo:'pix',    status:'aprovado'},
-];
+let HISTORICO=[], USUARIOS=[], ASSINATURAS=[], PAGAMENTOS=[], modoDemo=true;
 
 const METRICAS = [
   {id:'visitasSite', icone:'🌐', titulo:'Visitas Site', cor:'#60a5fa', tipo:'int'},
@@ -204,13 +229,17 @@ const METRICAS = [
 ];
 
 /* ===== Helpers ===== */
-const ultimo      = () => HISTORICO[HISTORICO.length-1];
-const fmtBRL      = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtVal      = (m,v) => m.tipo==='money' ? fmtBRL(v) : v;
-const fmtData     = iso => { const [,m,d]=iso.split('-'); return `${d}/${m}`; };
-const fmtDataLonga= iso => new Date(iso+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-const weekday     = iso => new Date(iso+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
-const nomeMetodo  = m => m==='pix' ? 'PIX' : 'Cartão';
+const hojeIso  = () => new Date().toLocaleDateString('sv-SE');
+const iso      = v => v ? String(v).slice(0,10) : '';
+const ultimo   = () => HISTORICO[HISTORICO.length-1];
+const fmtBRL   = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtVal   = (m,v) => m.tipo==='money' ? fmtBRL(v) : v;
+const fmtData  = d => { const [,m,dd]=d.split('-'); return `${dd}/${m}`; };
+const fmtDataLonga = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+const weekday  = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
+const nomeMetodo = m => m==='pix' ? 'PIX' : 'Cartão';
+const normStatus = s => { s=String(s||'').toLowerCase(); if(s.includes('cancel'))return 'cancelado'; if(s.includes('ativ'))return 'ativo'; return s||'ativo'; };
+const normMetodo = m => String(m||'').toLowerCase().includes('pix') ? 'pix' : 'cartao';
 
 function totais(){
   return HISTORICO.reduce((t,d)=>{
@@ -238,7 +267,85 @@ function deltaHTML(m,delta){
   return delta>0 ? `<span class="up">▲ +${val}</span>` : `<span class="down">▼ -${val}</span>`;
 }
 
-/* ===== Cards (resumo de hoje) ===== */
+/* ===== Carregamento: Supabase (real) ou DEMO ===== */
+function usarDemo(){
+  modoDemo=true;
+  HISTORICO=[...DEMO.historico]; USUARIOS=[...DEMO.usuarios];
+  ASSINATURAS=[...DEMO.assinaturas]; PAGAMENTOS=[...DEMO.pagamentos];
+  const b=document.getElementById('bannerModo');
+  b.className='banner demo';
+  b.innerHTML='⚠️ <b>MODO DEMONSTRAÇÃO:</b> os dados abaixo são <b>FICTÍCIOS</b> (exemplos criados neste arquivo — não existem em banco nenhum e não são do Supabase). Para ver os dados reais, configure <code>CONFIG_SUPABASE</code> no início do &lt;script&gt; com sua URL, chave anon e o nome das tabelas do seu site/app.';
+}
+
+async function mapaPorDia(sb,tabela){
+  const {data,error}=await sb.from(tabela).select('*');
+  if(error||!data) return {};
+  const m={};
+  data.forEach(r=>{ const d=iso(r.created_at||r.data||r.timestamp||r.data_visita); if(d) m[d]=(m[d]||0)+1; });
+  return m;
+}
+
+function construirHistorico(mSite,mApp,mDl){
+  const datas=new Set([hojeIso(), ...Object.keys(mSite), ...Object.keys(mApp), ...Object.keys(mDl)]);
+  USUARIOS.forEach(u=>u.cadastro&&datas.add(u.cadastro));
+  PAGAMENTOS.forEach(p=>p.data&&datas.add(p.data));
+  ASSINATURAS.forEach(a=>a.inicio&&datas.add(a.inicio));
+  return [...datas].filter(Boolean).sort().slice(-30).map(d=>{
+    const pags=PAGAMENTOS.filter(p=>p.data===d&&p.status==='aprovado');
+    return {
+      data:d,
+      visitasSite:mSite[d]||0, visitasApp:mApp[d]||0, downloads:mDl[d]||0,
+      usuarios:USUARIOS.filter(u=>u.cadastro===d).length,
+      assinaturas:ASSINATURAS.filter(a=>a.inicio===d).length,
+      receita:pags.reduce((s,p)=>s+p.valor,0),
+      pix:pags.filter(p=>p.metodo==='pix').length,
+      cartao:pags.filter(p=>p.metodo==='cartao').length,
+    };
+  });
+}
+
+async function carregarDados(){
+  if(!CONFIG_SUPABASE.url || !CONFIG_SUPABASE.anonKey || !window.supabase){ usarDemo(); return; }
+  try{
+    const sb=window.supabase.createClient(CONFIG_SUPABASE.url, CONFIG_SUPABASE.anonKey);
+    const t=CONFIG_SUPABASE.tabelas;
+
+    try{ const {data}=await sb.from(t.usuarios).select('*');
+      if(data) USUARIOS=data.map(u=>({email:u.email||u.usuario||u.user_email||'—', cadastro:iso(u.data_cadastro||u.created_at||u.criado_em||u.data), status:normStatus(u.status)})).filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
+    }catch(e){}
+
+    try{ const {data}=await sb.from(t.pagamentos).select('*');
+      if(data) PAGAMENTOS=data.map(p=>({data:iso(p.data||p.created_at), usuario:p.usuario||p.email||'—', valor:Number(p.valor||p.amount||0), metodo:normMetodo(p.metodo||p.payment_method||p.forma), status:String(p.status||'').toLowerCase().includes('recus')?'recusado':'aprovado'})).filter(p=>p.data);
+    }catch(e){}
+
+    try{ const {data}=await sb.from(t.assinaturas).select('*');
+      if(data) ASSINATURAS=data.map(a=>({usuario:a.usuario||a.email||'—', inicio:iso(a.inicio||a.created_at||a.data_inicio), plano:a.plano||'Mensal', status:normStatus(a.status)})).filter(a=>a.inicio);
+    }catch(e){}
+
+    // Se não houver tabela de assinaturas, deriva pela 1ª compra de cada usuário
+    if(!ASSINATURAS.length && PAGAMENTOS.length){
+      const vistos=new Set();
+      ASSINATURAS=[...PAGAMENTOS].filter(p=>p.status==='aprovado').sort((a,b)=>a.data.localeCompare(b.data))
+        .filter(p=>!vistos.has(p.usuario)&&vistos.add(p.usuario))
+        .map(p=>({usuario:p.usuario, inicio:p.data, plano:'Mensal', status:(USUARIOS.find(u=>u.email===p.usuario)||{}).status||'ativo'}));
+    }
+
+    const mSite=await mapaPorDia(sb,t.visitasSite).catch(()=>({}));
+    const mApp =await mapaPorDia(sb,t.visitasApp ).catch(()=>({}));
+    const mDl  =await mapaPorDia(sb,t.downloads  ).catch(()=>({}));
+    HISTORICO=construirHistorico(mSite,mApp,mDl);
+
+    modoDemo=false;
+    const b=document.getElementById('bannerModo');
+    b.className='banner real';
+    b.innerHTML='✅ <b>Conectado ao Supabase</b> — exibindo dados reais das tabelas <code>'+Object.values(t).join('</code>, <code>')+'</code>.';
+  }catch(e){
+    usarDemo();
+    showToast('⚠️ Falha ao conectar no Supabase — usando dados de exemplo');
+  }
+}
+
+/* ===== Cards ===== */
 function renderCards(){
   const hoje=ultimo(), t=totais();
   const ativos=ASSINATURAS.filter(a=>a.status==='ativo').length;
@@ -259,15 +366,15 @@ function renderCards(){
 
 /* ===== Tabela geral ===== */
 function renderTabelaGeral(){
-  const dias=[...HISTORICO].reverse(), t=totais(), hojeIso=ultimo().data;
+  const dias=[...HISTORICO].reverse(), t=totais(), hojeIsoD=ultimo().data;
   document.getElementById('tabelaGeral').innerHTML = `
     <thead><tr>
       <th>Data</th><th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>
       <th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th>
     </tr></thead>
     <tbody>${dias.map(d=>`
-      <tr data-dia="${d.data}" class="${d.data===hojeIso?'row-hoje':''}">
-        <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hojeIso?' <span class="badge">HOJE</span>':''}</td>
+      <tr data-dia="${d.data}" class="${d.data===hojeIsoD?'row-hoje':''}">
+        <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hojeIsoD?' <span class="badge">HOJE</span>':''}</td>
         <td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>
         <td>${d.usuarios}</td><td>${d.assinaturas}</td>
         <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
@@ -279,7 +386,7 @@ function renderTabelaGeral(){
     </tr></tfoot>`;
 }
 
-/* ===== Gráficos ===== */
+/* ===== Gráfico geral ===== */
 Chart.defaults.color='#9aa0b5';
 Chart.defaults.font.family="'Inter',sans-serif";
 Chart.defaults.borderColor='rgba(255,255,255,.06)';
@@ -297,58 +404,24 @@ function renderChartGeral(){
       {type:'line',label:'Receita (R$)', data:HISTORICO.map(d=>d.receita), borderColor:'#4ade80', backgroundColor:'#4ade80', yAxisID:'y1', tension:.35, pointRadius:3},
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
-      scales:{
-        y:{beginAtZero:true, ticks:{precision:0}},
-        y1:{beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>'R$ '+v}}
-      },
-      plugins:{
-        legend:{labels:{usePointStyle:true, boxWidth:7, boxHeight:7}},
+      scales:{ y:{beginAtZero:true, ticks:{precision:0}},
+               y1:{beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>'R$ '+v}} },
+      plugins:{ legend:{labels:{usePointStyle:true, boxWidth:7, boxHeight:7}},
         tooltip:{backgroundColor:'#2a2b4d', borderColor:'#343560', borderWidth:1, padding:10,
-          callbacks:{label:c=> c.dataset.type==='line' ? ` ${c.dataset.label}: ${fmtBRL(c.parsed.y)}` : ` ${c.dataset.label}: ${c.parsed.y}`}}
-      }
+          callbacks:{label:c=> c.dataset.type==='line' ? ` ${c.dataset.label}: ${fmtBRL(c.parsed.y)}` : ` ${c.dataset.label}: ${c.parsed.y}`}} }
     }
   });
 }
 
 /* ===== Seções extras dos modais ===== */
-function secaoUsuarios(){
-  return `<div class="extra"><h4>👥 Usuários Recentes</h4><div class="table-wrap"><table>
-    <thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead>
-    <tbody>${[...USUARIOS].reverse().map(u=>`
-      <tr class="no-click">
-        <td>${u.email}</td>
-        <td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td>
-        <td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td>
-      </tr>`).join('')}
-    </tbody></table></div></div>`;
+function tabelaExtra(titulo, cabecalho, linhas){
+  if(!linhas.length) return '';
+  return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table>
+    <thead><tr>${cabecalho.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${linhas.join('')}</tbody></table></div></div>`;
 }
-
-function secaoAssinaturas(){
-  return `<div class="extra"><h4>💎 Assinaturas</h4><div class="table-wrap"><table>
-    <thead><tr><th>Usuário</th><th>Início</th><th>Plano</th><th>Status</th></tr></thead>
-    <tbody>${[...ASSINATURAS].reverse().map(a=>`
-      <tr class="no-click">
-        <td>${a.usuario}</td>
-        <td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td>
-        <td>${a.plano}</td>
-        <td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td>
-      </tr>`).join('')}
-    </tbody></table></div></div>`;
-}
-
-function secaoPagamentos(){
-  return `<div class="extra"><h4>💵 Últimos Pagamentos</h4><div class="table-wrap"><table>
-    <thead><tr><th>Data</th><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
-    <tbody>${[...PAGAMENTOS].reverse().map(p=>`
-      <tr class="no-click">
-        <td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td>
-        <td>${p.usuario}</td>
-        <td class="td-money">${fmtBRL(p.valor)}</td>
-        <td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td>
-        <td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td>
-      </tr>`).join('')}
-    </tbody></table></div></div>`;
-}
+const linhaUsuario = u => `<tr class="no-click"><td>${u.email}</td><td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`;
+const linhaPagamento = p => `<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td></tr>`;
 
 /* ===== Modais ===== */
 const backdrop=document.getElementById('modalBackdrop');
@@ -369,9 +442,9 @@ function openMetricModal(id){
   const dias=[...HISTORICO].reverse();
 
   let extra='';
-  if(id==='usuarios')    extra=secaoUsuarios();
-  if(id==='assinaturas') extra=secaoAssinaturas();
-  if(id==='receita')     extra=secaoPagamentos();
+  if(id==='usuarios')    extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'], [...USUARIOS].reverse().map(linhaUsuario));
+  if(id==='assinaturas') extra=tabelaExtra('💎 Assinaturas',['Usuário','Início','Plano','Status'], [...ASSINATURAS].reverse().map(a=>`<tr class="no-click"><td>${a.usuario}</td><td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td><td>${a.plano}</td><td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`));
+  if(id==='receita')     extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'], [...PAGAMENTOS].reverse().map(linhaPagamento));
 
   abrirModal(`${m.icone} Histórico Diário — ${m.titulo}`, `
     <div class="chips">
@@ -385,11 +458,10 @@ function openMetricModal(id){
       <thead><tr><th>Data</th><th>${m.titulo}</th><th>vs. dia anterior</th></tr></thead>
       <tbody>${dias.map(d=>{
         const idx=HISTORICO.indexOf(d), prev=HISTORICO[idx-1];
-        const delta=prev ? d[id]-prev[id] : null;
         return `<tr class="no-click">
           <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
           <td style="color:${m.cor};font-weight:700">${fmtVal(m,d[id])}</td>
-          <td>${deltaHTML(m,delta)}</td>
+          <td>${deltaHTML(m, prev ? d[id]-prev[id] : null)}</td>
         </tr>`;
       }).join('')}</tbody>
       <tfoot><tr><td>TOTAL</td><td style="color:${m.cor}">${fmtVal(m,t[id])}</td><td></td></tr></tfoot>
@@ -406,23 +478,17 @@ function openMetricModal(id){
   });
 }
 
-function openDiaModal(iso){
-  const d=HISTORICO.find(x=>x.data===iso);
-  const regsDoDia=USUARIOS.filter(u=>u.cadastro===iso);
-  const pagsDoDia=PAGAMENTOS.filter(p=>p.data===iso);
-  abrirModal(`📅 ${fmtDataLonga(iso)}`, `
+function openDiaModal(isoD){
+  const d=HISTORICO.find(x=>x.data===isoD);
+  const regs=USUARIOS.filter(u=>u.cadastro===isoD);
+  const pags=PAGAMENTOS.filter(p=>p.data===isoD);
+  abrirModal(`📅 ${fmtDataLonga(isoD)}`, `
     <div class="tiles">${METRICAS.map(m=>`
       <div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${fmtVal(m,d[m.id])}</b></div>`).join('')}
     </div>
     ${d.receita>0 ? `<p class="pag-info">💳 Pagamentos do dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>` : `<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento neste dia.</p>`}
-    ${regsDoDia.length?`<div class="extra"><h4>👥 Cadastros do dia</h4><div class="table-wrap"><table>
-      <thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead>
-      <tbody>${regsDoDia.map(u=>`<tr class="no-click"><td>${u.email}</td><td>${fmtData(u.cadastro)}</td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`).join('')}</tbody>
-    </table></div></div>`:''}
-    ${pagsDoDia.length?`<div class="extra"><h4>💵 Pagamentos do dia</h4><div class="table-wrap"><table>
-      <thead><tr><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
-      <tbody>${pagsDoDia.map(p=>`<tr class="no-click"><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">● Aprovado</span></td></tr>`).join('')}</tbody>
-    </table></div></div>`:''}`);
+    ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'], regs.map(linhaUsuario))}
+    ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'], pags.map(p=>`<tr class="no-click"><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td></tr>`))}`);
 }
 
 /* ===== Eventos ===== */
@@ -436,15 +502,13 @@ document.getElementById('tabelaGeral').addEventListener('click',e=>{
   const row=e.target.closest('tr[data-dia]'); if(row) openDiaModal(row.dataset.dia);
 });
 
-/* ===== Atualizar (apre recarrega — não inventa dados) ===== */
 const btn=document.getElementById('btnAtualizar');
-btn.addEventListener('click',()=>{
+btn.addEventListener('click',async ()=>{
   btn.disabled=true; btn.textContent='🔄 Carregando...';
-  setTimeout(()=>{ // ➜ aqui você chama sua API/Supabase e refaz os arrays
-    renderTudo();
-    btn.disabled=false; btn.textContent='🔄 Atualizar Dados';
-    showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-  },900);
+  await carregarDados();
+  renderTudo();
+  btn.disabled=false; btn.textContent='🔄 Atualizar Dados';
+  showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
 });
 
 let toastTimer=null;
@@ -457,7 +521,10 @@ function showToast(msg){
 /* ===== Init ===== */
 function renderTudo(){ renderCards(); renderTabelaGeral(); renderChartGeral(); }
 document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-renderTudo();
+(async function init(){
+  await carregarDados();
+  renderTudo();
+})();
 </script>
 </body>
 </html>
