@@ -6,45 +6,31 @@
 <title>Dashboard Admin - Kayla</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#171828; --card:#232441; --card2:#20213e; --border:#343560;
-  --purple:#8b7cf7; --purple2:#7c6ff0; --text:#e8eaf3; --muted:#9aa0b5;
+  --purple:#8b7cf7; --purple2:#7c5cfc; --text:#e8eaf3; --muted:#9aa0b5;
   --green:#4ade80; --red:#f87171; --amber:#fbbf24;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;
-  background:radial-gradient(1200px 500px at 80% -10%, rgba(124,111,240,.12), transparent 60%),
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;color:var(--text);min-height:100vh;
+  background:radial-gradient(1200px 500px at 80% -10%, rgba(124,92,252,.12), transparent 60%),
              radial-gradient(900px 400px at 10% 110%, rgba(74,222,128,.06), transparent 60%), var(--bg);}
+/* ===== LOGIN ===== */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-card{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:32px 28px;width:min(480px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.login-card{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:36px 30px;width:min(420px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 .login-logo{font-size:2.4rem;text-align:center}
-.login-card h2{text-align:center;font-size:1.25rem;font-weight:800}
+.login-card h2{text-align:center;font-size:1.3rem;font-weight:800;color:var(--purple2)}
 .login-sub{text-align:center;color:var(--muted);font-size:.8rem;margin-top:-8px}
-.login-card label{display:flex;flex-direction:column;gap:6px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.login-card input{background:#191a30;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.9rem;padding:11px 12px;outline:none;transition:border-color .15s}
+.login-card input{background:#191a30;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.95rem;padding:13px 14px;outline:none;transition:border-color .15s}
 .login-card input:focus{border-color:var(--purple)}
-.btn{background:linear-gradient(135deg,#7c6ff0,#9a8bff);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;padding:11px 20px;border-radius:10px;box-shadow:0 4px 16px rgba(124,111,240,.35);transition:transform .15s, box-shadow .15s, opacity .15s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,111,240,.5)}
+.btn{background:linear-gradient(135deg,#7c5cfc,#9a8bff);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:.85rem;padding:12px 20px;border-radius:10px;box-shadow:0 4px 16px rgba(124,92,252,.35);transition:transform .15s, opacity .15s}
+.btn:hover{transform:translateY(-2px)}
 .btn:disabled{opacity:.6;cursor:wait;transform:none}
 .btn-full{width:100%}
-.btn-mini{padding:7px 14px;font-size:.72rem;box-shadow:none}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none}
-.btn-ghost:hover{border-color:var(--purple);color:var(--text)}
-.login-erro{color:var(--red);font-size:.76rem;text-align:center;line-height:1.5;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);padding:10px;border-radius:8px}
-.login-erro:empty{display:none}
-.login-help{font-size:.74rem;color:var(--muted);line-height:1.7;background:rgba(139,124,247,.05);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
-.login-help summary{cursor:pointer;color:var(--purple);font-weight:700;margin-bottom:8px}
-.login-help ol{padding-left:18px;margin-top:4px}
-.login-help li{margin:4px 0}
-.login-help b{color:var(--text)}
-.login-help code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px;font-size:.7rem}
-.login-status{font-size:.72rem;padding:8px 12px;border-radius:8px;text-align:center;line-height:1.5}
-.login-status.checking{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4);color:var(--amber)}
-.login-status.ok{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);color:var(--green)}
-.login-status.err{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);color:var(--red)}
-.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.login-erro{color:var(--red);font-size:.78rem;text-align:center;min-height:1.2em;line-height:1.5}
+.login-note{color:var(--muted);font-size:.7rem;text-align:center;line-height:1.6}
+/* ===== DASHBOARD ===== */
 header{background:linear-gradient(90deg,#20213c,#26274a);border-bottom:2px solid var(--purple2);padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .header-brand{display:flex;align-items:center;gap:12px}
 .header-brand .logo{font-size:1.6rem}
@@ -52,13 +38,12 @@ header h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 header p{color:var(--muted);font-size:.8rem;margin-top:2px}
 .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .header-date{color:var(--muted);font-size:.78rem;background:rgba(139,124,247,.1);border:1px solid rgba(139,124,247,.35);padding:7px 14px;border-radius:999px;text-transform:capitalize}
+.btn-sair{background:var(--red);box-shadow:none}
 main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .hint{color:var(--muted);font-size:.74rem}
-.banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.7}
-.banner.demo{color:var(--amber);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4)}
-.banner.real{color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
-.banner code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.72rem}
+.banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.7;color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
+.banner.erro{color:var(--red);background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3)}
 .section-title{font-size:.95rem;font-weight:800;letter-spacing:.02em;margin:26px 0 14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
@@ -68,6 +53,7 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .card-top .ico{font-size:1rem}
 .card-top h3{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#c7cbe0;flex:1}
 .badge{background:rgba(139,124,247,.16);color:#c3baff;border:1px solid rgba(139,124,247,.45);font-size:.58rem;font-weight:800;letter-spacing:.1em;padding:3px 8px;border-radius:999px}
+.badge.total{background:rgba(74,222,128,.12);color:var(--green);border-color:rgba(74,222,128,.4)}
 .card-value{font-size:2.3rem;font-weight:800;letter-spacing:-.03em;line-height:1}
 .spark{width:100%;height:40px;opacity:.95}
 .card-total{color:var(--green);font-size:.76rem}
@@ -100,18 +86,12 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
 .modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(820px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.modal-sm{width:min(600px,100%)}
 .modal-backdrop.open .modal{transform:none}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card2);z-index:2}
 .modal-head h3{font-size:1rem;font-weight:800}
 .btn-close{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:.9rem;transition:all .15s;flex-shrink:0}
 .btn-close:hover{color:#fff;border-color:var(--purple);background:rgba(139,124,247,.15)}
 .modal-body{padding:22px;display:flex;flex-direction:column;gap:22px}
-.guia{display:flex;flex-direction:column;gap:14px;font-size:.82rem;line-height:1.7;color:#c7cbe0}
-.guia h4{color:var(--purple);font-size:.85rem;margin-bottom:4px}
-.guia .passo{background:#2a2b4d;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
-.guia code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:6px;font-size:.72rem;color:var(--green)}
-.guia pre{background:#191a30;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.7rem;overflow-x:auto;color:var(--green);margin-top:8px;line-height:1.5}
 .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .chip{background:#2a2b4d;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .chip span{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
@@ -122,60 +102,24 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .tile span{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
 .tile b{font-size:1.25rem;font-weight:800}
 .extra h4{font-size:.8rem;margin-bottom:10px;color:#c7cbe0;font-weight:800}
-.pag-info{color:var(--green);font-size:.8rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);padding:10px 14px;border-radius:10px}
-.cfg-help{font-size:.78rem;color:var(--muted);line-height:1.7;background:rgba(139,124,247,.07);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
-.cfg-help b{color:var(--text)}
-.modal-body label{display:flex;flex-direction:column;gap:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.modal-body input{background:#191a30;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.85rem;padding:10px 12px;outline:none;transition:border-color .15s}
-.modal-body input:focus{border-color:var(--purple)}
-details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:700;margin:4px 0 10px}
-.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.cfg-erro{color:var(--red);font-size:.78rem;min-height:1em;line-height:1.5}
+.pag-info{font-size:.8rem;background:rgba(154,160,181,.06);border:1px solid rgba(154,160,181,.3);color:var(--muted);padding:10px 14px;border-radius:10px;line-height:1.6}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(90px);background:#2a2b4d;border:1px solid var(--purple);color:var(--text);padding:11px 20px;border-radius:999px;font-size:.8rem;font-weight:700;transition:transform .35s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .toast.show{transform:translateX(-50%) translateY(0)}
-.dev-mode{background:rgba(251,191,36,.08);border:1px dashed rgba(251,191,36,.5);border-radius:10px;padding:12px;margin-top:8px}
-.dev-mode summary{color:var(--amber)}
-@media(max-width:640px){header{padding:16px 18px}main{padding:18px 16px 50px}.card-value{font-size:1.9rem}.chart-box{height:240px}.cfg-grid{grid-template-columns:1fr}}
+@media(max-width:640px){header{padding:16px 18px}main{padding:18px 16px 50px}.card-value{font-size:1.9rem}.chart-box{height:240px}}
 </style>
 </head>
 <body>
 
-<!-- ═══════════ LOGIN ═══════════ -->
+<!-- ═══════════ LOGIN (igual ao antigo: senha validada no servidor) ═══════════ -->
 <div class="login-wrap" id="telaLogin">
   <form class="login-card" id="formLogin">
     <div class="login-logo">🔐</div>
     <h2>Dashboard Admin</h2>
     <p class="login-sub">Kayla - Painel Administrativo</p>
-
-    <div class="login-status checking" id="loginStatus">⏳ Verificando conexão com Supabase...</div>
-
-    <label>E-mail<input id="inpEmail" type="email" autocomplete="username" required placeholder="admin@kayla.app"/></label>
-    <label>Senha<input id="inpSenha" type="password" autocomplete="current-password" required placeholder="••••••••"/></label>
-
+    <input id="inpSenha" type="password" autocomplete="current-password" placeholder="Senha de administrador"/>
     <button class="btn btn-full" id="btnLogin" type="submit">Entrar</button>
     <p class="login-erro" id="loginErro"></p>
-
-    <div class="btn-row">
-      <button type="button" class="btn btn-ghost btn-mini" id="btnGuiaLogin">📖 Guia do Supabase</button>
-      <button type="button" class="btn btn-ghost btn-mini" id="btnConfigLogin">⚙️ Configurar conexão</button>
-    </div>
-
-    <details class="login-help">
-      <summary>❓ Como criar o usuário de login (passo a passo)</summary>
-      <ol>
-        <li>No <b>Supabase</b>, menu lateral: <b>Authentication</b></li>
-        <li><b>Users</b> → <b>Add user</b></li>
-        <li>Digite o <b>e-mail</b> e a <b>senha</b> (mín. 6 caracteres)</li>
-        <li>✅ Marque <b>"Auto Confirm User"</b> (senão o login falha!)</li>
-        <li><b>Create user</b> — pronto, use esse e-mail/senha aqui</li>
-      </ol>
-    </details>
-
-    <details class="login-help dev-mode">
-      <summary>🔧 Modo desenvolvedor (sem login, só para testar)</summary>
-      <p>Para ver o dashboard sem configurar o login agora:</p>
-      <button type="button" class="btn btn-ghost btn-mini" id="btnDevMode" style="margin-top:8px">🚀 Entrar sem login (modo teste)</button>
-    </details>
+    <p class="login-note">A senha é verificada no servidor (Edge Function <b>validar-admin</b> do Supabase) — ela não fica salva neste arquivo.</p>
   </form>
 </div>
 
@@ -188,19 +132,17 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
     </div>
     <div class="header-right">
       <span class="header-date" id="headerDate"></span>
-      <button class="btn btn-ghost btn-mini" id="btnSair">🚪 Sair</button>
+      <button class="btn btn-sair" id="btnSair" style="padding:8px 16px;font-size:.75rem">🚪 Sair</button>
     </div>
   </header>
 
   <main>
     <div class="toolbar">
       <button class="btn" id="btnAtualizar">🔄 Atualizar Dados</button>
-      <button class="btn btn-ghost" id="btnConfig">⚙️ Conexão</button>
-      <button class="btn btn-ghost" id="btnGuia">📖 Guia do Supabase</button>
-      <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia</span>
+      <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia · atualização automática a cada 30s</span>
     </div>
 
-    <div class="banner demo" id="bannerModo">⏳ Carregando...</div>
+    <div class="banner" id="bannerModo" hidden></div>
 
     <h2 class="section-title">☀️ Resumo de Hoje</h2>
     <section class="cards" id="cards"></section>
@@ -213,7 +155,7 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
   </main>
 </div>
 
-<!-- Modal histórico -->
+<!-- Modal histórico/detalhes -->
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-head"><h3 id="modalTitle"></h3><button class="btn-close" id="btnFechar" aria-label="Fechar">✕</button></div>
@@ -221,525 +163,21 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
   </div>
 </div>
 
-<!-- Modal GUIA DO SUPABASE -->
-<div class="modal-backdrop" id="guiaBackdrop">
-  <div class="modal modal-sm" role="dialog" aria-modal="true">
-    <div class="modal-head"><h3>📖 Onde encontrar cada informação no Supabase</h3><button class="btn-close" id="guiaFechar" aria-label="Fechar">✕</button></div>
-    <div class="modal-body"><div class="guia">
-      <div class="passo"><h4>1️⃣ URL e chave (anon/public)</h4>
-        Menu lateral → <b>Settings</b> (engrenagem) → <b>API</b>.<br>
-        • <b>Project URL</b> = <code>https://SEUPROJETO.supabase.co</code><br>
-        • <b>API Keys</b> = copie a chave <code>sb_publishable_…</code> (nova) ou <code>anon/public</code> (eyJ…).<br>
-        Cole as duas em <b>⚙️ Configurar conexão</b>.
-      </div>
-      <div class="passo"><h4>2️⃣ Nomes das tabelas (dados do site/app)</h4>
-        Menu lateral → <b>Table Editor</b> (ícone de tabela). A lista à esquerda mostra os nomes reais
-        (ex.: <code>usuarios</code>, <code>pagamentos</code>, <code>assinaturas</code>, <code>visitas_app</code>…).<br>
-        O painel descobre sozinho pelas colunas, mas se alguma não for achada, digite o nome exato em
-        <b>⚙️ → Sobrescrever tabelas</b>.
-      </div>
-      <div class="passo"><h4>3️⃣ Usuário de login (e-mail + senha)</h4>
-        Menu lateral → <b>Authentication</b> → <b>Users</b> → <b>Add user</b>.<br>
-        Preencha e-mail e senha e ✅ marque <b>"Auto Confirm User"</b> → <b>Create user</b>.<br>
-        A senha fica criptografada no Supabase — nunca neste arquivo.
-      </div>
-      <div class="passo"><h4>4️⃣ Tabelas existem mas vêm vazias? (RLS)</h4>
-        Se a tabela tiver <b>Row Level Security</b> ativado sem política de leitura, o painel não consegue ler.
-        No <b>SQL Editor</b>, rode para cada tabela (troque <code>sua_tabela</code>):
-<pre>alter table public.sua_tabela enable row level security;
-create policy "admin_leitura"
-  on public.sua_tabela for select
-  to authenticated using (true);</pre>
-        Assim, somente quem estiver logado no dashboard consegue ler.
-      </div>
-      <div class="passo"><h4>ℹ️ Avisos que pode ignorar</h4>
-        • <code>No Listener: tabs:outgoing.message.ready</code> → é de uma <b>extensão do navegador</b>, não do painel.<br>
-        • <code>Tracking Prevention blocked storage</code> → bloqueio de privacidade do navegador; o painel tem alternativa interna e funciona mesmo assim.
-      </div>
-    </div></div>
-  </div>
-</div>
-
-<!-- Modal configuração -->
-<div class="modal-backdrop" id="cfgBackdrop">
-  <div class="modal modal-sm" role="dialog" aria-modal="true">
-    <div class="modal-head"><h3>⚙️ Conexão com o Supabase</h3><button class="btn-close" id="cfgFechar" aria-label="Fechar">✕</button></div>
-    <div class="modal-body">
-      <p class="cfg-help">📍 Onde copiar: Supabase → <b>Settings → API</b> (veja o <b>📖 Guia</b> para tabelas, login e RLS).</p>
-      <label>URL do projeto<input id="cfgUrl" placeholder="https://xxxx.supabase.co"/></label>
-      <label>Chave anon / publishable<input id="cfgKey" placeholder="sb_publishable_… ou eyJ…"/></label>
-      <details>
-        <summary>🔧 Sobrescrever tabelas (opcional — nomes exatos do Table Editor)</summary>
-        <div class="cfg-grid">
-          <label>Usuários<input id="cfgTabUsu" placeholder="auto"/></label>
-          <label>Pagamentos<input id="cfgTabPag" placeholder="auto"/></label>
-          <label>Assinaturas<input id="cfgTabAss" placeholder="auto"/></label>
-          <label>Visitas Site<input id="cfgTabVSite" placeholder="auto"/></label>
-          <label>Visitas App<input id="cfgTabVApp" placeholder="auto"/></label>
-          <label>Downloads<input id="cfgTabDl" placeholder="auto"/></label>
-        </div>
-      </details>
-      <button class="btn" id="cfgSalvar">💾 Salvar e recarregar</button>
-      <button class="btn btn-ghost btn-mini" id="cfgRestaurar">↩️ Restaurar padrão</button>
-      <p class="cfg-erro" id="cfgErro"></p>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ CONFIGURAÇÃO ═══════════ */
-const DEFAULT_CFG={
-  url:'https://xwwklngrkvdwgiinycvt.supabase.co',
-  anonKey:'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S',
-  tabelas:{}
-};
-const CFG_STORE='kayla_dash_cfg_v3';
-const mem={};
-const store={
-  get(k){try{return localStorage.getItem(k);}catch(e){return mem[k]??null;}},
-  set(k,v){try{localStorage.setItem(k,v);}catch(e){mem[k]=v;}},
-  del(k){try{localStorage.removeItem(k);}catch(e){delete mem[k];}}
-};
-let cfg;
-try{cfg=Object.assign({},DEFAULT_CFG,JSON.parse(store.get(CFG_STORE)||'{}'));}
-catch(e){cfg={...DEFAULT_CFG};}
-cfg.tabelas=cfg.tabelas||{};
+/* ═══════════ MESMOS ENDPOINTS DO DASHBOARD ANTIGO (que funciona) ═══════════ */
+const SUPABASE_URL='https://xwwklngrkvdwgiinycvt.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4';
+const EDGE_FUNCTION_URL=SUPABASE_URL+'/functions/v1/validar-admin';
+const HDRS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
 
-let sb=null;
-let HISTORICO=[], USUARIOS=[], ASSINATURAS=[], PAGAMENTOS=[], TAB={}, TODAS_TABELAS=[];
+let STATS={}, USUARIOS=[], PAGAMENTOS=[], VISITAS_DIARIAS=null, HISTORICO=[];
 
 const METRICAS=[
-  {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',tipo:'int'},
-  {id:'visitasApp', icone:'📱',titulo:'Visitas App', cor:'#a78bfa',tipo:'int'},
-  {id:'downloads',  icone:'⬇️',titulo:'Downloads',   cor:'#38bdf8',tipo:'int'},
-  {id:'usuarios',   icone:'👥',titulo:'Usuários',    cor:'#f472b6',tipo:'int'},
-  {id:'assinaturas',icone:'💎',titulo:'Assinaturas', cor:'#22d3ee',tipo:'int'},
-  {id:'receita',    icone:'💰',titulo:'Receita',     cor:'#4ade80',tipo:'money'},
-];
-
-/* ===== Helpers ===== */
-const hojeIso=()=>new Date().toLocaleDateString('sv-SE');
-const iso=v=>v?String(v).slice(0,10):'';
-const ultimo=()=>HISTORICO[HISTORICO.length-1]||{data:hojeIso()};
-const fmtBRL=v=>(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtVal=(m,v)=>m.tipo==='money'?fmtBRL(v):(v||0);
-const fmtData=d=>{const[,m,dd]=d.split('-');return `${dd}/${m}`;};
-const fmtDataLonga=d=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-const weekday=d=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
-const nomeMetodo=m=>m==='pix'?'PIX':'Cartão';
-const pick=(r,keys)=>{for(const k of keys){if(r&&r[k]!=null&&r[k]!=='')return r[k];}return undefined;};
-function normStatus(s){s=String(s||'').toLowerCase();
-  if(s.includes('cancel')||s.includes('inativ'))return 'cancelado';
-  if(s.includes('ativ'))return 'ativo'; return s||'ativo';}
-function normPagStatus(s){s=String(s||'').toLowerCase();
-  if(s.includes('recus')||s.includes('fail')||s.includes('cancel'))return 'recusado';
-  if(s.includes('pend'))return 'pendente'; return 'aprovado';}
-const normMetodo=m=>String(m||'').toLowerCase().includes('pix')?'pix':'cartao';
-function totais(){return HISTORICO.reduce((t,d)=>{METRICAS.forEach(m=>t[m.id]=(t[m.id]||0)+d[m.id]);t.pix+=d.pix;t.cartao+=d.cartao;return t;},{pix:0,cartao:0});}
-function sparkSVG(vals,cor){
-  const w=140,h=40,p=5;
-  const max=Math.max(...vals),min=Math.min(...vals),range=Math.max(max-min,1);
-  const step=(w-2*p)/Math.max(vals.length-1,1);
-  const pts=vals.map((v,i)=>({x:p+i*step,y:h-p-((v-min)/range)*(h-2*p)}));
-  const line=pts.map(pt=>`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
-  const last=pts[pts.length-1];
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${line}" fill="none" stroke="${cor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><circle cx="${last.x}" cy="${last.y}" r="3" fill="${cor}"/></svg>`;
-}
-function deltaHTML(m,delta){
-  if(delta===null)return '<span class="mut">—</span>';
-  if(delta===0)return '<span class="mut">• 0</span>';
-  const val=m.tipo==='money'?fmtBRL(Math.abs(delta)):Math.abs(delta);
-  return delta>0?`<span class="up">▲ +${val}</span>`:`<span class="down">▼ -${val}</span>`;
-}
-function setBanner(tipo,html){const b=document.getElementById('bannerModo');b.className='banner '+tipo;b.innerHTML=html;}
-let toastTimer=null;
-function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
-function criarCliente(){
-  if(!cfg.url||!cfg.anonKey||!window.supabase)return null;
-  return window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-}
-/* CORREÇÃO DO 401: a chave vai SOMENTE em "apikey".
-   "Authorization: Bearer" recebe apenas o token JWT da sessão (quando logado). */
-async function authHeaders(){
-  const h={apikey:cfg.anonKey,Accept:'application/json'};
-  if(sb){try{const {data}=await sb.auth.getSession(); if(data&&data.session)h.Authorization='Bearer '+data.session.access_token;}catch(e){}}
-  return h;
-}
-
-/* ===== Teste de conexão (health do Auth + REST só com apikey) ===== */
-async function testarConexao(){
-  const st=document.getElementById('loginStatus');
-  if(!sb){st.className='login-status err';st.innerHTML='❌ <b>Supabase não configurado.</b><br>Clique em "⚙️ Configurar conexão".';return false;}
-  st.className='login-status checking';st.innerHTML='⏳ Testando conexão com Supabase...';
-  try{
-    const health=await fetch(cfg.url+'/auth/v1/health').catch(()=>null);
-    const rest=await fetch(cfg.url+'/rest/v1/',{headers:{apikey:cfg.anonKey,Accept:'application/json'}});
-    if(rest.ok){st.className='login-status ok';st.innerHTML='✅ <b>Supabase conectado!</b><br>Digite seu e-mail e senha abaixo.';return true;}
-    if(health&&health.ok){
-      st.className='login-status err';
-      st.innerHTML=`⚠️ O servidor respondeu, mas a <b>chave foi recusada</b> (HTTP ${rest.status}).<br>Copie a chave correta em <b>Settings → API</b> e cole em ⚙️.`;
-    }else{
-      st.className='login-status err';
-      st.innerHTML='❌ <b>Não foi possível alcançar o servidor.</b><br>Confira a URL em ⚙️ (Settings → API → Project URL).';
-    }
-    return false;
-  }catch(e){
-    st.className='login-status err';st.innerHTML='❌ <b>Não foi possível conectar</b><br>'+String(e.message||e).substring(0,100);
-    return false;
-  }
-}
-
-/* ===== Descoberta das tabelas ===== */
-async function descobrirPorOpenAPI(){
-  const resp=await fetch(cfg.url+'/rest/v1/',{headers:await authHeaders()});
-  if(!resp.ok)throw new Error('schema HTTP '+resp.status);
-  const spec=await resp.json();
-  const defs=spec.definitions||((spec.components||{}).schemas)||{};
-  const tabs=Object.keys(defs).map(k=>{
-    const nome=k.split('.').pop();
-    const cols=Object.keys((defs[k]||{}).properties||{});
-    return {nome,cols,txt:(nome+' '+cols.join(' ')).toLowerCase()};
-  }).filter(t=>!t.nome.startsWith('_'));
-  TODAS_TABELAS=tabs.map(t=>t.nome);
-  const usadas=new Set();
-  const acha=fn=>{const f=tabs.find(t=>!usadas.has(t.nome)&&fn(t));if(f)usadas.add(f.nome);return f&&f.nome;};
-  const t=cfg.tabelas;
-  return {
-    usuarios:   t.usuarios   ||acha(x=>x.cols.includes('email')||/user|usuario|profile|cadastro|cliente/.test(x.nome)),
-    assinaturas:t.assinaturas||acha(x=>x.cols.includes('key_ativacao')||x.cols.includes('dispositivos_max')||/assin|subscri|licen|ativacao/.test(x.nome)),
-    pagamentos: t.pagamentos ||acha(x=>x.cols.includes('valor')&&(/pagament|payment|venda|compra|transac|receita|financeiro|pix/.test(x.txt)||x.cols.includes('metodo'))),
-    planos:     acha(x=>/plano|plan|price|produto/.test(x.nome)),
-    visitasSite:t.visitasSite||acha(x=>/visita|acesso/.test(x.nome)&&x.nome.includes('site')),
-    visitasApp: t.visitasApp ||acha(x=>/visita|acesso/.test(x.nome)&&x.nome.includes('app')),
-    visitas:    acha(x=>/visita|acesso|track|event|metric/.test(x.nome)),
-    downloads:  t.downloads  ||acha(x=>/download/.test(x.nome)),
-  };
-}
-async function descobrirPorSondagem(){
-  const cand={
-    usuarios:['usuarios','users','profiles','cadastros','clientes'],
-    assinaturas:['assinaturas','subscriptions','licencas','assinatura','keys','ativacoes'],
-    pagamentos:['pagamentos','payments','vendas','compras','transacoes','receitas'],
-    planos:['planos','plans','produtos'],
-    visitasSite:['visitas_site','acessos_site'],
-    visitasApp:['visitas_app','acessos_app'],
-    visitas:['visitas','acessos','page_views','events'],
-    downloads:['downloads'],
-  };
-  const out={}; TODAS_TABELAS=[];
-  for(const k of Object.keys(cand)){
-    if(cfg.tabelas[k]){out[k]=cfg.tabelas[k];continue;}
-    for(const nome of cand[k]){
-      try{const {error}=await sb.from(nome).select('*').limit(1);
-        if(!error){out[k]=nome;TODAS_TABELAS.push(nome);break;}}catch(e){}
-    }
-  }
-  return out;
-}
-async function fetchAll(tabela){
-  try{const {data,error}=await sb.from(tabela).select('*');return error?[]:(data||[]);}
-  catch(e){return [];}
-}
-function contarPorDia(rows,m){rows.forEach(r=>{const d=iso(pick(r,['created_at','data','timestamp','data_visita']));if(d)m[d]=(m[d]||0)+1;});}
-function construirHistorico(mSite,mApp,mDl){
-  const datas=new Set([hojeIso(),...Object.keys(mSite),...Object.keys(mApp),...Object.keys(mDl)]);
-  USUARIOS.forEach(u=>u.cadastro&&datas.add(u.cadastro));
-  PAGAMENTOS.forEach(p=>p.data&&datas.add(p.data));
-  ASSINATURAS.forEach(a=>a.inicio&&datas.add(a.inicio));
-  return [...datas].filter(Boolean).sort().slice(-30).map(d=>{
-    const pags=PAGAMENTOS.filter(p=>p.data===d&&p.status==='aprovado');
-    return {data:d, visitasSite:mSite[d]||0, visitasApp:mApp[d]||0, downloads:mDl[d]||0,
-      usuarios:USUARIOS.filter(u=>u.cadastro===d).length,
-      assinaturas:ASSINATURAS.filter(a=>a.inicio===d).length,
-      receita:pags.reduce((s,p)=>s+(p.valor||0),0),
-      pix:pags.filter(p=>p.metodo==='pix').length,
-      cartao:pags.filter(p=>p.metodo==='cartao').length};
-  });
-}
-function usarVazio(msgHtml){
-  HISTORICO=[{data:hojeIso(),visitasSite:0,visitasApp:0,downloads:0,usuarios:0,assinaturas:0,receita:0,pix:0,cartao:0}];
-  USUARIOS=[];ASSINATURAS=[];PAGAMENTOS=[];
-  setBanner('demo',msgHtml);
-}
-async function carregarTudo(){
-  if(!sb){usarVazio('⚠️ Supabase não conectado. Configure em ⚙️ (veja 📖 Guia).');return;}
-  try{
-    try{ TAB=await descobrirPorOpenAPI(); }
-    catch(e){ TAB=await descobrirPorSondagem(); }
-    USUARIOS=[]; const idEmail={};
-    if(TAB.usuarios){
-      (await fetchAll(TAB.usuarios)).forEach(u=>{
-        const email=pick(u,['email','usuario','user_email','nome'])||'—';
-        const id=u.id||u.user_id||''; if(id)idEmail[id]=email;
-        USUARIOS.push({email, cadastro:iso(pick(u,['data_cadastro','created_at','criado_em','data'])), status:normStatus(pick(u,['status','situacao']))});
-      });
-      USUARIOS=USUARIOS.filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
-    }
-    PAGAMENTOS=[];
-    if(TAB.pagamentos){
-      PAGAMENTOS=(await fetchAll(TAB.pagamentos)).map(p=>({
-        data:iso(pick(p,['data','created_at','data_pagamento','timestamp'])),
-        usuario:pick(p,['usuario','email','user_email'])||idEmail[p.user_id]||'',
-        valor:Number(pick(p,['valor','amount','total'])||0),
-        metodo:normMetodo(pick(p,['metodo','payment_method','forma','tipo'])),
-        status:normPagStatus(pick(p,['status','situacao']))
-      })).filter(p=>p.data);
-    }
-    let PLANOS={};
-    if(TAB.planos){(await fetchAll(TAB.planos)).forEach(pl=>{PLANOS[pl.id]=pick(pl,['nome','name','titulo'])||pl.id;});}
-    ASSINATURAS=[];
-    if(TAB.assinaturas){
-      ASSINATURAS=(await fetchAll(TAB.assinaturas)).map(a=>{
-        const uid=pick(a,['user_id','usuario','email'])||'';
-        const pid=pick(a,['plano_id','plano'])||'';
-        return {usuario:idEmail[uid]||uid, inicio:iso(pick(a,['data_inicio','created_at','inicio','data'])),
-                plano:PLANOS[pid]||pid||'Mensal', status:normStatus(pick(a,['status','situacao']))};
-      }).filter(a=>a.inicio);
-    } else if(PAGAMENTOS.length){
-      const vistos=new Set();
-      ASSINATURAS=[...PAGAMENTOS].filter(p=>p.status==='aprovado').sort((a,b)=>a.data.localeCompare(b.data))
-        .filter(p=>!vistos.has(p.usuario)&&vistos.add(p.usuario))
-        .map(p=>({usuario:p.usuario, inicio:p.data, plano:'Mensal', status:(USUARIOS.find(u=>u.email===p.usuario)||{}).status||'ativo'}));
-    }
-    let mSite={},mApp={},mDl={};
-    if(TAB.visitasSite)contarPorDia(await fetchAll(TAB.visitasSite),mSite);
-    if(TAB.visitasApp) contarPorDia(await fetchAll(TAB.visitasApp),mApp);
-    if(!TAB.visitasSite&&!TAB.visitasApp&&TAB.visitas){
-      (await fetchAll(TAB.visitas)).forEach(r=>{
-        const d=iso(pick(r,['created_at','data','timestamp'])); if(!d)return;
-        const tv=String(pick(r,['tipo','origem','fonte','source','plataforma','canal'])||'').toLowerCase();
-        if(tv.includes('app'))mApp[d]=(mApp[d]||0)+1; else mSite[d]=(mSite[d]||0)+1;
-      });
-    }
-    if(TAB.downloads)contarPorDia(await fetchAll(TAB.downloads),mDl);
-    HISTORICO=construirHistorico(mSite,mApp,mDl);
-    const usadas=Object.entries(TAB).filter(([k,v])=>v&&k!=='visitas'&&k!=='planos').map(([k,v])=>`<code>${v}</code>`).join(', ');
-    setBanner('real',`✅ <b>Conectado ao Supabase</b> — somente dados reais. Tabelas: ${usadas||'nenhuma detectada — informe os nomes em ⚙️ (veja 📖 Guia, passo 2)'} ${TODAS_TABELAS.length?`· todas no banco: <span class="mut">${TODAS_TABELAS.join(', ')}</span>`:''}`);
-  }catch(e){
-    console.error('Erro ao carregar:',e);
-    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b> — veja o <b>📖 Guia do Supabase</b> (chave, tabelas e RLS).');
-  }
-}
-
-/* ===== Renderização ===== */
-function renderCards(){
-  const hoje=ultimo(), t=totais();
-  const ativos=ASSINATURAS.filter(a=>a.status==='ativo').length;
-  document.getElementById('cards').innerHTML=METRICAS.map(m=>{
-    let totalTxt;
-    if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(t.receita)}</b> · PIX: ${t.pix} | Cartão: ${t.cartao}`;
-    else if(m.id==='assinaturas') totalTxt=`Planos ativos: <b>${ativos}</b>`;
-    else                          totalTxt=`Total acumulado: <b>${t[m.id]||0}</b>`;
-    return `<article class="card" data-metric="${m.id}" tabindex="0" role="button" aria-label="Ver histórico de ${m.titulo}">
-      <div class="card-top"><span class="ico">${m.icone}</span><h3>${m.titulo}</h3><span class="badge">HOJE</span></div>
-      <div class="card-value" style="color:${m.cor}">${fmtVal(m,hoje[m.id])}</div>
-      ${sparkSVG(HISTORICO.map(d=>d[m.id]),m.cor)}
-      <div class="card-total">${totalTxt}</div>
-      <div class="card-hint">📅 ver histórico diário →</div>
-    </article>`;
-  }).join('');
-}
-function renderTabelaGeral(){
-  const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data;
-  document.getElementById('tabelaGeral').innerHTML=`
-    <thead><tr><th>Data</th><th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th><th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
-    <tbody>${dias.map(d=>`
-      <tr data-dia="${d.data}" class="${d.data===hj?'row-hoje':''}">
-        <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hj?' <span class="badge">HOJE</span>':''}</td>
-        <td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>
-        <td>${d.usuarios}</td><td>${d.assinaturas}</td>
-        <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
-      </tr>`).join('')}</tbody>
-    <tfoot><tr><td>TOTAL</td><td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td><td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
-}
-Chart.defaults.color='#9aa0b5';
-Chart.defaults.font.family="'Inter',sans-serif";
-Chart.defaults.borderColor='rgba(255,255,255,.06)';
-let chartGeral=null, modalChart=null;
-function renderChartGeral(){
-  if(chartGeral)chartGeral.destroy();
-  chartGeral=new Chart(document.getElementById('chartGeral'),{
-    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[
-      {type:'bar',label:'Visitas Site',data:HISTORICO.map(d=>d.visitasSite),backgroundColor:'#60a5fa',borderRadius:4},
-      {type:'bar',label:'Visitas App', data:HISTORICO.map(d=>d.visitasApp), backgroundColor:'#a78bfa',borderRadius:4},
-      {type:'bar',label:'Usuários',    data:HISTORICO.map(d=>d.usuarios),   backgroundColor:'#f472b6',borderRadius:4},
-      {type:'bar',label:'Assinaturas', data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4},
-      {type:'bar',label:'Downloads',   data:HISTORICO.map(d=>d.downloads),  backgroundColor:'#38bdf8',borderRadius:4},
-      {type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      scales:{y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>'R$ '+v}}},
-      plugins:{legend:{labels:{usePointStyle:true,boxWidth:7,boxHeight:7}},
-        tooltip:{backgroundColor:'#2a2b4d',borderColor:'#343560',borderWidth:1,padding:10,
-          callbacks:{label:c=>c.dataset.type==='line'?` ${c.dataset.label}: ${fmtBRL(c.parsed.y)}`:` ${c.dataset.label}: ${c.parsed.y}`}}}}
-  });
-}
-function renderTudo(){renderCards();renderTabelaGeral();renderChartGeral();}
-
-/* ===== Modais ===== */
-const backdrop=document.getElementById('modalBackdrop');
-const modalTitle=document.getElementById('modalTitle');
-const modalBody=document.getElementById('modalBody');
-function abrirModal(t,html){modalTitle.innerHTML=t;modalBody.innerHTML=html;backdrop.classList.add('open');document.body.style.overflow='hidden';}
-function fecharModal(){backdrop.classList.remove('open');document.body.style.overflow='';if(modalChart){modalChart.destroy();modalChart=null;}}
-backdrop.addEventListener('click',e=>{if(e.target===backdrop)fecharModal();});
-document.getElementById('btnFechar').addEventListener('click',fecharModal);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharModal();fecharConfig();fecharGuia();}});
-function tabelaExtra(titulo,cab,linhas){
-  if(!linhas.length)return '';
-  return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table><thead><tr>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('')}</tbody></table></div></div>`;
-}
-const linhaUsuario=u=>`<tr class="no-click"><td>${u.email}</td><td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`;
-const badgePag=p=>`<span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':p.status==='pendente'?'● Pendente':'● Recusado'}</span>`;
-const linhaPagamento=p=>`<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.usuario||'—'}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`;
-function openMetricModal(id){
-  const m=METRICAS.find(x=>x.id===id);
-  const t=totais(), hoje=ultimo();
-  const media=(t[id]||0)/HISTORICO.length;
-  const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
-  const dias=[...HISTORICO].reverse();
-  let extra='';
-  if(id==='usuarios')    extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
-  if(id==='assinaturas') extra=tabelaExtra('💎 Assinaturas',['Usuário','Início','Plano','Status'],[...ASSINATURAS].reverse().map(a=>`<tr class="no-click"><td>${a.usuario||'—'}</td><td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td><td>${a.plano}</td><td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`));
-  if(id==='receita')     extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
-  abrirModal(`${m.icone} Histórico Diário — ${m.titulo}`,`
-    <div class="chips">
-      <div class="chip"><span>Hoje</span><b style="color:${m.cor}">${fmtVal(m,hoje[id])}</b></div>
-      <div class="chip"><span>Total geral</span><b>${fmtVal(m,t[id])}</b></div>
-      <div class="chip"><span>Média / dia</span><b>${m.tipo==='money'?fmtBRL(media):media.toFixed(1)}</b></div>
-      <div class="chip"><span>Melhor dia</span><b>${fmtData(melhor.data)}</b></div>
-    </div>
-    <div class="modal-chart"><canvas id="modalChartCanvas"></canvas></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Data</th><th>${m.titulo}</th><th>vs. dia anterior</th></tr></thead>
-      <tbody>${dias.map(d=>{const i=HISTORICO.indexOf(d),prev=HISTORICO[i-1];
-        return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
-        <td style="color:${m.cor};font-weight:700">${fmtVal(m,d[id])}</td><td>${deltaHTML(m,prev?d[id]-prev[id]:null)}</td></tr>`;}).join('')}</tbody>
-      <tfoot><tr><td>TOTAL</td><td style="color:${m.cor}">${fmtVal(m,t[id])}</td><td></td></tr></tfoot>
-    </table></div>${extra}`);
-  modalChart=new Chart(document.getElementById('modalChartCanvas'),{type:'bar',
-    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[{label:m.titulo,data:HISTORICO.map(d=>d[m.id]),backgroundColor:m.cor+'b3',borderColor:m.cor,borderWidth:1,borderRadius:5}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>m.tipo==='money'?fmtBRL(c.parsed.y):' '+c.parsed.y}}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-}
-function openDiaModal(isoD){
-  const d=HISTORICO.find(x=>x.data===isoD); if(!d)return;
-  const regs=USUARIOS.filter(u=>u.cadastro===isoD);
-  const pags=PAGAMENTOS.filter(p=>p.data===isoD);
-  abrirModal(`📅 ${fmtDataLonga(isoD)}`,`
-    <div class="tiles">${METRICAS.map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${fmtVal(m,d[m.id])}</b></div>`).join('')}</div>
-    ${d.receita>0?`<p class="pag-info">💳 Pagamentos aprovados no dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>`:`<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento aprovado neste dia.</p>`}
-    ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'],regs.map(linhaUsuario))}
-    ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'],pags.map(p=>`<tr class="no-click"><td>${p.usuario||'—'}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`))}`);
-}
-document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
-document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
-document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
-
-/* ===== Guia ===== */
-const guiaBackdrop=document.getElementById('guiaBackdrop');
-function openGuia(){guiaBackdrop.classList.add('open');}
-function fecharGuia(){guiaBackdrop.classList.remove('open');}
-document.getElementById('btnGuia').addEventListener('click',openGuia);
-document.getElementById('btnGuiaLogin').addEventListener('click',openGuia);
-document.getElementById('guiaFechar').addEventListener('click',fecharGuia);
-guiaBackdrop.addEventListener('click',e=>{if(e.target===guiaBackdrop)fecharGuia();});
-
-/* ===== Config ===== */
-const cfgBackdrop=document.getElementById('cfgBackdrop');
-function openConfig(){
-  document.getElementById('cfgUrl').value=cfg.url||'';
-  document.getElementById('cfgKey').value=cfg.anonKey||'';
-  document.getElementById('cfgTabUsu').value=cfg.tabelas.usuarios||'';
-  document.getElementById('cfgTabPag').value=cfg.tabelas.pagamentos||'';
-  document.getElementById('cfgTabAss').value=cfg.tabelas.assinaturas||'';
-  document.getElementById('cfgTabVSite').value=cfg.tabelas.visitasSite||'';
-  document.getElementById('cfgTabVApp').value=cfg.tabelas.visitasApp||'';
-  document.getElementById('cfgTabDl').value=cfg.tabelas.downloads||'';
-  document.getElementById('cfgErro').textContent='';
-  cfgBackdrop.classList.add('open');
-}
-function fecharConfig(){cfgBackdrop.classList.remove('open');}
-document.getElementById('btnConfig').addEventListener('click',openConfig);
-document.getElementById('btnConfigLogin').addEventListener('click',openConfig);
-document.getElementById('cfgFechar').addEventListener('click',fecharConfig);
-cfgBackdrop.addEventListener('click',e=>{if(e.target===cfgBackdrop)fecharConfig();});
-document.getElementById('cfgSalvar').addEventListener('click',()=>{
-  const url=document.getElementById('cfgUrl').value.trim();
-  const key=document.getElementById('cfgKey').value.trim();
-  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha URL e chave (Settings → API).';return;}
-  cfg={url,anonKey:key,tabelas:{
-    usuarios:document.getElementById('cfgTabUsu').value.trim(),
-    pagamentos:document.getElementById('cfgTabPag').value.trim(),
-    assinaturas:document.getElementById('cfgTabAss').value.trim(),
-    visitasSite:document.getElementById('cfgTabVSite').value.trim(),
-    visitasApp:document.getElementById('cfgTabVApp').value.trim(),
-    downloads:document.getElementById('cfgTabDl').value.trim()}};
-  store.set(CFG_STORE,JSON.stringify(cfg));
-  location.reload();
-});
-document.getElementById('cfgRestaurar').addEventListener('click',()=>{store.del(CFG_STORE);location.reload();});
-
-/* ===== Sessão e Login ===== */
-const telaLogin=document.getElementById('telaLogin');
-const areaDashboard=document.getElementById('areaDashboard');
-function mostrarLogin(){areaDashboard.hidden=true;telaLogin.style.display='flex';}
-async function entrarDashboard(){
-  telaLogin.style.display='none'; areaDashboard.hidden=false;
-  document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-  await carregarTudo(); renderTudo();
-}
-document.getElementById('formLogin').addEventListener('submit',async e=>{
-  e.preventDefault();
-  const erro=document.getElementById('loginErro'); erro.textContent='';
-  const btn=document.getElementById('btnLogin'); btn.disabled=true; btn.textContent='Entrando...';
-  const email=document.getElementById('inpEmail').value.trim();
-  const senha=document.getElementById('inpSenha').value;
-  if(!sb){erro.textContent='⚠️ Supabase não configurado. Clique em ⚙️.';btn.disabled=false;btn.textContent='Entrar';return;}
-  try{
-    const {data,error}=await sb.auth.signInWithPassword({email,password:senha});
-    if(error){
-      const msg=String(error.message||'');
-      if(msg.toLowerCase().includes('invalid'))erro.textContent='⚠️ E-mail ou senha inválidos. Criou o usuário em Authentication → Users com "Auto Confirm User"? Veja 📖 Guia, passo 3.';
-      else erro.textContent='⚠️ '+msg;
-      btn.disabled=false; btn.textContent='Entrar'; return;
-    }
-    await entrarDashboard();
-    showToast('👋 Bem-vinda de volta, '+data.user.email+'!');
-  }catch(e){
-    erro.textContent='⚠️ Erro inesperado: '+String(e.message||e);
-    btn.disabled=false; btn.textContent='Entrar';
-  }
-});
-document.getElementById('btnDevMode').addEventListener('click',async()=>{
-  store.set('kayla_dev_mode','1');
-  await entrarDashboard();
-  showToast('🚀 Modo desenvolvedor ativo (sem autenticação)');
-});
-document.getElementById('btnSair').addEventListener('click',async()=>{
-  store.del('kayla_dev_mode');
-  if(sb){try{await sb.auth.signOut();}catch(e){}}
-  location.reload();
-});
-const btn=document.getElementById('btnAtualizar');
-btn.addEventListener('click',async()=>{
-  btn.disabled=true;btn.textContent='🔄 Carregando...';
-  await carregarTudo(); renderTudo();
-  btn.disabled=false;btn.textContent='🔄 Atualizar Dados';
-  showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
-});
-
-/* ===== Init ===== */
-(async function init(){
-  sb=criarCliente();
-  if(store.get('kayla_dev_mode')==='1'){await entrarDashboard();return;}
-  if(sb){
-    const {data:{session}}=await sb.auth.getSession();
-    if(session){await entrarDashboard();return;}
-  }
-  mostrarLogin();
-  await testarConexao();
-})();
-</script>
-</body>
-</html>
+  {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',tipo:'total'},
+  {id:'visitasApp', icone:'📱',titulo:'Visitas App', cor:'#a78bfa',tipo:'total'},
+  {id:'downloads',  icone:'⬇️',titulo:'Downloads',   cor:'#38bdf8',tipo:'total'},
+  {id:'usuarios',   icone:'👥',titulo:'Usuários',    cor:'#f472b6',tipo:'dia'},
+  {id:'assinaturas',icone:'💎',titulo:'Assinaturas', cor:'#22d3ee',tipo:'dia'},
+  {id:'receita',    icone:'💰',titulo:'Receita',     cor:'#4ade
