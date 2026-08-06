@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dashboard Kayla</title>
+<title>Dashboard Admin - Kayla</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,45 +14,50 @@
   --green:#4ade80; --red:#f87171; --amber:#fbbf24;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+body{font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;
   background:radial-gradient(1200px 500px at 80% -10%, rgba(124,111,240,.12), transparent 60%),
-             radial-gradient(900px 400px at 10% 110%, rgba(74,222,128,.06), transparent 60%),
-             var(--bg);
-}
-header{
-  background:linear-gradient(90deg,#20213c,#26274a);
-  border-bottom:2px solid var(--purple2);
-  padding:20px 32px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap;
-}
+             radial-gradient(900px 400px at 10% 110%, rgba(74,222,128,.06), transparent 60%), var(--bg);}
+/* ===== LOGIN ===== */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:32px 28px;width:min(420px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.login-logo{font-size:2.4rem;text-align:center}
+.login-card h2{text-align:center;font-size:1.25rem;font-weight:800}
+.login-sub{text-align:center;color:var(--muted);font-size:.8rem;margin-top:-8px}
+.login-card label{display:flex;flex-direction:column;gap:6px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.login-card input{background:#191a30;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.9rem;padding:11px 12px;outline:none;transition:border-color .15s}
+.login-card input:focus{border-color:var(--purple)}
+.btn{background:linear-gradient(135deg,#7c6ff0,#9a8bff);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:.82rem;padding:11px 20px;border-radius:10px;box-shadow:0 4px 16px rgba(124,111,240,.35);transition:transform .15s, box-shadow .15s, opacity .15s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,111,240,.5)}
+.btn:disabled{opacity:.6;cursor:wait;transform:none}
+.btn-full{width:100%}
+.btn-mini{padding:7px 14px;font-size:.72rem;box-shadow:none}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none}
+.btn-ghost:hover{border-color:var(--purple);color:var(--text)}
+.login-erro{color:var(--red);font-size:.76rem;min-height:1em;text-align:center}
+.login-aviso{color:var(--amber);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4);font-size:.76rem;font-weight:600;padding:10px 14px;border-radius:10px;line-height:1.6}
+.login-help{font-size:.74rem;color:var(--muted);line-height:1.7}
+.login-help summary{cursor:pointer;color:var(--purple);font-weight:700}
+.login-help ol{padding-left:18px;margin-top:8px}
+.login-help b{color:var(--text)}
+/* ===== DASHBOARD ===== */
+header{background:linear-gradient(90deg,#20213c,#26274a);border-bottom:2px solid var(--purple2);padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .header-brand{display:flex;align-items:center;gap:12px}
 .header-brand .logo{font-size:1.6rem}
 header h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
 header p{color:var(--muted);font-size:.8rem;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .header-date{color:var(--muted);font-size:.78rem;background:rgba(139,124,247,.1);border:1px solid rgba(139,124,247,.35);padding:7px 14px;border-radius:999px;text-transform:capitalize}
 main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
-.toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-.btn{
-  background:linear-gradient(135deg,#7c6ff0,#9a8bff); color:#fff; border:none; cursor:pointer;
-  font-family:inherit; font-weight:700; font-size:.82rem; padding:11px 20px; border-radius:10px;
-  box-shadow:0 4px 16px rgba(124,111,240,.35); transition:transform .15s, box-shadow .15s, opacity .15s;
-}
-.btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,111,240,.5)}
-.btn:disabled{opacity:.6;cursor:wait;transform:none}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .hint{color:var(--muted);font-size:.74rem}
-/* ===== BANNER DE MODO (DEMO / REAL) ===== */
-.banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.5}
+.banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.7;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .banner.demo{color:var(--amber);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4)}
 .banner.real{color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
+.banner code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.72rem}
 .section-title{font-size:.95rem;font-weight:800;letter-spacing:.02em;margin:26px 0 14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
-/* ===== CARDS ===== */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
-.card{
-  background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px;
-  display:flex; flex-direction:column; gap:10px; cursor:pointer; position:relative;
-  transition:transform .18s, border-color .18s, box-shadow .18s; outline:none;
-}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .18s, border-color .18s, box-shadow .18s;outline:none}
 .card:hover,.card:focus-visible{transform:translateY(-4px);border-color:var(--purple);box-shadow:0 10px 26px rgba(0,0,0,.35)}
 .card-top{display:flex;align-items:center;gap:8px}
 .card-top .ico{font-size:1rem}
@@ -64,7 +69,6 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .card-total b{font-weight:700}
 .card-hint{color:var(--muted);font-size:.7rem;transition:color .15s}
 .card:hover .card-hint{color:var(--purple)}
-/* ===== PAINEL / TABELAS ===== */
 .panel{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:20px}
 .chart-box{height:300px;position:relative}
 .table-wrap{overflow-x:auto}
@@ -82,17 +86,16 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .up{color:var(--green);font-weight:700}
 .down{color:var(--red);font-weight:700}
 .td-money{color:var(--green);font-weight:700}
-.vazio{color:var(--muted);text-align:center;padding:18px 0 !important;font-size:.78rem}
-/* ===== BADGES STATUS / MÉTODO ===== */
 .status,.metodo{font-size:.66rem;font-weight:800;padding:4px 10px;border-radius:999px;display:inline-block}
 .status.ativo,.status.aprovado{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
 .status.cancelado,.status.recusado{color:var(--red);background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35)}
+.status.pendente{color:var(--amber);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4)}
 .metodo.pix{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
 .metodo.cartao{color:#c3baff;background:rgba(139,124,247,.14);border:1px solid rgba(139,124,247,.4)}
-/* ===== MODAL ===== */
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
 .modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(820px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal-sm{width:min(560px,100%)}
 .modal-backdrop.open .modal{transform:none}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card2);z-index:2}
 .modal-head h3{font-size:1rem;font-weight:800;text-transform:capitalize}
@@ -110,250 +113,287 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .tile b{font-size:1.25rem;font-weight:800}
 .extra h4{font-size:.8rem;margin-bottom:10px;color:#c7cbe0;font-weight:800}
 .pag-info{color:var(--green);font-size:.8rem;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);padding:10px 14px;border-radius:10px}
-/* ===== TOAST ===== */
+.cfg-help{font-size:.78rem;color:var(--muted);line-height:1.7;background:rgba(139,124,247,.07);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.cfg-help b{color:var(--text)}
+.modal-body label{display:flex;flex-direction:column;gap:6px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.modal-body input{background:#191a30;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:.85rem;padding:10px 12px;outline:none;transition:border-color .15s}
+.modal-body input:focus{border-color:var(--purple)}
+details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:700;margin:4px 0 10px}
+.cfg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cfg-erro{color:var(--red);font-size:.78rem;min-height:1em}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(90px);background:#2a2b4d;border:1px solid var(--purple);color:var(--text);padding:11px 20px;border-radius:999px;font-size:.8rem;font-weight:700;transition:transform .35s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .toast.show{transform:translateX(-50%) translateY(0)}
-@media(max-width:640px){
-  header{padding:16px 18px} main{padding:18px 16px 50px}
-  .card-value{font-size:1.9rem} .chart-box{height:240px}
-}
+@media(max-width:640px){header{padding:16px 18px}main{padding:18px 16px 50px}.card-value{font-size:1.9rem}.chart-box{height:240px}.cfg-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="header-brand">
-    <span class="logo">📊</span>
-    <div>
-      <h1>Dashboard Kayla</h1>
-      <p>Painel Administrativo - Métricas e Financeiro</p>
+<!-- ═══════════ TELA DE LOGIN (senha fica no Supabase Auth, NÃO no código) ═══════════ -->
+<div class="login-wrap" id="telaLogin">
+  <form class="login-card" id="formLogin">
+    <div class="login-logo">🔐</div>
+    <h2>Dashboard Admin</h2>
+    <p class="login-sub">Kayla - Painel Administrativo</p>
+    <div class="login-aviso" id="loginAviso" hidden></div>
+    <label>E-mail<input id="inpEmail" type="email" autocomplete="username" required placeholder="admin@kayla.app"/></label>
+    <label>Senha<input id="inpSenha" type="password" autocomplete="current-password" required placeholder="••••••••"/></label>
+    <button class="btn btn-full" id="btnLogin">Entrar</button>
+    <p class="login-erro" id="loginErro"></p>
+    <button type="button" class="btn btn-ghost btn-mini" id="btnConfigLogin" style="align-self:center">⚙️ Configurar conexão</button>
+    <details class="login-help">
+      <summary>❓ Como funciona a senha (sem ficar no código)</summary>
+      <ol>
+        <li>A senha <b>não fica neste arquivo</b>: ela fica criptografada no <b>Supabase Auth</b>.</li>
+        <li>No Supabase: <b>Authentication → Users → Add user</b> → digite e-mail e senha e marque <b>auto-confirm</b>.</li>
+        <li>A URL/chave da conexão vão no botão <b>⚙️</b> — copie do dashboard antigo: abra o <b>dashboard.old.html</b> no Bloco de Notas e busque por “supabase”.</li>
+      </ol>
+    </details>
+  </form>
+</div>
+
+<!-- ═══════════ DASHBOARD (só aparece logado) ═══════════ -->
+<div id="areaDashboard" hidden>
+  <header>
+    <div class="header-brand">
+      <span class="logo">📊</span>
+      <div><h1>Dashboard Kayla</h1><p>Painel Administrativo - Métricas e Financeiro</p></div>
     </div>
-  </div>
-  <span class="header-date" id="headerDate"></span>
-</header>
+    <div class="header-right">
+      <span class="header-date" id="headerDate"></span>
+      <button class="btn btn-ghost btn-mini" id="btnSair">🚪 Sair</button>
+    </div>
+  </header>
 
-<main>
-  <div class="toolbar">
-    <button class="btn" id="btnAtualizar">🔄 Atualizar Dados</button>
-    <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia</span>
-  </div>
+  <main>
+    <div class="toolbar">
+      <button class="btn" id="btnAtualizar">🔄 Atualizar Dados</button>
+      <button class="btn btn-ghost" id="btnConfig">⚙️ Conexão</button>
+      <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia</span>
+    </div>
 
-  <div class="banner demo" id="bannerModo">⏳ Carregando...</div>
+    <div class="banner demo" id="bannerModo">⏳ Carregando...</div>
 
-  <h2 class="section-title">☀️ Resumo de Hoje</h2>
-  <section class="cards" id="cards"></section>
+    <h2 class="section-title">☀️ Resumo de Hoje</h2>
+    <section class="cards" id="cards"></section>
 
-  <h2 class="section-title">📅 Histórico Diário</h2>
-  <section class="panel">
-    <div class="chart-box"><canvas id="chartGeral"></canvas></div>
-    <div class="table-wrap"><table id="tabelaGeral"></table></div>
-  </section>
-</main>
+    <h2 class="section-title">📅 Histórico Diário</h2>
+    <section class="panel">
+      <div class="chart-box"><canvas id="chartGeral"></canvas></div>
+      <div class="table-wrap"><table id="tabelaGeral"></table></div>
+    </section>
+  </main>
+</div>
 
+<!-- Modal de histórico/detalhes -->
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal" role="dialog" aria-modal="true">
-    <div class="modal-head">
-      <h3 id="modalTitle"></h3>
-      <button class="btn-close" id="btnFechar" aria-label="Fechar">✕</button>
-    </div>
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="btn-close" id="btnFechar" aria-label="Fechar">✕</button></div>
     <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Modal de configuração do Supabase -->
+<div class="modal-backdrop" id="cfgBackdrop">
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>⚙️ Conexão com o Supabase</h3><button class="btn-close" id="cfgFechar" aria-label="Fechar">✕</button></div>
+    <div class="modal-body">
+      <p class="cfg-help">1️⃣ Abra o <b>dashboard.old.html</b> no Bloco de Notas, dê <b>Ctrl+F</b> e busque por “supabase” — copie a <b>URL</b> e a <b>chave anon</b> que estão lá.<br>
+      2️⃣ Cole abaixo e salve. Os <b>nomes das tabelas são descobertos sozinhos</b>.<br>
+      3️⃣ A <b>senha de login</b> é criada no Supabase (Authentication → Users → Add user) — nunca neste arquivo.</p>
+      <label>URL do projeto<input id="cfgUrl" placeholder="https://xxxx.supabase.co"/></label>
+      <label>Chave anon (public)<input id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIs…"/></label>
+      <details>
+        <summary>🔧 Informar tabelas manualmente (opcional)</summary>
+        <div class="cfg-grid">
+          <label>Usuários<input id="cfgTabUsu" placeholder="auto"/></label>
+          <label>Pagamentos<input id="cfgTabPag" placeholder="auto"/></label>
+          <label>Assinaturas<input id="cfgTabAss" placeholder="auto"/></label>
+          <label>Visitas Site<input id="cfgTabVSite" placeholder="auto"/></label>
+          <label>Visitas App<input id="cfgTabVApp" placeholder="auto"/></label>
+          <label>Downloads<input id="cfgTabDl" placeholder="auto"/></label>
+        </div>
+      </details>
+      <button class="btn" id="cfgSalvar">💾 Testar e salvar conexão</button>
+      <button class="btn btn-ghost btn-mini" id="cfgDesconectar">🗑️ Desconectar e limpar</button>
+      <p class="cfg-erro" id="cfgErro"></p>
+    </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═════════════════════════════════════════════════════════════
-   ⚠️ DE ONDE VÊM OS DADOS?
-   Sem configurar o Supabase abaixo, o painel entra em MODO
-   DEMONSTRAÇÃO com dados FICTÍCIOS (criados aqui no código, não
-   existem em banco nenhum — por isso você não os achou no Supabase).
-   ➜ Para ver os dados REAIS: cole sua URL + chave anon e ajuste os
-     nomes das tabelas (veja no código do seu site/app qual tabela
-     ele grava os cadastros grátis — ex.: "users"/"usuarios").
-═════════════════════════════════════════════════════════════ */
-const CONFIG_SUPABASE = {
-  url: '',      // ➜ COLE AQUI a URL do projeto (ex.: https://xxxx.supabase.co)
-  anonKey: '',  // ➜ COLE AQUI a chave "anon/public"
-  tabelas: {    // ➜ ajuste aos nomes reais das SUAS tabelas
-    usuarios:    'usuarios',
-    pagamentos:  'pagamentos',
-    assinaturas: 'assinaturas',
-    visitasSite: 'visitas_site',
-    visitasApp:  'visitas_app',
-    downloads:   'downloads',
-  },
-};
+/* ═══════════════════════════════════════════════════════════
+   AUTENTICAÇÃO VIA SUPABASE AUTH — a senha NÃO existe neste
+   arquivo; fica criptografada no Supabase. Crie o usuário admin
+   em: Authentication → Users → Add user (marque auto-confirm).
+═══════════════════════════════════════════════════════════ */
+const CFG_KEY='kayla_dash_cfg';
+let cfg; try{ cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); }catch(e){ cfg={}; }
+cfg.tabelas=cfg.tabelas||{};
 
-/* ===== Dados de EXEMPLO (usados apenas em modo demonstração) ===== */
-const DEMO = {
-  historico: [
-    {data:'2026-08-01', visitasSite:0, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
-    {data:'2026-08-02', visitasSite:1, visitasApp:4, downloads:0, usuarios:1, assinaturas:1, receita:45.00, pix:0, cartao:1},
-    {data:'2026-08-03', visitasSite:0, visitasApp:2, downloads:0, usuarios:1, assinaturas:0, receita:29.90, pix:1, cartao:0},
-    {data:'2026-08-04', visitasSite:0, visitasApp:3, downloads:0, usuarios:0, assinaturas:1, receita:45.00, pix:0, cartao:1},
-    {data:'2026-08-05', visitasSite:1, visitasApp:5, downloads:0, usuarios:1, assinaturas:0, receita:45.00, pix:0, cartao:1},
-    {data:'2026-08-06', visitasSite:0, visitasApp:4, downloads:0, usuarios:0, assinaturas:0, receita:29.90, pix:1, cartao:0},
-    {data:'2026-08-07', visitasSite:1, visitasApp:6, downloads:0, usuarios:0, assinaturas:0, receita:0,     pix:0, cartao:0},
-  ],
-  usuarios: [
-    {email:'ana.souza@gmail.com',     cadastro:'2026-08-01', status:'ativo'},
-    {email:'carlos.lima@hotmail.com', cadastro:'2026-08-02', status:'cancelado'},
-    {email:'rafael.costa@gmail.com',  cadastro:'2026-08-03', status:'cancelado'},
-    {email:'juliana.prado@gmail.com', cadastro:'2026-08-05', status:'ativo'},
-  ],
-  assinaturas: [
-    {usuario:'ana.souza@gmail.com',     inicio:'2026-08-01', plano:'Mensal', status:'ativo'},
-    {usuario:'carlos.lima@hotmail.com', inicio:'2026-08-02', plano:'Mensal', status:'cancelado'},
-    {usuario:'juliana.prado@gmail.com', inicio:'2026-08-04', plano:'Mensal', status:'ativo'},
-  ],
-  pagamentos: [
-    {data:'2026-08-01', usuario:'ana.souza@gmail.com',     valor:45.00, metodo:'cartao', status:'aprovado'},
-    {data:'2026-08-02', usuario:'carlos.lima@hotmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-    {data:'2026-08-03', usuario:'carlos.lima@hotmail.com', valor:29.90, metodo:'pix',    status:'aprovado'},
-    {data:'2026-08-04', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-    {data:'2026-08-05', usuario:'juliana.prado@gmail.com', valor:45.00, metodo:'cartao', status:'aprovado'},
-    {data:'2026-08-06', usuario:'ana.souza@gmail.com',     valor:29.90, metodo:'pix',    status:'aprovado'},
-  ],
-};
+let sb=null, conectado=false;
+let HISTORICO=[], USUARIOS=[], ASSINATURAS=[], PAGAMENTOS=[], TAB={};
 
-let HISTORICO=[], USUARIOS=[], ASSINATURAS=[], PAGAMENTOS=[], modoDemo=true;
-
-const METRICAS = [
-  {id:'visitasSite', icone:'🌐', titulo:'Visitas Site', cor:'#60a5fa', tipo:'int'},
-  {id:'visitasApp',  icone:'📱', titulo:'Visitas App',  cor:'#a78bfa', tipo:'int'},
-  {id:'downloads',   icone:'⬇️', titulo:'Downloads',    cor:'#38bdf8', tipo:'int'},
-  {id:'usuarios',    icone:'👥', titulo:'Usuários',     cor:'#f472b6', tipo:'int'},
-  {id:'assinaturas', icone:'💎', titulo:'Assinaturas',  cor:'#22d3ee', tipo:'int'},
-  {id:'receita',     icone:'💰', titulo:'Receita',      cor:'#4ade80', tipo:'money'},
+const METRICAS=[
+  {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',tipo:'int'},
+  {id:'visitasApp', icone:'📱',titulo:'Visitas App', cor:'#a78bfa',tipo:'int'},
+  {id:'downloads',  icone:'⬇️',titulo:'Downloads',   cor:'#38bdf8',tipo:'int'},
+  {id:'usuarios',   icone:'👥',titulo:'Usuários',    cor:'#f472b6',tipo:'int'},
+  {id:'assinaturas',icone:'💎',titulo:'Assinaturas', cor:'#22d3ee',tipo:'int'},
+  {id:'receita',    icone:'💰',titulo:'Receita',     cor:'#4ade80',tipo:'money'},
 ];
 
 /* ===== Helpers ===== */
-const hojeIso  = () => new Date().toLocaleDateString('sv-SE');
-const iso      = v => v ? String(v).slice(0,10) : '';
-const ultimo   = () => HISTORICO[HISTORICO.length-1];
-const fmtBRL   = v => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const fmtVal   = (m,v) => m.tipo==='money' ? fmtBRL(v) : v;
-const fmtData  = d => { const [,m,dd]=d.split('-'); return `${dd}/${m}`; };
-const fmtDataLonga = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-const weekday  = d => new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
-const nomeMetodo = m => m==='pix' ? 'PIX' : 'Cartão';
-const normStatus = s => { s=String(s||'').toLowerCase(); if(s.includes('cancel'))return 'cancelado'; if(s.includes('ativ'))return 'ativo'; return s||'ativo'; };
-const normMetodo = m => String(m||'').toLowerCase().includes('pix') ? 'pix' : 'cartao';
-
-function totais(){
-  return HISTORICO.reduce((t,d)=>{
-    METRICAS.forEach(m=>t[m.id]=(t[m.id]||0)+d[m.id]);
-    t.pix+=d.pix; t.cartao+=d.cartao; return t;
-  },{pix:0,cartao:0});
-}
-
+const hojeIso=()=>new Date().toLocaleDateString('sv-SE');
+const iso=v=>v?String(v).slice(0,10):'';
+const ultimo=()=>HISTORICO[HISTORICO.length-1]||{data:hojeIso()};
+const fmtBRL=v=>(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmtVal=(m,v)=>m.tipo==='money'?fmtBRL(v):(v||0);
+const fmtData=d=>{const[,m,dd]=d.split('-');return `${dd}/${m}`;};
+const fmtDataLonga=d=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+const weekday=d=>new Date(d+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'});
+const nomeMetodo=m=>m==='pix'?'PIX':'Cartão';
+const pick=(r,keys)=>{for(const k of keys){if(r&&r[k]!=null&&r[k]!=='')return r[k];}return undefined;};
+function normStatus(s){s=String(s||'').toLowerCase();
+  if(s.includes('cancel')||s.includes('inativ'))return 'cancelado';
+  if(s.includes('ativ'))return 'ativo'; return s||'ativo';}
+function normPagStatus(s){s=String(s||'').toLowerCase();
+  if(s.includes('recus')||s.includes('fail')||s.includes('cancel'))return 'recusado';
+  if(s.includes('pend'))return 'pendente'; return 'aprovado';}
+const normMetodo=m=>String(m||'').toLowerCase().includes('pix')?'pix':'cartao';
+function totais(){return HISTORICO.reduce((t,d)=>{METRICAS.forEach(m=>t[m.id]=(t[m.id]||0)+d[m.id]);t.pix+=d.pix;t.cartao+=d.cartao;return t;},{pix:0,cartao:0});}
 function sparkSVG(vals,cor){
   const w=140,h=40,p=5;
-  const max=Math.max(...vals), min=Math.min(...vals), range=Math.max(max-min,1);
+  const max=Math.max(...vals),min=Math.min(...vals),range=Math.max(max-min,1);
   const step=(w-2*p)/Math.max(vals.length-1,1);
-  const pts=vals.map((v,i)=>({x:p+i*step, y:h-p-((v-min)/range)*(h-2*p)}));
+  const pts=vals.map((v,i)=>({x:p+i*step,y:h-p-((v-min)/range)*(h-2*p)}));
   const line=pts.map(pt=>`${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
   const last=pts[pts.length-1];
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-    <polyline points="${line}" fill="none" stroke="${cor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
-    <circle cx="${last.x}" cy="${last.y}" r="3" fill="${cor}"/></svg>`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${line}" fill="none" stroke="${cor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><circle cx="${last.x}" cy="${last.y}" r="3" fill="${cor}"/></svg>`;
 }
-
 function deltaHTML(m,delta){
-  if(delta===null) return '<span class="mut">—</span>';
-  if(delta===0)    return '<span class="mut">• 0</span>';
-  const val = m.tipo==='money' ? fmtBRL(Math.abs(delta)) : Math.abs(delta);
-  return delta>0 ? `<span class="up">▲ +${val}</span>` : `<span class="down">▼ -${val}</span>`;
+  if(delta===null)return '<span class="mut">—</span>';
+  if(delta===0)return '<span class="mut">• 0</span>';
+  const val=m.tipo==='money'?fmtBRL(Math.abs(delta)):Math.abs(delta);
+  return delta>0?`<span class="up">▲ +${val}</span>`:`<span class="down">▼ -${val}</span>`;
+}
+function setBanner(tipo,html){const b=document.getElementById('bannerModo');b.className='banner '+tipo;b.innerHTML=html;}
+let toastTimer=null;
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
+
+/* ===== Cliente Supabase ===== */
+function criarCliente(){
+  sb=null;
+  if(cfg.url&&cfg.anonKey&&window.supabase){
+    sb=window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true}});
+  }
 }
 
-/* ===== Carregamento: Supabase (real) ou DEMO ===== */
-function usarDemo(){
-  modoDemo=true;
-  HISTORICO=[...DEMO.historico]; USUARIOS=[...DEMO.usuarios];
-  ASSINATURAS=[...DEMO.assinaturas]; PAGAMENTOS=[...DEMO.pagamentos];
-  const b=document.getElementById('bannerModo');
-  b.className='banner demo';
-  b.innerHTML='⚠️ <b>MODO DEMONSTRAÇÃO:</b> os dados abaixo são <b>FICTÍCIOS</b> (exemplos criados neste arquivo — não existem em banco nenhum e não são do Supabase). Para ver os dados reais, configure <code>CONFIG_SUPABASE</code> no início do &lt;script&gt; com sua URL, chave anon e o nome das tabelas do seu site/app.';
+/* ===== Leitura dos dados (somente leitura — quem grava é o site/app) ===== */
+async function detectar(candidatos){
+  for(const nome of candidatos){
+    const {data,error}=await sb.from(nome).select('*').limit(1);
+    if(!error) return {nome, amostra:data[0]||{}};
+  }
+  return null;
 }
-
-async function mapaPorDia(sb,tabela){
-  const {data,error}=await sb.from(tabela).select('*');
-  if(error||!data) return {};
-  const m={};
-  data.forEach(r=>{ const d=iso(r.created_at||r.data||r.timestamp||r.data_visita); if(d) m[d]=(m[d]||0)+1; });
-  return m;
-}
-
+async function fetchAll(tabela){const {data,error}=await sb.from(tabela).select('*');return error?[]:(data||[]);}
+function contarPorDia(rows,m){rows.forEach(r=>{const d=iso(pick(r,['created_at','data','timestamp','data_visita']));if(d)m[d]=(m[d]||0)+1;});}
 function construirHistorico(mSite,mApp,mDl){
-  const datas=new Set([hojeIso(), ...Object.keys(mSite), ...Object.keys(mApp), ...Object.keys(mDl)]);
+  const datas=new Set([hojeIso(),...Object.keys(mSite),...Object.keys(mApp),...Object.keys(mDl)]);
   USUARIOS.forEach(u=>u.cadastro&&datas.add(u.cadastro));
   PAGAMENTOS.forEach(p=>p.data&&datas.add(p.data));
   ASSINATURAS.forEach(a=>a.inicio&&datas.add(a.inicio));
   return [...datas].filter(Boolean).sort().slice(-30).map(d=>{
     const pags=PAGAMENTOS.filter(p=>p.data===d&&p.status==='aprovado');
-    return {
-      data:d,
-      visitasSite:mSite[d]||0, visitasApp:mApp[d]||0, downloads:mDl[d]||0,
+    return {data:d, visitasSite:mSite[d]||0, visitasApp:mApp[d]||0, downloads:mDl[d]||0,
       usuarios:USUARIOS.filter(u=>u.cadastro===d).length,
       assinaturas:ASSINATURAS.filter(a=>a.inicio===d).length,
-      receita:pags.reduce((s,p)=>s+p.valor,0),
+      receita:pags.reduce((s,p)=>s+(p.valor||0),0),
       pix:pags.filter(p=>p.metodo==='pix').length,
-      cartao:pags.filter(p=>p.metodo==='cartao').length,
-    };
+      cartao:pags.filter(p=>p.metodo==='cartao').length};
   });
 }
-
-async function carregarDados(){
-  if(!CONFIG_SUPABASE.url || !CONFIG_SUPABASE.anonKey || !window.supabase){ usarDemo(); return; }
+function usarVazio(msgHtml){
+  conectado=false;
+  HISTORICO=[{data:hojeIso(),visitasSite:0,visitasApp:0,downloads:0,usuarios:0,assinaturas:0,receita:0,pix:0,cartao:0}];
+  USUARIOS=[];ASSINATURAS=[];PAGAMENTOS=[];
+  setBanner('demo',msgHtml);
+}
+async function carregarTudo(){
+  if(!sb){usarVazio('⚠️ <b>Conexão não configurada.</b> Use ⚙️ para colar a URL e a chave anon (copie do dashboard.old.html).');return;}
   try{
-    const sb=window.supabase.createClient(CONFIG_SUPABASE.url, CONFIG_SUPABASE.anonKey);
-    const t=CONFIG_SUPABASE.tabelas;
-
-    try{ const {data}=await sb.from(t.usuarios).select('*');
-      if(data) USUARIOS=data.map(u=>({email:u.email||u.usuario||u.user_email||'—', cadastro:iso(u.data_cadastro||u.created_at||u.criado_em||u.data), status:normStatus(u.status)})).filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
-    }catch(e){}
-
-    try{ const {data}=await sb.from(t.pagamentos).select('*');
-      if(data) PAGAMENTOS=data.map(p=>({data:iso(p.data||p.created_at), usuario:p.usuario||p.email||'—', valor:Number(p.valor||p.amount||0), metodo:normMetodo(p.metodo||p.payment_method||p.forma), status:String(p.status||'').toLowerCase().includes('recus')?'recusado':'aprovado'})).filter(p=>p.data);
-    }catch(e){}
-
-    try{ const {data}=await sb.from(t.assinaturas).select('*');
-      if(data) ASSINATURAS=data.map(a=>({usuario:a.usuario||a.email||'—', inicio:iso(a.inicio||a.created_at||a.data_inicio), plano:a.plano||'Mensal', status:normStatus(a.status)})).filter(a=>a.inicio);
-    }catch(e){}
-
-    // Se não houver tabela de assinaturas, deriva pela 1ª compra de cada usuário
-    if(!ASSINATURAS.length && PAGAMENTOS.length){
+    const t=cfg.tabelas;
+    TAB={
+      usuarios:   t.usuarios   ||((await detectar(['usuarios','users','profiles','cadastros']))||{}).nome||'',
+      pagamentos: t.pagamentos ||((await detectar(['pagamentos','payments','vendas','compras']))||{}).nome||'',
+      assinaturas:t.assinaturas||((await detectar(['assinaturas','subscriptions','assinatura']))||{}).nome||'',
+      visitasSite:t.visitasSite||'', visitasApp:t.visitasApp||'',
+      downloads:  t.downloads  ||((await detectar(['downloads']))||{}).nome||'',
+    };
+    USUARIOS=[]; const idEmail={};
+    if(TAB.usuarios){
+      (await fetchAll(TAB.usuarios)).forEach(u=>{
+        const email=pick(u,['email','usuario','user_email','nome'])||'—';
+        const id=u.id||u.user_id||''; if(id)idEmail[id]=email;
+        USUARIOS.push({email, cadastro:iso(pick(u,['data_cadastro','created_at','criado_em','data'])), status:normStatus(pick(u,['status','situacao']))});
+      });
+      USUARIOS=USUARIOS.filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
+    }
+    PAGAMENTOS=[];
+    if(TAB.pagamentos){
+      PAGAMENTOS=(await fetchAll(TAB.pagamentos)).map(p=>({
+        data:iso(pick(p,['data','created_at','data_pagamento','timestamp'])),
+        usuario:pick(p,['usuario','email','user_email'])||'',
+        valor:Number(pick(p,['valor','amount','total'])||0),
+        metodo:normMetodo(pick(p,['metodo','payment_method','forma','tipo'])),
+        status:normPagStatus(pick(p,['status','situacao']))
+      })).filter(p=>p.data);
+    }
+    ASSINATURAS=[];
+    if(TAB.assinaturas){
+      ASSINATURAS=(await fetchAll(TAB.assinaturas)).map(a=>{
+        const uid=pick(a,['user_id','usuario','email'])||'';
+        return {usuario:idEmail[uid]||uid, inicio:iso(pick(a,['data_inicio','created_at','inicio','data'])),
+                plano:pick(a,['plano','nome_plano','plano_id'])||'Mensal', status:normStatus(pick(a,['status','situacao']))};
+      }).filter(a=>a.inicio);
+    } else if(PAGAMENTOS.length){
       const vistos=new Set();
       ASSINATURAS=[...PAGAMENTOS].filter(p=>p.status==='aprovado').sort((a,b)=>a.data.localeCompare(b.data))
         .filter(p=>!vistos.has(p.usuario)&&vistos.add(p.usuario))
         .map(p=>({usuario:p.usuario, inicio:p.data, plano:'Mensal', status:(USUARIOS.find(u=>u.email===p.usuario)||{}).status||'ativo'}));
     }
-
-    const mSite=await mapaPorDia(sb,t.visitasSite).catch(()=>({}));
-    const mApp =await mapaPorDia(sb,t.visitasApp ).catch(()=>({}));
-    const mDl  =await mapaPorDia(sb,t.downloads  ).catch(()=>({}));
+    let mSite={},mApp={},mDl={};
+    if(TAB.visitasSite) contarPorDia(await fetchAll(TAB.visitasSite),mSite);
+    if(TAB.visitasApp)  contarPorDia(await fetchAll(TAB.visitasApp),mApp);
+    if(!TAB.visitasSite&&!TAB.visitasApp){
+      const g=await detectar(['visitas','acessos','page_views','events']);
+      if(g){ const campo=Object.keys(g.amostra).find(k=>/tipo|origem|fonte|source|canal/i.test(k));
+        (await fetchAll(g.nome)).forEach(r=>{ const d=iso(pick(r,['created_at','data','timestamp'])); if(!d)return;
+          const tv=campo?String(r[campo]).toLowerCase():'';
+          if(tv.includes('app'))mApp[d]=(mApp[d]||0)+1; else mSite[d]=(mSite[d]||0)+1; });
+      }
+    }
+    if(TAB.downloads) contarPorDia(await fetchAll(TAB.downloads),mDl);
     HISTORICO=construirHistorico(mSite,mApp,mDl);
-
-    modoDemo=false;
-    const b=document.getElementById('bannerModo');
-    b.className='banner real';
-    b.innerHTML='✅ <b>Conectado ao Supabase</b> — exibindo dados reais das tabelas <code>'+Object.values(t).join('</code>, <code>')+'</code>.';
+    conectado=true;
+    const usadas=Object.entries(TAB).filter(([k,v])=>v).map(([k,v])=>`<code>${v}</code>`).join(', ');
+    setBanner('real',`✅ <b>Conectado ao Supabase</b> — somente dados reais do seu banco. Tabelas: ${usadas||'nenhuma encontrada (ajuste em ⚙️)'} .`);
   }catch(e){
-    usarDemo();
-    showToast('⚠️ Falha ao conectar no Supabase — usando dados de exemplo');
+    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b>. Verifique a conexão em ⚙️.');
   }
 }
 
-/* ===== Cards ===== */
+/* ===== Renderização ===== */
 function renderCards(){
   const hoje=ultimo(), t=totais();
   const ativos=ASSINATURAS.filter(a=>a.status==='ativo').length;
-  document.getElementById('cards').innerHTML = METRICAS.map(m=>{
+  document.getElementById('cards').innerHTML=METRICAS.map(m=>{
     let totalTxt;
     if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(t.receita)}</b> · PIX: ${t.pix} | Cartão: ${t.cartao}`;
     else if(m.id==='assinaturas') totalTxt=`Planos ativos: <b>${ativos}</b>`;
-    else                          totalTxt=`Total acumulado: <b>${t[m.id]}</b>`;
+    else                          totalTxt=`Total acumulado: <b>${t[m.id]||0}</b>`;
     return `<article class="card" data-metric="${m.id}" tabindex="0" role="button" aria-label="Ver histórico de ${m.titulo}">
       <div class="card-top"><span class="ico">${m.icone}</span><h3>${m.titulo}</h3><span class="badge">HOJE</span></div>
       <div class="card-value" style="color:${m.cor}">${fmtVal(m,hoje[m.id])}</div>
@@ -363,90 +403,69 @@ function renderCards(){
     </article>`;
   }).join('');
 }
-
-/* ===== Tabela geral ===== */
 function renderTabelaGeral(){
-  const dias=[...HISTORICO].reverse(), t=totais(), hojeIsoD=ultimo().data;
-  document.getElementById('tabelaGeral').innerHTML = `
-    <thead><tr>
-      <th>Data</th><th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>
-      <th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th>
-    </tr></thead>
+  const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data;
+  document.getElementById('tabelaGeral').innerHTML=`
+    <thead><tr><th>Data</th><th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th><th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
     <tbody>${dias.map(d=>`
-      <tr data-dia="${d.data}" class="${d.data===hojeIsoD?'row-hoje':''}">
-        <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hojeIsoD?' <span class="badge">HOJE</span>':''}</td>
+      <tr data-dia="${d.data}" class="${d.data===hj?'row-hoje':''}">
+        <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hj?' <span class="badge">HOJE</span>':''}</td>
         <td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>
         <td>${d.usuarios}</td><td>${d.assinaturas}</td>
         <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
-      </tr>`).join('')}
-    </tbody>
-    <tfoot><tr>
-      <td>TOTAL</td><td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td>
-      <td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td>
-    </tr></tfoot>`;
+      </tr>`).join('')}</tbody>
+    <tfoot><tr><td>TOTAL</td><td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td><td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
 }
-
-/* ===== Gráfico geral ===== */
 Chart.defaults.color='#9aa0b5';
 Chart.defaults.font.family="'Inter',sans-serif";
 Chart.defaults.borderColor='rgba(255,255,255,.06)';
 let chartGeral=null, modalChart=null;
-
 function renderChartGeral(){
-  if(chartGeral) chartGeral.destroy();
+  if(chartGeral)chartGeral.destroy();
   chartGeral=new Chart(document.getElementById('chartGeral'),{
-    data:{ labels:HISTORICO.map(d=>fmtData(d.data)), datasets:[
-      {type:'bar', label:'Visitas Site', data:HISTORICO.map(d=>d.visitasSite), backgroundColor:'#60a5fa', borderRadius:4},
-      {type:'bar', label:'Visitas App',  data:HISTORICO.map(d=>d.visitasApp),  backgroundColor:'#a78bfa', borderRadius:4},
-      {type:'bar', label:'Usuários',     data:HISTORICO.map(d=>d.usuarios),    backgroundColor:'#f472b6', borderRadius:4},
-      {type:'bar', label:'Assinaturas',  data:HISTORICO.map(d=>d.assinaturas), backgroundColor:'#22d3ee', borderRadius:4},
-      {type:'bar', label:'Downloads',    data:HISTORICO.map(d=>d.downloads),   backgroundColor:'#38bdf8', borderRadius:4},
-      {type:'line',label:'Receita (R$)', data:HISTORICO.map(d=>d.receita), borderColor:'#4ade80', backgroundColor:'#4ade80', yAxisID:'y1', tension:.35, pointRadius:3},
-    ]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      scales:{ y:{beginAtZero:true, ticks:{precision:0}},
-               y1:{beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, ticks:{callback:v=>'R$ '+v}} },
-      plugins:{ legend:{labels:{usePointStyle:true, boxWidth:7, boxHeight:7}},
-        tooltip:{backgroundColor:'#2a2b4d', borderColor:'#343560', borderWidth:1, padding:10,
-          callbacks:{label:c=> c.dataset.type==='line' ? ` ${c.dataset.label}: ${fmtBRL(c.parsed.y)}` : ` ${c.dataset.label}: ${c.parsed.y}`}} }
-    }
+    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[
+      {type:'bar',label:'Visitas Site',data:HISTORICO.map(d=>d.visitasSite),backgroundColor:'#60a5fa',borderRadius:4},
+      {type:'bar',label:'Visitas App', data:HISTORICO.map(d=>d.visitasApp), backgroundColor:'#a78bfa',borderRadius:4},
+      {type:'bar',label:'Usuários',    data:HISTORICO.map(d=>d.usuarios),   backgroundColor:'#f472b6',borderRadius:4},
+      {type:'bar',label:'Assinaturas', data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4},
+      {type:'bar',label:'Downloads',   data:HISTORICO.map(d=>d.downloads),  backgroundColor:'#38bdf8',borderRadius:4},
+      {type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>'R$ '+v}}},
+      plugins:{legend:{labels:{usePointStyle:true,boxWidth:7,boxHeight:7}},
+        tooltip:{backgroundColor:'#2a2b4d',borderColor:'#343560',borderWidth:1,padding:10,
+          callbacks:{label:c=>c.dataset.type==='line'?` ${c.dataset.label}: ${fmtBRL(c.parsed.y)}`:` ${c.dataset.label}: ${c.parsed.y}`}}}}
   });
 }
+function renderTudo(){renderCards();renderTabelaGeral();renderChartGeral();}
 
-/* ===== Seções extras dos modais ===== */
-function tabelaExtra(titulo, cabecalho, linhas){
-  if(!linhas.length) return '';
-  return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table>
-    <thead><tr>${cabecalho.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-    <tbody>${linhas.join('')}</tbody></table></div></div>`;
-}
-const linhaUsuario = u => `<tr class="no-click"><td>${u.email}</td><td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`;
-const linhaPagamento = p => `<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td></tr>`;
-
-/* ===== Modais ===== */
+/* ===== Modais de histórico ===== */
 const backdrop=document.getElementById('modalBackdrop');
 const modalTitle=document.getElementById('modalTitle');
 const modalBody=document.getElementById('modalBody');
-
-function abrirModal(titulo,html){ modalTitle.innerHTML=titulo; modalBody.innerHTML=html; backdrop.classList.add('open'); document.body.style.overflow='hidden'; }
-function fecharModal(){ backdrop.classList.remove('open'); document.body.style.overflow=''; if(modalChart){modalChart.destroy(); modalChart=null;} }
-backdrop.addEventListener('click',e=>{ if(e.target===backdrop) fecharModal(); });
+function abrirModal(t,html){modalTitle.innerHTML=t;modalBody.innerHTML=html;backdrop.classList.add('open');document.body.style.overflow='hidden';}
+function fecharModal(){backdrop.classList.remove('open');document.body.style.overflow='';if(modalChart){modalChart.destroy();modalChart=null;}}
+backdrop.addEventListener('click',e=>{if(e.target===backdrop)fecharModal();});
 document.getElementById('btnFechar').addEventListener('click',fecharModal);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharModal(); });
-
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharModal();fecharConfig();}});
+function tabelaExtra(titulo,cab,linhas){
+  if(!linhas.length)return '';
+  return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table><thead><tr>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('')}</tbody></table></div></div>`;
+}
+const linhaUsuario=u=>`<tr class="no-click"><td>${u.email}</td><td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`;
+const badgePag=p=>`<span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':p.status==='pendente'?'● Pendente':'● Recusado'}</span>`;
+const linhaPagamento=p=>`<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.usuario||'—'}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`;
 function openMetricModal(id){
   const m=METRICAS.find(x=>x.id===id);
   const t=totais(), hoje=ultimo();
-  const media=t[id]/HISTORICO.length;
+  const media=(t[id]||0)/HISTORICO.length;
   const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
   const dias=[...HISTORICO].reverse();
-
   let extra='';
-  if(id==='usuarios')    extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'], [...USUARIOS].reverse().map(linhaUsuario));
-  if(id==='assinaturas') extra=tabelaExtra('💎 Assinaturas',['Usuário','Início','Plano','Status'], [...ASSINATURAS].reverse().map(a=>`<tr class="no-click"><td>${a.usuario}</td><td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td><td>${a.plano}</td><td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`));
-  if(id==='receita')     extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'], [...PAGAMENTOS].reverse().map(linhaPagamento));
-
-  abrirModal(`${m.icone} Histórico Diário — ${m.titulo}`, `
+  if(id==='usuarios')    extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
+  if(id==='assinaturas') extra=tabelaExtra('💎 Assinaturas',['Usuário','Início','Plano','Status'],[...ASSINATURAS].reverse().map(a=>`<tr class="no-click"><td>${a.usuario}</td><td><b>${fmtData(a.inicio)}</b> <span class="mut">${weekday(a.inicio)}</span></td><td>${a.plano}</td><td><span class="status ${a.status}">${a.status==='ativo'?'● Ativo':'● Cancelado'}</span></td></tr>`));
+  if(id==='receita')     extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
+  abrirModal(`${m.icone} Histórico Diário — ${m.titulo}`,`
     <div class="chips">
       <div class="chip"><span>Hoje</span><b style="color:${m.cor}">${fmtVal(m,hoje[id])}</b></div>
       <div class="chip"><span>Total geral</span><b>${fmtVal(m,t[id])}</b></div>
@@ -456,74 +475,110 @@ function openMetricModal(id){
     <div class="modal-chart"><canvas id="modalChartCanvas"></canvas></div>
     <div class="table-wrap"><table>
       <thead><tr><th>Data</th><th>${m.titulo}</th><th>vs. dia anterior</th></tr></thead>
-      <tbody>${dias.map(d=>{
-        const idx=HISTORICO.indexOf(d), prev=HISTORICO[idx-1];
-        return `<tr class="no-click">
-          <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
-          <td style="color:${m.cor};font-weight:700">${fmtVal(m,d[id])}</td>
-          <td>${deltaHTML(m, prev ? d[id]-prev[id] : null)}</td>
-        </tr>`;
-      }).join('')}</tbody>
+      <tbody>${dias.map(d=>{const i=HISTORICO.indexOf(d),prev=HISTORICO[i-1];
+        return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
+        <td style="color:${m.cor};font-weight:700">${fmtVal(m,d[id])}</td><td>${deltaHTML(m,prev?d[id]-prev[id]:null)}</td></tr>`;}).join('')}</tbody>
       <tfoot><tr><td>TOTAL</td><td style="color:${m.cor}">${fmtVal(m,t[id])}</td><td></td></tr></tfoot>
-    </table></div>
-    ${extra}`);
-
-  modalChart=new Chart(document.getElementById('modalChartCanvas'),{
-    type:'bar',
-    data:{ labels:HISTORICO.map(d=>fmtData(d.data)),
-      datasets:[{label:m.titulo, data:HISTORICO.map(d=>d[m.id]), backgroundColor:m.cor+'b3', borderColor:m.cor, borderWidth:1, borderRadius:5}]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> m.tipo==='money'?fmtBRL(c.parsed.y):' '+c.parsed.y}}},
-      scales:{y:{beginAtZero:true, ticks:{precision:0}}}}
-  });
+    </table></div>${extra}`);
+  modalChart=new Chart(document.getElementById('modalChartCanvas'),{type:'bar',
+    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[{label:m.titulo,data:HISTORICO.map(d=>d[m.id]),backgroundColor:m.cor+'b3',borderColor:m.cor,borderWidth:1,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>m.tipo==='money'?fmtBRL(c.parsed.y):' '+c.parsed.y}}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
 }
-
 function openDiaModal(isoD){
-  const d=HISTORICO.find(x=>x.data===isoD);
+  const d=HISTORICO.find(x=>x.data===isoD); if(!d)return;
   const regs=USUARIOS.filter(u=>u.cadastro===isoD);
   const pags=PAGAMENTOS.filter(p=>p.data===isoD);
-  abrirModal(`📅 ${fmtDataLonga(isoD)}`, `
-    <div class="tiles">${METRICAS.map(m=>`
-      <div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${fmtVal(m,d[m.id])}</b></div>`).join('')}
-    </div>
-    ${d.receita>0 ? `<p class="pag-info">💳 Pagamentos do dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>` : `<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento neste dia.</p>`}
-    ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'], regs.map(linhaUsuario))}
-    ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'], pags.map(p=>`<tr class="no-click"><td>${p.usuario}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td><span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':'● Recusado'}</span></td></tr>`))}`);
+  abrirModal(`📅 ${fmtDataLonga(isoD)}`,`
+    <div class="tiles">${METRICAS.map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${fmtVal(m,d[m.id])}</b></div>`).join('')}</div>
+    ${d.receita>0?`<p class="pag-info">💳 Pagamentos aprovados no dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>`:`<p class="pag-info" style="border-color:rgba(154,160,181,.3);background:rgba(154,160,181,.06);color:var(--muted)">Nenhum pagamento aprovado neste dia.</p>`}
+    ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'],regs.map(linhaUsuario))}
+    ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'],pags.map(p=>`<tr class="no-click"><td>${p.usuario||'—'}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`))}`);
 }
+document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
+document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
+document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
 
-/* ===== Eventos ===== */
-document.getElementById('cards').addEventListener('click',e=>{
-  const card=e.target.closest('.card'); if(card) openMetricModal(card.dataset.metric);
+/* ===== Configuração ===== */
+const cfgBackdrop=document.getElementById('cfgBackdrop');
+function openConfig(){
+  document.getElementById('cfgUrl').value=cfg.url||'';
+  document.getElementById('cfgKey').value=cfg.anonKey||'';
+  document.getElementById('cfgTabUsu').value=cfg.tabelas.usuarios||'';
+  document.getElementById('cfgTabPag').value=cfg.tabelas.pagamentos||'';
+  document.getElementById('cfgTabAss').value=cfg.tabelas.assinaturas||'';
+  document.getElementById('cfgTabVSite').value=cfg.tabelas.visitasSite||'';
+  document.getElementById('cfgTabVApp').value=cfg.tabelas.visitasApp||'';
+  document.getElementById('cfgTabDl').value=cfg.tabelas.downloads||'';
+  document.getElementById('cfgErro').textContent='';
+  cfgBackdrop.classList.add('open');
+}
+function fecharConfig(){cfgBackdrop.classList.remove('open');}
+document.getElementById('btnConfig').addEventListener('click',openConfig);
+document.getElementById('btnConfigLogin').addEventListener('click',openConfig);
+document.getElementById('cfgFechar').addEventListener('click',fecharConfig);
+cfgBackdrop.addEventListener('click',e=>{if(e.target===cfgBackdrop)fecharConfig();});
+document.getElementById('cfgSalvar').addEventListener('click',()=>{
+  const url=document.getElementById('cfgUrl').value.trim();
+  const key=document.getElementById('cfgKey').value.trim();
+  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha a URL e a chave anon.';return;}
+  cfg={url,anonKey:key,tabelas:{
+    usuarios:document.getElementById('cfgTabUsu').value.trim(),
+    pagamentos:document.getElementById('cfgTabPag').value.trim(),
+    assinaturas:document.getElementById('cfgTabAss').value.trim(),
+    visitasSite:document.getElementById('cfgTabVSite').value.trim(),
+    visitasApp:document.getElementById('cfgTabVApp').value.trim(),
+    downloads:document.getElementById('cfgTabDl').value.trim()}};
+  localStorage.setItem(CFG_KEY,JSON.stringify(cfg));
+  location.reload();
 });
-document.getElementById('cards').addEventListener('keydown',e=>{
-  if(e.key==='Enter'||e.key===' '){ const card=e.target.closest('.card'); if(card){e.preventDefault(); openMetricModal(card.dataset.metric);} }
-});
-document.getElementById('tabelaGeral').addEventListener('click',e=>{
-  const row=e.target.closest('tr[data-dia]'); if(row) openDiaModal(row.dataset.dia);
-});
+document.getElementById('cfgDesconectar').addEventListener('click',()=>{localStorage.removeItem(CFG_KEY);location.reload();});
 
+/* ===== Login / Sessão ===== */
+const telaLogin=document.getElementById('telaLogin');
+const areaDashboard=document.getElementById('areaDashboard');
+function mostrarLogin(aviso){
+  areaDashboard.hidden=true; telaLogin.style.display='flex';
+  const a=document.getElementById('loginAviso');
+  if(aviso){a.hidden=false;a.innerHTML=aviso;} else a.hidden=true;
+}
+async function entrarDashboard(){
+  telaLogin.style.display='none'; areaDashboard.hidden=false;
+  document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  await carregarTudo(); renderTudo();
+}
+document.getElementById('formLogin').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const erro=document.getElementById('loginErro'); erro.textContent='';
+  const btn=document.getElementById('btnLogin'); btn.disabled=true; btn.textContent='Entrando...';
+  const {error}=await sb.auth.signInWithPassword({
+    email:document.getElementById('inpEmail').value.trim(),
+    password:document.getElementById('inpSenha').value
+  });
+  if(error){
+    erro.textContent='⚠️ '+(String(error.message).toLowerCase().includes('invalid')?'E-mail ou senha inválidos.':error.message);
+    btn.disabled=false; btn.textContent='Entrar'; return;
+  }
+  await entrarDashboard();
+  showToast('👋 Bem-vinda de volta!');
+});
+document.getElementById('btnSair').addEventListener('click',async()=>{
+  if(sb) await sb.auth.signOut();
+  location.reload();
+});
 const btn=document.getElementById('btnAtualizar');
-btn.addEventListener('click',async ()=>{
-  btn.disabled=true; btn.textContent='🔄 Carregando...';
-  await carregarDados();
-  renderTudo();
-  btn.disabled=false; btn.textContent='🔄 Atualizar Dados';
+btn.addEventListener('click',async()=>{
+  btn.disabled=true;btn.textContent='🔄 Carregando...';
+  await carregarTudo(); renderTudo();
+  btn.disabled=false;btn.textContent='🔄 Atualizar Dados';
   showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
 });
 
-let toastTimer=null;
-function showToast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
-}
-
 /* ===== Init ===== */
-function renderTudo(){ renderCards(); renderTabelaGeral(); renderChartGeral(); }
-document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 (async function init(){
-  await carregarDados();
-  renderTudo();
+  criarCliente();
+  if(!sb){ mostrarLogin('⚠️ Conexão não configurada. Clique em <b>“⚙️ Configurar conexão”</b> e cole a URL e a chave anon — copie do dashboard.old.html (Bloco de Notas → Ctrl+F → “supabase”).'); return; }
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){ await entrarDashboard(); } else { mostrarLogin(''); }
 })();
 </script>
 </body>
