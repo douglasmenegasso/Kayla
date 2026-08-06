@@ -32,7 +32,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh
 .btn-mini{padding:7px 14px;font-size:.72rem;box-shadow:none}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);box-shadow:none}
 .btn-ghost:hover{border-color:var(--purple);color:var(--text)}
-.login-erro{color:var(--red);font-size:.76rem;min-height:1em;text-align:center;line-height:1.5;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);padding:10px;border-radius:8px}
+.login-erro{color:var(--red);font-size:.76rem;text-align:center;line-height:1.5;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);padding:10px;border-radius:8px}
 .login-erro:empty{display:none}
 .login-help{font-size:.74rem;color:var(--muted);line-height:1.7;background:rgba(139,124,247,.05);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
 .login-help summary{cursor:pointer;color:var(--purple);font-weight:700;margin-bottom:8px}
@@ -44,6 +44,7 @@ body{font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh
 .login-status.checking{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4);color:var(--amber)}
 .login-status.ok{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);color:var(--green)}
 .login-status.err{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);color:var(--red)}
+.btn-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 header{background:linear-gradient(90deg,#20213c,#26274a);border-bottom:2px solid var(--purple2);padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .header-brand{display:flex;align-items:center;gap:12px}
 .header-brand .logo{font-size:1.6rem}
@@ -99,13 +100,18 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
 .modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(820px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
-.modal-sm{width:min(560px,100%)}
+.modal-sm{width:min(600px,100%)}
 .modal-backdrop.open .modal{transform:none}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card2);z-index:2}
-.modal-head h3{font-size:1rem;font-weight:800;text-transform:capitalize}
-.btn-close{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:.9rem;transition:all .15s}
+.modal-head h3{font-size:1rem;font-weight:800}
+.btn-close{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:.9rem;transition:all .15s;flex-shrink:0}
 .btn-close:hover{color:#fff;border-color:var(--purple);background:rgba(139,124,247,.15)}
 .modal-body{padding:22px;display:flex;flex-direction:column;gap:22px}
+.guia{display:flex;flex-direction:column;gap:14px;font-size:.82rem;line-height:1.7;color:#c7cbe0}
+.guia h4{color:var(--purple);font-size:.85rem;margin-bottom:4px}
+.guia .passo{background:#2a2b4d;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.guia code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:6px;font-size:.72rem;color:var(--green)}
+.guia pre{background:#191a30;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.7rem;overflow-x:auto;color:var(--green);margin-top:8px;line-height:1.5}
 .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .chip{background:#2a2b4d;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
 .chip span{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
@@ -149,22 +155,25 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
     <button class="btn btn-full" id="btnLogin" type="submit">Entrar</button>
     <p class="login-erro" id="loginErro"></p>
 
-    <button type="button" class="btn btn-ghost btn-mini" id="btnConfigLogin" style="align-self:center">⚙️ Configurar conexão Supabase</button>
+    <div class="btn-row">
+      <button type="button" class="btn btn-ghost btn-mini" id="btnGuiaLogin">📖 Guia do Supabase</button>
+      <button type="button" class="btn btn-ghost btn-mini" id="btnConfigLogin">⚙️ Configurar conexão</button>
+    </div>
 
     <details class="login-help">
-      <summary>❓ Como criar o usuário (passo a passo)</summary>
+      <summary>❓ Como criar o usuário de login (passo a passo)</summary>
       <ol>
-        <li>No <b>Supabase</b>, vá em <b>Authentication</b> (menu lateral)</li>
-        <li>Clique em <b>Users</b> → <b>Add user</b></li>
-        <li>Preencha o <b>e-mail</b> (ex: <code>admin@kayla.app</code>) e uma <b>senha</b> (mín. 6 caracteres)</li>
-        <li>✅ Marque <b>"Auto Confirm User"</b> (importante!)</li>
-        <li>Clique em <b>Create user</b> e volte aqui para entrar</li>
+        <li>No <b>Supabase</b>, menu lateral: <b>Authentication</b></li>
+        <li><b>Users</b> → <b>Add user</b></li>
+        <li>Digite o <b>e-mail</b> e a <b>senha</b> (mín. 6 caracteres)</li>
+        <li>✅ Marque <b>"Auto Confirm User"</b> (senão o login falha!)</li>
+        <li><b>Create user</b> — pronto, use esse e-mail/senha aqui</li>
       </ol>
     </details>
 
     <details class="login-help dev-mode">
       <summary>🔧 Modo desenvolvedor (sem login, só para testar)</summary>
-      <p>Se quiser testar o dashboard sem configurar login agora:</p>
+      <p>Para ver o dashboard sem configurar o login agora:</p>
       <button type="button" class="btn btn-ghost btn-mini" id="btnDevMode" style="margin-top:8px">🚀 Entrar sem login (modo teste)</button>
     </details>
   </form>
@@ -187,6 +196,7 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
     <div class="toolbar">
       <button class="btn" id="btnAtualizar">🔄 Atualizar Dados</button>
       <button class="btn btn-ghost" id="btnConfig">⚙️ Conexão</button>
+      <button class="btn btn-ghost" id="btnGuia">📖 Guia do Supabase</button>
       <span class="hint">💡 Clique em um card para ver o histórico diário · clique em uma linha da tabela para ver os detalhes do dia</span>
     </div>
 
@@ -211,16 +221,55 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
   </div>
 </div>
 
+<!-- Modal GUIA DO SUPABASE -->
+<div class="modal-backdrop" id="guiaBackdrop">
+  <div class="modal modal-sm" role="dialog" aria-modal="true">
+    <div class="modal-head"><h3>📖 Onde encontrar cada informação no Supabase</h3><button class="btn-close" id="guiaFechar" aria-label="Fechar">✕</button></div>
+    <div class="modal-body"><div class="guia">
+      <div class="passo"><h4>1️⃣ URL e chave (anon/public)</h4>
+        Menu lateral → <b>Settings</b> (engrenagem) → <b>API</b>.<br>
+        • <b>Project URL</b> = <code>https://SEUPROJETO.supabase.co</code><br>
+        • <b>API Keys</b> = copie a chave <code>sb_publishable_…</code> (nova) ou <code>anon/public</code> (eyJ…).<br>
+        Cole as duas em <b>⚙️ Configurar conexão</b>.
+      </div>
+      <div class="passo"><h4>2️⃣ Nomes das tabelas (dados do site/app)</h4>
+        Menu lateral → <b>Table Editor</b> (ícone de tabela). A lista à esquerda mostra os nomes reais
+        (ex.: <code>usuarios</code>, <code>pagamentos</code>, <code>assinaturas</code>, <code>visitas_app</code>…).<br>
+        O painel descobre sozinho pelas colunas, mas se alguma não for achada, digite o nome exato em
+        <b>⚙️ → Sobrescrever tabelas</b>.
+      </div>
+      <div class="passo"><h4>3️⃣ Usuário de login (e-mail + senha)</h4>
+        Menu lateral → <b>Authentication</b> → <b>Users</b> → <b>Add user</b>.<br>
+        Preencha e-mail e senha e ✅ marque <b>"Auto Confirm User"</b> → <b>Create user</b>.<br>
+        A senha fica criptografada no Supabase — nunca neste arquivo.
+      </div>
+      <div class="passo"><h4>4️⃣ Tabelas existem mas vêm vazias? (RLS)</h4>
+        Se a tabela tiver <b>Row Level Security</b> ativado sem política de leitura, o painel não consegue ler.
+        No <b>SQL Editor</b>, rode para cada tabela (troque <code>sua_tabela</code>):
+<pre>alter table public.sua_tabela enable row level security;
+create policy "admin_leitura"
+  on public.sua_tabela for select
+  to authenticated using (true);</pre>
+        Assim, somente quem estiver logado no dashboard consegue ler.
+      </div>
+      <div class="passo"><h4>ℹ️ Avisos que pode ignorar</h4>
+        • <code>No Listener: tabs:outgoing.message.ready</code> → é de uma <b>extensão do navegador</b>, não do painel.<br>
+        • <code>Tracking Prevention blocked storage</code> → bloqueio de privacidade do navegador; o painel tem alternativa interna e funciona mesmo assim.
+      </div>
+    </div></div>
+  </div>
+</div>
+
 <!-- Modal configuração -->
 <div class="modal-backdrop" id="cfgBackdrop">
   <div class="modal modal-sm" role="dialog" aria-modal="true">
     <div class="modal-head"><h3>⚙️ Conexão com o Supabase</h3><button class="btn-close" id="cfgFechar" aria-label="Fechar">✕</button></div>
     <div class="modal-body">
-      <p class="cfg-help">Cole a <b>URL</b> e a <b>chave</b> do projeto (Supabase → <b>Settings → API</b>; a chave pode ser <code>sb_publishable_…</code> ou <code>eyJ…</code>).</p>
+      <p class="cfg-help">📍 Onde copiar: Supabase → <b>Settings → API</b> (veja o <b>📖 Guia</b> para tabelas, login e RLS).</p>
       <label>URL do projeto<input id="cfgUrl" placeholder="https://xxxx.supabase.co"/></label>
       <label>Chave anon / publishable<input id="cfgKey" placeholder="sb_publishable_… ou eyJ…"/></label>
       <details>
-        <summary>🔧 Sobrescrever tabelas (opcional)</summary>
+        <summary>🔧 Sobrescrever tabelas (opcional — nomes exatos do Table Editor)</summary>
         <div class="cfg-grid">
           <label>Usuários<input id="cfgTabUsu" placeholder="auto"/></label>
           <label>Pagamentos<input id="cfgTabPag" placeholder="auto"/></label>
@@ -240,13 +289,13 @@ details summary{cursor:pointer;color:var(--purple);font-size:.78rem;font-weight:
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ CONFIGURAÇÃO (chave nova sb_publishable) ═══════════ */
+/* ═══════════ CONFIGURAÇÃO ═══════════ */
 const DEFAULT_CFG={
   url:'https://xwwklngrkvdwgiinycvt.supabase.co',
   anonKey:'sb_publishable_2Viwv3t4SvejW4SEfvpxGA_5K5thi7S',
   tabelas:{}
 };
-const CFG_STORE='kayla_dash_cfg_v2'; // v2 descarta configs velhas salvas
+const CFG_STORE='kayla_dash_cfg_v3';
 const mem={};
 const store={
   get(k){try{return localStorage.getItem(k);}catch(e){return mem[k]??null;}},
@@ -311,30 +360,38 @@ function criarCliente(){
   if(!cfg.url||!cfg.anonKey||!window.supabase)return null;
   return window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 }
-/* Cabeçalhos com token da sessão (resolve RLS que libera só "authenticated") */
+/* CORREÇÃO DO 401: a chave vai SOMENTE em "apikey".
+   "Authorization: Bearer" recebe apenas o token JWT da sessão (quando logado). */
 async function authHeaders(){
-  let token=cfg.anonKey;
-  if(sb){try{const {data}=await sb.auth.getSession(); if(data&&data.session)token=data.session.access_token;}catch(e){}}
-  return {apikey:cfg.anonKey,Authorization:'Bearer '+token,Accept:'application/json'};
+  const h={apikey:cfg.anonKey,Accept:'application/json'};
+  if(sb){try{const {data}=await sb.auth.getSession(); if(data&&data.session)h.Authorization='Bearer '+data.session.access_token;}catch(e){}}
+  return h;
 }
 
-/* ===== Verificação de conexão ===== */
+/* ===== Teste de conexão (health do Auth + REST só com apikey) ===== */
 async function testarConexao(){
   const st=document.getElementById('loginStatus');
   if(!sb){st.className='login-status err';st.innerHTML='❌ <b>Supabase não configurado.</b><br>Clique em "⚙️ Configurar conexão".';return false;}
   st.className='login-status checking';st.innerHTML='⏳ Testando conexão com Supabase...';
   try{
-    const resp=await fetch(cfg.url+'/rest/v1/',{headers:await authHeaders()});
-    if(!resp.ok){st.className='login-status err';st.innerHTML=`❌ <b>Erro na conexão</b> (HTTP ${resp.status})<br>401 = chave inválida/expirada → atualize em ⚙️.`;return false;}
-    st.className='login-status ok';st.innerHTML='✅ <b>Supabase conectado!</b><br>Digite seu e-mail e senha abaixo.';
-    return true;
+    const health=await fetch(cfg.url+'/auth/v1/health').catch(()=>null);
+    const rest=await fetch(cfg.url+'/rest/v1/',{headers:{apikey:cfg.anonKey,Accept:'application/json'}});
+    if(rest.ok){st.className='login-status ok';st.innerHTML='✅ <b>Supabase conectado!</b><br>Digite seu e-mail e senha abaixo.';return true;}
+    if(health&&health.ok){
+      st.className='login-status err';
+      st.innerHTML=`⚠️ O servidor respondeu, mas a <b>chave foi recusada</b> (HTTP ${rest.status}).<br>Copie a chave correta em <b>Settings → API</b> e cole em ⚙️.`;
+    }else{
+      st.className='login-status err';
+      st.innerHTML='❌ <b>Não foi possível alcançar o servidor.</b><br>Confira a URL em ⚙️ (Settings → API → Project URL).';
+    }
+    return false;
   }catch(e){
     st.className='login-status err';st.innerHTML='❌ <b>Não foi possível conectar</b><br>'+String(e.message||e).substring(0,100);
     return false;
   }
 }
 
-/* ===== Descoberta das tabelas (OpenAPI + plano B por sondagem) ===== */
+/* ===== Descoberta das tabelas ===== */
 async function descobrirPorOpenAPI(){
   const resp=await fetch(cfg.url+'/rest/v1/',{headers:await authHeaders()});
   if(!resp.ok)throw new Error('schema HTTP '+resp.status);
@@ -407,7 +464,7 @@ function usarVazio(msgHtml){
   setBanner('demo',msgHtml);
 }
 async function carregarTudo(){
-  if(!sb){usarVazio('⚠️ Supabase não conectado. Configure em ⚙️.');return;}
+  if(!sb){usarVazio('⚠️ Supabase não conectado. Configure em ⚙️ (veja 📖 Guia).');return;}
   try{
     try{ TAB=await descobrirPorOpenAPI(); }
     catch(e){ TAB=await descobrirPorSondagem(); }
@@ -459,10 +516,10 @@ async function carregarTudo(){
     if(TAB.downloads)contarPorDia(await fetchAll(TAB.downloads),mDl);
     HISTORICO=construirHistorico(mSite,mApp,mDl);
     const usadas=Object.entries(TAB).filter(([k,v])=>v&&k!=='visitas'&&k!=='planos').map(([k,v])=>`<code>${v}</code>`).join(', ');
-    setBanner('real',`✅ <b>Conectado ao Supabase</b> — somente dados reais. Tabelas detectadas: ${usadas||'—'} ${TODAS_TABELAS.length?`(todas no banco: <span class="mut">${TODAS_TABELAS.join(', ')}</span>)`:''}`);
+    setBanner('real',`✅ <b>Conectado ao Supabase</b> — somente dados reais. Tabelas: ${usadas||'nenhuma detectada — informe os nomes em ⚙️ (veja 📖 Guia, passo 2)'} ${TODAS_TABELAS.length?`· todas no banco: <span class="mut">${TODAS_TABELAS.join(', ')}</span>`:''}`);
   }catch(e){
     console.error('Erro ao carregar:',e);
-    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b>. 401 = chave inválida (atualize em ⚙️). Se as tabelas tiverem RLS, libere SELECT para <code>anon</code>/<code>authenticated</code>.');
+    usarVazio('⚠️ Falha ao ler os dados: <b>'+String(e.message||e)+'</b> — veja o <b>📖 Guia do Supabase</b> (chave, tabelas e RLS).');
   }
 }
 
@@ -528,7 +585,7 @@ function abrirModal(t,html){modalTitle.innerHTML=t;modalBody.innerHTML=html;back
 function fecharModal(){backdrop.classList.remove('open');document.body.style.overflow='';if(modalChart){modalChart.destroy();modalChart=null;}}
 backdrop.addEventListener('click',e=>{if(e.target===backdrop)fecharModal();});
 document.getElementById('btnFechar').addEventListener('click',fecharModal);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharModal();fecharConfig();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharModal();fecharConfig();fecharGuia();}});
 function tabelaExtra(titulo,cab,linhas){
   if(!linhas.length)return '';
   return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table><thead><tr>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('')}</tbody></table></div></div>`;
@@ -579,6 +636,15 @@ document.getElementById('cards').addEventListener('click',e=>{const c=e.target.c
 document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
 document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
 
+/* ===== Guia ===== */
+const guiaBackdrop=document.getElementById('guiaBackdrop');
+function openGuia(){guiaBackdrop.classList.add('open');}
+function fecharGuia(){guiaBackdrop.classList.remove('open');}
+document.getElementById('btnGuia').addEventListener('click',openGuia);
+document.getElementById('btnGuiaLogin').addEventListener('click',openGuia);
+document.getElementById('guiaFechar').addEventListener('click',fecharGuia);
+guiaBackdrop.addEventListener('click',e=>{if(e.target===guiaBackdrop)fecharGuia();});
+
 /* ===== Config ===== */
 const cfgBackdrop=document.getElementById('cfgBackdrop');
 function openConfig(){
@@ -601,7 +667,7 @@ cfgBackdrop.addEventListener('click',e=>{if(e.target===cfgBackdrop)fecharConfig(
 document.getElementById('cfgSalvar').addEventListener('click',()=>{
   const url=document.getElementById('cfgUrl').value.trim();
   const key=document.getElementById('cfgKey').value.trim();
-  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha URL e chave.';return;}
+  if(!url||!key){document.getElementById('cfgErro').textContent='⚠️ Preencha URL e chave (Settings → API).';return;}
   cfg={url,anonKey:key,tabelas:{
     usuarios:document.getElementById('cfgTabUsu').value.trim(),
     pagamentos:document.getElementById('cfgTabPag').value.trim(),
@@ -634,8 +700,7 @@ document.getElementById('formLogin').addEventListener('submit',async e=>{
     const {data,error}=await sb.auth.signInWithPassword({email,password:senha});
     if(error){
       const msg=String(error.message||'');
-      if(msg.toLowerCase().includes('invalid'))erro.textContent='⚠️ E-mail ou senha inválidos. Verifique se criou o usuário em Authentication → Users.';
-      else if(msg.toLowerCase().includes('email'))erro.textContent='⚠️ '+msg+' — Marque "Auto Confirm User" ao criar o usuário.';
+      if(msg.toLowerCase().includes('invalid'))erro.textContent='⚠️ E-mail ou senha inválidos. Criou o usuário em Authentication → Users com "Auto Confirm User"? Veja 📖 Guia, passo 3.';
       else erro.textContent='⚠️ '+msg;
       btn.disabled=false; btn.textContent='Entrar'; return;
     }
