@@ -83,7 +83,6 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .status.pendente{color:var(--amber);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4)}
 .metodo.pix{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
 .metodo.cartao{color:#c3baff;background:rgba(139,124,247,.14);border:1px solid rgba(139,124,247,.4)}
-/* ===== FILTROS + CAIXAS COM ROLAGEM ===== */
 .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .f-input{background:#191a30;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:.75rem;padding:7px 10px;outline:none;transition:border-color .15s}
 .f-input:focus{border-color:var(--purple)}
@@ -97,7 +96,6 @@ select.f-input option{background:var(--card2);color:var(--text)}
 .scroll-box thead th{position:sticky;top:0;background:var(--card2);z-index:1}
 .scroll-box::-webkit-scrollbar{width:8px}
 .scroll-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
-/* ===== MODAL ===== */
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
 .modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(860px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
@@ -207,7 +205,7 @@ const HDRS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
 const RPC_HDRS={...HDRS,'Content-Type':'application/json','Prefer':'return=representation'};
 
 let STATS={}, USUARIOS=[], PAGAMENTOS=[], VISITAS_DIARIAS=null, HISTORICO=[];
-let visitasRpc= sessionStorage.getItem('kayla_visitas_rpc');
+let visitasRpc=sessionStorage.getItem('kayla_visitas_rpc');
 
 const METRICAS=[
   {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',visita:true},
@@ -365,18 +363,20 @@ function renderCards(){
     </article>`;
   }).join('');
 }
-/* ===== Tabela geral COM FILTROS + ROLAGEM ===== */
+/* ===== Tabela geral COM FILTROS + ROLAGEM (sintaxe corrigida) ===== */
 function renderTabelaGeral(){
   const hj=ultimo().data, temV=!!VISITAS_DIARIAS;
   const de=$('fgDe').value, ate=$('fgAte').value, tipo=$('fgTipo').value, ord=$('fgOrdem').value;
-  let dias=HISTORICO.filter(d=>
-    (!de||d.data>=de)&&(!ate||d.data<=ate)&&
-    (!tipo||
-      (tipo==='receita'&&d.receita>0)||
-      (tipo==='usuarios'&&d.usuarios>0)||
-      (tipo==='assinaturas'&&d.assinaturas>0)||
-      (tipo==='visitas'&&(d.visitasSite>0||d.visitasApp>0||d.downloads>0)))));
-  if(ord==='desc')dias=[...dias].reverse();
+  const dias=HISTORICO.filter(d=>{
+    if(de&&d.data<de)return false;
+    if(ate&&d.data>ate)return false;
+    if(tipo==='receita'&&!(d.receita>0))return false;
+    if(tipo==='usuarios'&&!(d.usuarios>0))return false;
+    if(tipo==='assinaturas'&&!(d.assinaturas>0))return false;
+    if(tipo==='visitas'&&!((d.visitasSite>0)||(d.visitasApp>0)||(d.downloads>0)))return false;
+    return true;
+  });
+  if(ord==='desc')dias.reverse();
   const ft=dias.reduce((s,d)=>{s.visitasSite+=d.visitasSite;s.visitasApp+=d.visitasApp;s.downloads+=d.downloads;s.usuarios+=d.usuarios;s.assinaturas+=d.assinaturas;s.receita+=d.receita;return s;},
     {visitasSite:0,visitasApp:0,downloads:0,usuarios:0,assinaturas:0,receita:0});
   const cols=temV?7:4;
@@ -446,8 +446,9 @@ function wireHistorico(m){
     if(ord==='desc')dias=[...dias].reverse();
     $('fhBody').innerHTML=dias.map(d=>{
       const i=HISTORICO.indexOf(d), prev=HISTORICO[i-1];
+      const delta=prev?(d[m.id]-prev[m.id]):null;
       return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===ultimo().data?' <span class="badge">HOJE</span>':''}</td>
-      <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[m.id]):d[m.id]}</td><td>${deltaHTML(m,prev?d[m.id]-prev[d[m.id==='receita'?'receita':m.id]]:null)}</td></tr>`;
+      <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[m.id]):d[m.id]}</td><td>${deltaHTML(m,delta)}</td></tr>`;
     }).join('')||linhaVazia(3);
     const soma=dias.reduce((s,d)=>s+d[m.id],0);
     $('fhCount').textContent=`Exibindo ${dias.length} de ${HISTORICO.length} dias · Total do período: ${m.money?fmtBRL(soma):soma}`;
@@ -569,7 +570,6 @@ function openDiaModal(isoD){
 $('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
 $('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
 $('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
-/* Filtros da tabela geral (ligados 1x) */
 ['fgDe','fgAte','fgTipo','fgOrdem'].forEach(i=>$(i).addEventListener('input',renderTabelaGeral));
 
 /* ===== Atualizar / auto-refresh ===== */
