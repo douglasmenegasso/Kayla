@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dashboard Admin - Kayla</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%93%8A%3C/text%3E%3C/svg%3E"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/fontsource/css/inter@latest/index.css"/>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -44,6 +45,7 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .hint{color:var(--muted);font-size:.74rem}
 .banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.7;color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
 .banner.erro{color:var(--red);background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3)}
+.banner code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.72rem}
 .section-title{font-size:.95rem;font-weight:800;letter-spacing:.02em;margin:26px 0 14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
@@ -110,7 +112,7 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 </head>
 <body>
 
-<!-- ═══════════ LOGIN (igual ao antigo: senha validada no servidor) ═══════════ -->
+<!-- ═══════════ LOGIN (senha validada no servidor — Edge Function validar-admin) ═══════════ -->
 <div class="login-wrap" id="telaLogin">
   <form class="login-card" id="formLogin">
     <div class="login-logo">🔐</div>
@@ -166,13 +168,17 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ MESMOS ENDPOINTS DO DASHBOARD ANTIGO (que funciona) ═══════════ */
+/* ═══════════ SOMENTE OS 3 ENDPOINTS QUE FUNCIONAM (iguais ao dashboard antigo) ═══════════
+   • GET  /rest/v1/dashboard_stats
+   • POST /rest/v1/rpc/get_dashboard_users
+   • POST /rest/v1/rpc/get_dashboard_pagamentos
+   (Nenhuma outra requisição é feita — console limpo, sem 404.)        */
 const SUPABASE_URL='https://xwwklngrkvdwgiinycvt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4';
 const EDGE_FUNCTION_URL=SUPABASE_URL+'/functions/v1/validar-admin';
 const HDRS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
 
-let STATS={}, USUARIOS=[], PAGAMENTOS=[], VISITAS_DIARIAS=null, HISTORICO=[];
+let STATS={}, USUARIOS=[], PAGAMENTOS=[], HISTORICO=[];
 
 const METRICAS=[
   {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',tipo:'total'},
@@ -250,55 +256,30 @@ document.getElementById('btnSair').addEventListener('click',()=>{
   location.reload();
 });
 
-/* ===== CARGA DE DADOS (mesmas chamadas do antigo) ===== */
+/* ===== CARGA DE DADOS (apenas os 3 endpoints que existem) ===== */
 async function carregarStats(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/dashboard_stats',{headers:HDRS});
   if(!r.ok)throw new Error('dashboard_stats HTTP '+r.status);
-  const d=await r.json();
-  STATS=d[0]||{};
+  STATS=(await r.json())[0]||{};
 }
 async function carregarUsuarios(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_users',{method:'POST',headers:{...HDRS,'Content-Type':'application/json','Prefer':'return=representation'},body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_users HTTP '+r.status);
-  const d=await r.json();
-  USUARIOS=(d||[]).map(u=>({email:u.email||'—',cadastro:iso(u.created_at||u.data_cadastro),status:u.status?normStatus(u.status):'ativo'})).filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
+  USUARIOS=((await r.json())||[]).map(u=>({email:u.email||'—',cadastro:iso(u.created_at||u.data_cadastro),status:u.status?normStatus(u.status):'ativo'})).filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
 }
 async function carregarPagamentos(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_pagamentos',{method:'POST',headers:{...HDRS,'Content-Type':'application/json','Prefer':'return=representation'},body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_pagamentos HTTP '+r.status);
-  const d=await r.json();
-  PAGAMENTOS=(d||[]).map(p=>({data:iso(p.created_at||p.data),email:p.email||p.usuario||'—',valor:Number(p.valor||0),metodo:normMetodo(p.metodo_pagamento||p.metodo),status:normPagStatus(p.status)})).filter(p=>p.data);
-}
-async function carregarVisitasDiarias(){
-  // Opcional: se existir função de visitas diárias, usa; senão mantém só totais.
-  const candidatas=['get_dashboard_visitas','get_visitas_diarias','get_historico_visitas','get_dashboard_diario'];
-  for(const nome of candidatas){
-    try{
-      const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+nome,{method:'POST',headers:{...HDRS,'Content-Type':'application/json','Prefer':'return=representation'},body:'{}'});
-      if(!r.ok)continue;
-      const d=await r.json();
-      if(Array.isArray(d)&&d.length){
-        const map={};
-        d.forEach(row=>{
-          const dt=iso(row.data||row.created_at||row.dia); if(!dt)return;
-          map[dt]={site:Number(row.visitas_site||row.site||0),app:Number(row.visitas_app||row.app||0),dl:Number(row.downloads||row.total_downloads||0)};
-        });
-        if(Object.keys(map).length){VISITAS_DIARIAS=map;return;}
-      }
-    }catch(e){}
-  }
-  VISITAS_DIARIAS=null;
+  PAGAMENTOS=((await r.json())||[]).map(p=>({data:iso(p.created_at||p.data),email:p.email||p.usuario||'—',valor:Number(p.valor||0),metodo:normMetodo(p.metodo_pagamento||p.metodo),status:normPagStatus(p.status)})).filter(p=>p.data);
 }
 function construirHistorico(){
   const datas=new Set([hojeIso()]);
   USUARIOS.forEach(u=>datas.add(u.cadastro));
   PAGAMENTOS.forEach(p=>datas.add(p.data));
-  if(VISITAS_DIARIAS)Object.keys(VISITAS_DIARIAS).forEach(d=>datas.add(d));
   HISTORICO=[...datas].filter(Boolean).sort().slice(-30).map(d=>{
     const pags=PAGAMENTOS.filter(p=>p.data===d&&p.status==='aprovado');
-    const v=VISITAS_DIARIAS?VISITAS_DIARIAS[d]:null;
     return {data:d,
-      visitasSite:v?v.site:0, visitasApp:v?v.app:0, downloads:v?v.dl:0,
+      visitasSite:0, visitasApp:0, downloads:0, // API expõe só o total acumulado (dashboard_stats)
       usuarios:USUARIOS.filter(u=>u.cadastro===d).length,
       assinaturas:pags.length,
       receita:pags.reduce((s,p)=>s+(p.valor||0),0),
@@ -307,32 +288,30 @@ function construirHistorico(){
   });
 }
 async function carregarTudo(){
-  await Promise.all([carregarStats(),carregarUsuarios(),carregarPagamentos(),carregarVisitasDiarias()]);
+  await Promise.all([carregarStats(),carregarUsuarios(),carregarPagamentos()]);
   construirHistorico();
   setBanner('ok','✅ <b>Conectado ao Supabase</b> — dados reais via <code>dashboard_stats</code>, <code>get_dashboard_users</code> e <code>get_dashboard_pagamentos</code> (mesmas fontes do dashboard antigo).');
 }
 
 /* ===== Renderização ===== */
-function valorCard(m,hoje,t){
+function valorTotal(m){
   switch(m.id){
     case 'visitasSite': return STATS.total_visitas_site||0;
     case 'visitasApp':  return STATS.total_visitas_app||0;
     case 'downloads':   return STATS.total_downloads||0;
-    case 'usuarios':    return hoje.usuarios;
-    case 'assinaturas': return hoje.assinaturas;
-    case 'receita':     return hoje.receita;
+    default: return 0;
   }
 }
 function renderCards(){
   const hoje=ultimo(), t=totais();
   document.getElementById('cards').innerHTML=METRICAS.map(m=>{
     const ehTotal=m.tipo==='total';
-    const val=ehTotal?valorCard(m,hoje,t):valorCard(m,hoje,t);
+    const val=ehTotal?valorTotal(m):hoje[m.id];
     let totalTxt;
-    if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(STATS.receita_total||t.receita)}</b> · PIX: ${STATS.pagamentos_pix??t.pix} | Cartão: ${STATS.pagamentos_cartao??t.cartao}`;
+    if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(STATS.receita_total??t.receita)}</b> · PIX: ${STATS.pagamentos_pix??t.pix} | Cartão: ${STATS.pagamentos_cartao??t.cartao}`;
     else if(m.id==='assinaturas') totalTxt=`Planos ativos: <b>${STATS.total_assinaturas_ativas??t.assinaturas}</b>`;
     else if(m.id==='usuarios')    totalTxt=`Total acumulado: <b>${STATS.total_usuarios??t.usuarios}</b>`;
-    else                          totalTxt=`Total acumulado (API expõe só o total)`;
+    else                          totalTxt='Total acumulado (API expõe só o total)';
     return `<article class="card" data-metric="${m.id}" tabindex="0" role="button" aria-label="Ver histórico de ${m.titulo}">
       <div class="card-top"><span class="ico">${m.icone}</span><h3>${m.titulo}</h3><span class="badge ${ehTotal?'total':''}">${ehTotal?'TOTAL':'HOJE'}</span></div>
       <div class="card-value" style="color:${m.cor}">${m.money?fmtBRL(val):val}</div>
@@ -344,17 +323,15 @@ function renderCards(){
 }
 function renderTabelaGeral(){
   const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data;
-  const temV=!!VISITAS_DIARIAS;
   document.getElementById('tabelaGeral').innerHTML=`
-    <thead><tr><th>Data</th>${temV?'<th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>':''}<th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
+    <thead><tr><th>Data</th><th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
     <tbody>${dias.map(d=>`
       <tr data-dia="${d.data}" class="${d.data===hj?'row-hoje':''}">
         <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hj?' <span class="badge">HOJE</span>':''}</td>
-        ${temV?`<td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>`:''}
         <td>${d.usuarios}</td><td>${d.assinaturas}</td>
         <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
       </tr>`).join('')}</tbody>
-    <tfoot><tr><td>TOTAL</td>${temV?`<td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td>`:''}<td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
+    <tfoot><tr><td>TOTAL</td><td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
 }
 Chart.defaults.color='#9aa0b5';
 Chart.defaults.font.family="'Inter',sans-serif";
@@ -362,16 +339,11 @@ Chart.defaults.borderColor='rgba(255,255,255,.06)';
 let chartGeral=null, modalChart=null;
 function renderChartGeral(){
   if(chartGeral)chartGeral.destroy();
-  const ds=[];
-  if(VISITAS_DIARIAS){
-    ds.push({type:'bar',label:'Visitas Site',data:HISTORICO.map(d=>d.visitasSite),backgroundColor:'#60a5fa',borderRadius:4});
-    ds.push({type:'bar',label:'Visitas App',data:HISTORICO.map(d=>d.visitasApp),backgroundColor:'#a78bfa',borderRadius:4});
-  }
-  ds.push({type:'bar',label:'Usuários',data:HISTORICO.map(d=>d.usuarios),backgroundColor:'#f472b6',borderRadius:4});
-  ds.push({type:'bar',label:'Assinaturas',data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4});
-  ds.push({type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3});
   chartGeral=new Chart(document.getElementById('chartGeral'),{
-    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:ds},
+    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[
+      {type:'bar',label:'Usuários',data:HISTORICO.map(d=>d.usuarios),backgroundColor:'#f472b6',borderRadius:4},
+      {type:'bar',label:'Assinaturas',data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4},
+      {type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3}]},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>'R$ '+v}}},
       plugins:{legend:{labels:{usePointStyle:true,boxWidth:7,boxHeight:7}},
@@ -404,12 +376,12 @@ function openMetricModal(id){
   const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
   const dias=[...HISTORICO].reverse();
   let extra='', nota='';
-  if(id==='usuarios')    extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
-  if(id==='receita')     extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
-  if(m.tipo==='total')   nota=`<p class="pag-info">ℹ️ A API do seu projeto (dashboard_stats) expõe apenas o <b>total acumulado</b> de ${m.titulo.toLowerCase()} — não há histórico diário dessas visitas no banco. Se um dia existir a função <code>get_dashboard_visitas</code>, o painel passa a mostrar o diário automaticamente.</p>`;
+  if(id==='usuarios') extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
+  if(id==='receita')  extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
+  if(m.tipo==='total')nota=`<p class="pag-info">ℹ️ A API do projeto (<code>dashboard_stats</code>) expõe apenas o <b>total acumulado</b> de ${m.titulo.toLowerCase()} — não existe histórico diário dessas visitas no banco. Por isso este card mostra o total geral.</p>`;
   abrirModal(`${m.icone} ${m.titulo} — Histórico`, `
     <div class="chips">
-      <div class="chip"><span>${m.tipo==='total'?'Total geral':'Hoje'}</span><b style="color:${m.cor}">${m.money?fmtBRL(hoje[id]):(m.tipo==='total'?valorCard(m,hoje,t):hoje[id])}</b></div>
+      <div class="chip"><span>${m.tipo==='total'?'Total geral':'Hoje'}</span><b style="color:${m.cor}">${m.money?fmtBRL(m.tipo==='total'?t[id]:hoje[id]):(m.tipo==='total'?valorTotal(m):hoje[id])}</b></div>
       ${m.tipo==='dia'?`<div class="chip"><span>Total no período</span><b>${m.money?fmtBRL(t[id]):t[id]}</b></div>
       <div class="chip"><span>Média / dia</span><b>${m.money?fmtBRL(media):media.toFixed(1)}</b></div>
       <div class="chip"><span>Melhor dia</span><b>${fmtData(melhor.data)}</b></div>`:''}
@@ -431,9 +403,8 @@ function openDiaModal(isoD){
   const d=HISTORICO.find(x=>x.data===isoD); if(!d)return;
   const regs=USUARIOS.filter(u=>u.cadastro===isoD);
   const pags=PAGAMENTOS.filter(p=>p.data===isoD);
-  const temV=!!VISITAS_DIARIAS;
   abrirModal(`📅 ${fmtDataLonga(isoD)}`,`
-    <div class="tiles">${METRICAS.filter(m=>temV||m.tipo==='dia').map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${m.money?fmtBRL(d[m.id]):d[m.id]}</b></div>`).join('')}</div>
+    <div class="tiles">${METRICAS.filter(m=>m.tipo==='dia').map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${m.money?fmtBRL(d[m.id]):d[m.id]}</b></div>`).join('')}</div>
     ${d.receita>0?`<p class="pag-info" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.08)">💳 Pagamentos aprovados no dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>`:`<p class="pag-info">Nenhum pagamento aprovado neste dia.</p>`}
     ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'],regs.map(linhaUsuario))}
     ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'],pags.map(p=>`<tr class="no-click"><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`))}`);
@@ -442,7 +413,7 @@ document.getElementById('cards').addEventListener('click',e=>{const c=e.target.c
 document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
 document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
 
-/* ===== Atualizar / auto-refresh ===== */
+/* ===== Atualizar / auto-refresh (só as 3 chamadas que existem) ===== */
 const btn=document.getElementById('btnAtualizar');
 async function atualizar(silent){
   btn.disabled=true;btn.textContent='🔄 Carregando...';
