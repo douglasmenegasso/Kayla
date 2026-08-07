@@ -17,7 +17,6 @@
 body{font-family:'Inter','Segoe UI',system-ui,sans-serif;color:var(--text);min-height:100vh;
   background:radial-gradient(1200px 500px at 80% -10%, rgba(124,92,252,.12), transparent 60%),
              radial-gradient(900px 400px at 10% 110%, rgba(74,222,128,.06), transparent 60%), var(--bg);}
-/* ===== LOGIN ===== */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-card{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:36px 30px;width:min(420px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 .login-logo{font-size:2.4rem;text-align:center}
@@ -31,7 +30,6 @@ body{font-family:'Inter','Segoe UI',system-ui,sans-serif;color:var(--text);min-h
 .btn-full{width:100%}
 .login-erro{color:var(--red);font-size:.78rem;text-align:center;min-height:1.2em;line-height:1.5}
 .login-note{color:var(--muted);font-size:.7rem;text-align:center;line-height:1.6}
-/* ===== DASHBOARD ===== */
 header{background:linear-gradient(90deg,#20213c,#26274a);border-bottom:2px solid var(--purple2);padding:20px 32px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 .header-brand{display:flex;align-items:center;gap:12px}
 .header-brand .logo{font-size:1.6rem}
@@ -46,6 +44,7 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .banner{font-size:.8rem;font-weight:600;padding:12px 16px;border-radius:12px;margin-bottom:18px;line-height:1.7;color:var(--green);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35)}
 .banner.erro{color:var(--red);background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3)}
 .banner code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;font-size:.72rem}
+.banner .mut{color:var(--muted);font-weight:500}
 .section-title{font-size:.95rem;font-weight:800;letter-spacing:.02em;margin:26px 0 14px;display:flex;align-items:center;gap:8px}
 .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
@@ -168,25 +167,28 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ SOMENTE OS 3 ENDPOINTS QUE FUNCIONAM (iguais ao dashboard antigo) ═══════════
-   • GET  /rest/v1/dashboard_stats
-   • POST /rest/v1/rpc/get_dashboard_users
-   • POST /rest/v1/rpc/get_dashboard_pagamentos
-   (Nenhuma outra requisição é feita — console limpo, sem 404.)        */
+/* ═══════════ FONTES DE DADOS (somente leitura — nada é alterado no banco) ═══════════
+   • GET  /rest/v1/dashboard_stats               (totais — já existia)
+   • POST /rest/v1/rpc/get_dashboard_users       (já existia)
+   • POST /rest/v1/rpc/get_dashboard_pagamentos  (já existia)
+   • POST /rest/v1/rpc/get_visitas_diarias       (NOVA — criada via SQL; se não existir,
+     o painel continua funcionando só com os totais, sem erros no console)   */
 const SUPABASE_URL='https://xwwklngrkvdwgiinycvt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4';
 const EDGE_FUNCTION_URL=SUPABASE_URL+'/functions/v1/validar-admin';
 const HDRS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+const RPC_HDRS={...HDRS,'Content-Type':'application/json','Prefer':'return=representation'};
 
-let STATS={}, USUARIOS=[], PAGAMENTOS=[], HISTORICO=[];
+let STATS={}, USUARIOS=[], PAGAMENTOS=[], VISITAS_DIARIAS=null, HISTORICO=[];
+let visitasRpc= sessionStorage.getItem('kayla_visitas_rpc'); // 'ok' | 'none' | null
 
 const METRICAS=[
-  {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',tipo:'total'},
-  {id:'visitasApp', icone:'📱',titulo:'Visitas App', cor:'#a78bfa',tipo:'total'},
-  {id:'downloads',  icone:'⬇️',titulo:'Downloads',   cor:'#38bdf8',tipo:'total'},
-  {id:'usuarios',   icone:'👥',titulo:'Usuários',    cor:'#f472b6',tipo:'dia'},
-  {id:'assinaturas',icone:'💎',titulo:'Assinaturas', cor:'#22d3ee',tipo:'dia'},
-  {id:'receita',    icone:'💰',titulo:'Receita',     cor:'#4ade80',tipo:'dia',money:true},
+  {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',visita:true},
+  {id:'visitasApp', icone:'📱',titulo:'Visitas App', cor:'#a78bfa',visita:true},
+  {id:'downloads',  icone:'⬇️',titulo:'Downloads',   cor:'#38bdf8',visita:true},
+  {id:'usuarios',   icone:'👥',titulo:'Usuários',    cor:'#f472b6'},
+  {id:'assinaturas',icone:'💎',titulo:'Assinaturas', cor:'#22d3ee'},
+  {id:'receita',    icone:'💰',titulo:'Receita',     cor:'#4ade80',money:true},
 ];
 
 /* ===== Helpers ===== */
@@ -256,41 +258,55 @@ document.getElementById('btnSair').addEventListener('click',()=>{
   location.reload();
 });
 
-/* ===== CARGA DE DADOS (apenas os 3 endpoints que existem) ===== */
+/* ===== CARGA DE DADOS ===== */
 async function carregarStats(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/dashboard_stats',{headers:HDRS});
   if(!r.ok)throw new Error('dashboard_stats HTTP '+r.status);
   STATS=(await r.json())[0]||{};
 }
 async function carregarUsuarios(){
-  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_users',{method:'POST',headers:{...HDRS,'Content-Type':'application/json','Prefer':'return=representation'},body:'{}'});
+  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_users',{method:'POST',headers:RPC_HDRS,body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_users HTTP '+r.status);
   USUARIOS=((await r.json())||[]).map(u=>({email:u.email||'—',cadastro:iso(u.created_at||u.data_cadastro),status:u.status?normStatus(u.status):'ativo'})).filter(u=>u.cadastro).sort((a,b)=>a.cadastro.localeCompare(b.cadastro));
 }
 async function carregarPagamentos(){
-  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_pagamentos',{method:'POST',headers:{...HDRS,'Content-Type':'application/json','Prefer':'return=representation'},body:'{}'});
+  const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_pagamentos',{method:'POST',headers:RPC_HDRS,body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_pagamentos HTTP '+r.status);
   PAGAMENTOS=((await r.json())||[]).map(p=>({data:iso(p.created_at||p.data),email:p.email||p.usuario||'—',valor:Number(p.valor||0),metodo:normMetodo(p.metodo_pagamento||p.metodo),status:normPagStatus(p.status)})).filter(p=>p.data);
+}
+/* Visitas diárias: tenta 1x por sessão; se a função não existir, não repete (console limpo).
+   O botão "Atualizar Dados" força nova tentativa. */
+async function carregarVisitasDiarias(force){
+  if(!force&&visitasRpc==='none')return;
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_visitas_diarias',{method:'POST',headers:RPC_HDRS,body:'{}'});
+    if(!r.ok)throw new Error(r.status);
+    const map={};
+    ((await r.json())||[]).forEach(row=>{
+      const d=iso(row.data); if(!d)return;
+      map[d]={site:Number(row.visitas_site||0),app:Number(row.visitas_app||0),dl:Number(row.total_downloads||0)};
+    });
+    VISITAS_DIARIAS=map; visitasRpc='ok'; sessionStorage.setItem('kayla_visitas_rpc','ok');
+  }catch(e){
+    VISITAS_DIARIAS=null; visitasRpc='none'; sessionStorage.setItem('kayla_visitas_rpc','none');
+  }
 }
 function construirHistorico(){
   const datas=new Set([hojeIso()]);
   USUARIOS.forEach(u=>datas.add(u.cadastro));
   PAGAMENTOS.forEach(p=>datas.add(p.data));
+  if(VISITAS_DIARIAS)Object.keys(VISITAS_DIARIAS).forEach(d=>datas.add(d));
   HISTORICO=[...datas].filter(Boolean).sort().slice(-30).map(d=>{
     const pags=PAGAMENTOS.filter(p=>p.data===d&&p.status==='aprovado');
+    const v=VISITAS_DIARIAS?VISITAS_DIARIAS[d]:null;
     return {data:d,
-      visitasSite:0, visitasApp:0, downloads:0, // API expõe só o total acumulado (dashboard_stats)
+      visitasSite:v?v.site:0, visitasApp:v?v.app:0, downloads:v?v.dl:0,
       usuarios:USUARIOS.filter(u=>u.cadastro===d).length,
       assinaturas:pags.length,
       receita:pags.reduce((s,p)=>s+(p.valor||0),0),
       pix:pags.filter(p=>p.metodo==='pix').length,
       cartao:pags.filter(p=>p.metodo==='cartao').length};
   });
-}
-async function carregarTudo(){
-  await Promise.all([carregarStats(),carregarUsuarios(),carregarPagamentos()]);
-  construirHistorico();
-  setBanner('ok','✅ <b>Conectado ao Supabase</b> — dados reais via <code>dashboard_stats</code>, <code>get_dashboard_users</code> e <code>get_dashboard_pagamentos</code> (mesmas fontes do dashboard antigo).');
 }
 
 /* ===== Renderização ===== */
@@ -303,15 +319,17 @@ function valorTotal(m){
   }
 }
 function renderCards(){
-  const hoje=ultimo(), t=totais();
+  const hoje=ultimo(), t=totais(), temV=!!VISITAS_DIARIAS;
   document.getElementById('cards').innerHTML=METRICAS.map(m=>{
-    const ehTotal=m.tipo==='total';
+    const ehTotal=m.visita&&!temV;
     const val=ehTotal?valorTotal(m):hoje[m.id];
     let totalTxt;
-    if(m.id==='receita')          totalTxt=`Total: <b>${fmtBRL(STATS.receita_total??t.receita)}</b> · PIX: ${STATS.pagamentos_pix??t.pix} | Cartão: ${STATS.pagamentos_cartao??t.cartao}`;
+    if(m.id==='visitasSite')      totalTxt=`Total acumulado: <b>${STATS.total_visitas_site??t.visitasSite}</b>`;
+    else if(m.id==='visitasApp')  totalTxt=`Total acumulado: <b>${STATS.total_visitas_app??t.visitasApp}</b>`;
+    else if(m.id==='downloads')   totalTxt=`Total acumulado: <b>${STATS.total_downloads??t.downloads}</b>`;
+    else if(m.id==='receita')     totalTxt=`Total: <b>${fmtBRL(STATS.receita_total??t.receita)}</b> · PIX: ${STATS.pagamentos_pix??t.pix} | Cartão: ${STATS.pagamentos_cartao??t.cartao}`;
     else if(m.id==='assinaturas') totalTxt=`Planos ativos: <b>${STATS.total_assinaturas_ativas??t.assinaturas}</b>`;
-    else if(m.id==='usuarios')    totalTxt=`Total acumulado: <b>${STATS.total_usuarios??t.usuarios}</b>`;
-    else                          totalTxt='Total acumulado (API expõe só o total)';
+    else                          totalTxt=`Total acumulado: <b>${STATS.total_usuarios??t.usuarios}</b>`;
     return `<article class="card" data-metric="${m.id}" tabindex="0" role="button" aria-label="Ver histórico de ${m.titulo}">
       <div class="card-top"><span class="ico">${m.icone}</span><h3>${m.titulo}</h3><span class="badge ${ehTotal?'total':''}">${ehTotal?'TOTAL':'HOJE'}</span></div>
       <div class="card-value" style="color:${m.cor}">${m.money?fmtBRL(val):val}</div>
@@ -322,16 +340,17 @@ function renderCards(){
   }).join('');
 }
 function renderTabelaGeral(){
-  const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data;
+  const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data, temV=!!VISITAS_DIARIAS;
   document.getElementById('tabelaGeral').innerHTML=`
-    <thead><tr><th>Data</th><th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
+    <thead><tr><th>Data</th>${temV?'<th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>':''}<th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
     <tbody>${dias.map(d=>`
       <tr data-dia="${d.data}" class="${d.data===hj?'row-hoje':''}">
         <td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hj?' <span class="badge">HOJE</span>':''}</td>
+        ${temV?`<td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>`:''}
         <td>${d.usuarios}</td><td>${d.assinaturas}</td>
         <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
       </tr>`).join('')}</tbody>
-    <tfoot><tr><td>TOTAL</td><td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
+    <tfoot><tr><td>TOTAL</td>${temV?`<td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td>`:''}<td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
 }
 Chart.defaults.color='#9aa0b5';
 Chart.defaults.font.family="'Inter',sans-serif";
@@ -339,11 +358,17 @@ Chart.defaults.borderColor='rgba(255,255,255,.06)';
 let chartGeral=null, modalChart=null;
 function renderChartGeral(){
   if(chartGeral)chartGeral.destroy();
+  const ds=[];
+  if(VISITAS_DIARIAS){
+    ds.push({type:'bar',label:'Visitas Site',data:HISTORICO.map(d=>d.visitasSite),backgroundColor:'#60a5fa',borderRadius:4});
+    ds.push({type:'bar',label:'Visitas App',data:HISTORICO.map(d=>d.visitasApp),backgroundColor:'#a78bfa',borderRadius:4});
+    ds.push({type:'bar',label:'Downloads',data:HISTORICO.map(d=>d.downloads),backgroundColor:'#38bdf8',borderRadius:4});
+  }
+  ds.push({type:'bar',label:'Usuários',data:HISTORICO.map(d=>d.usuarios),backgroundColor:'#f472b6',borderRadius:4});
+  ds.push({type:'bar',label:'Assinaturas',data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4});
+  ds.push({type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3});
   chartGeral=new Chart(document.getElementById('chartGeral'),{
-    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[
-      {type:'bar',label:'Usuários',data:HISTORICO.map(d=>d.usuarios),backgroundColor:'#f472b6',borderRadius:4},
-      {type:'bar',label:'Assinaturas',data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4},
-      {type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3}]},
+    data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>'R$ '+v}}},
       plugins:{legend:{labels:{usePointStyle:true,boxWidth:7,boxHeight:7}},
@@ -371,19 +396,20 @@ const badgePag=p=>`<span class="status ${p.status}">${p.status==='aprovado'?'●
 const linhaPagamento=p=>`<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`;
 function openMetricModal(id){
   const m=METRICAS.find(x=>x.id===id);
-  const t=totais(), hoje=ultimo();
+  const t=totais(), hoje=ultimo(), temV=!!VISITAS_DIARIAS;
   const media=(t[id]||0)/HISTORICO.length;
   const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
   const dias=[...HISTORICO].reverse();
   let extra='', nota='';
   if(id==='usuarios') extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
   if(id==='receita')  extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
-  if(m.tipo==='total')nota=`<p class="pag-info">ℹ️ A API do projeto (<code>dashboard_stats</code>) expõe apenas o <b>total acumulado</b> de ${m.titulo.toLowerCase()} — não existe histórico diário dessas visitas no banco. Por isso este card mostra o total geral.</p>`;
+  if(m.visita&&!temV) nota=`<p class="pag-info">ℹ️ O histórico diário de visitas ainda não está ativado: rode no <b>SQL Editor</b> do Supabase o SQL da função <code>get_visitas_diarias</code> e clique em 🔄 Atualizar. Enquanto isso, este card mostra o total acumulado.</p>`;
+  const ehTotal=m.visita&&!temV;
   abrirModal(`${m.icone} ${m.titulo} — Histórico`, `
     <div class="chips">
-      <div class="chip"><span>${m.tipo==='total'?'Total geral':'Hoje'}</span><b style="color:${m.cor}">${m.money?fmtBRL(m.tipo==='total'?t[id]:hoje[id]):(m.tipo==='total'?valorTotal(m):hoje[id])}</b></div>
-      ${m.tipo==='dia'?`<div class="chip"><span>Total no período</span><b>${m.money?fmtBRL(t[id]):t[id]}</b></div>
-      <div class="chip"><span>Média / dia</span><b>${m.money?fmtBRL(media):media.toFixed(1)}</b></div>
+      <div class="chip"><span>${ehTotal?'Total geral':'Hoje'}</span><b style="color:${m.cor}">${ehTotal?valorTotal(m):hoje[id]}</b></div>
+      ${!ehTotal?`<div class="chip"><span>Total no período</span><b>${t[id]}</b></div>
+      <div class="chip"><span>Média / dia</span><b>${media.toFixed(1)}</b></div>
       <div class="chip"><span>Melhor dia</span><b>${fmtData(melhor.data)}</b></div>`:''}
     </div>
     ${nota}
@@ -403,8 +429,9 @@ function openDiaModal(isoD){
   const d=HISTORICO.find(x=>x.data===isoD); if(!d)return;
   const regs=USUARIOS.filter(u=>u.cadastro===isoD);
   const pags=PAGAMENTOS.filter(p=>p.data===isoD);
+  const temV=!!VISITAS_DIARIAS;
   abrirModal(`📅 ${fmtDataLonga(isoD)}`,`
-    <div class="tiles">${METRICAS.filter(m=>m.tipo==='dia').map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${m.money?fmtBRL(d[m.id]):d[m.id]}</b></div>`).join('')}</div>
+    <div class="tiles">${METRICAS.filter(m=>temV||!m.visita).map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${m.money?fmtBRL(d[m.id]):d[m.id]}</b></div>`).join('')}</div>
     ${d.receita>0?`<p class="pag-info" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.08)">💳 Pagamentos aprovados no dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>`:`<p class="pag-info">Nenhum pagamento aprovado neste dia.</p>`}
     ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'],regs.map(linhaUsuario))}
     ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'],pags.map(p=>`<tr class="no-click"><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`))}`);
@@ -413,23 +440,32 @@ document.getElementById('cards').addEventListener('click',e=>{const c=e.target.c
 document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
 document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
 
-/* ===== Atualizar / auto-refresh (só as 3 chamadas que existem) ===== */
+/* ===== Atualizar / auto-refresh ===== */
 const btn=document.getElementById('btnAtualizar');
-async function atualizar(silent){
+async function atualizar(silent,forceVisitas){
   btn.disabled=true;btn.textContent='🔄 Carregando...';
-  try{ await carregarTudo(); renderTudo(); if(!silent)showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})); }
-  catch(e){ setBanner('erro','⚠️ Erro ao carregar dados: <b>'+String(e.message||e)+'</b>'); }
+  try{
+    await Promise.all([carregarStats(),carregarUsuarios(),carregarPagamentos(),carregarVisitasDiarias(!!forceVisitas)]);
+    construirHistorico();
+    let msg='✅ <b>Conectado ao Supabase</b> — dados reais via <code>dashboard_stats</code>, <code>get_dashboard_users</code>, <code>get_dashboard_pagamentos</code>'+(VISITAS_DIARIAS?' e <code>get_visitas_diarias</code>.':' .');
+    if(!VISITAS_DIARIAS)msg+=' <span class="mut">· Visitas diárias ainda não ativadas: rode o SQL da função <code>get_visitas_diarias</code> no Supabase e clique em 🔄.</span>';
+    setBanner('ok',msg);
+    renderTudo();
+    if(!silent)showToast('✅ Dados atualizados às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    setBanner('erro','⚠️ Erro ao carregar dados: <b>'+String(e.message||e)+'</b>');
+  }
   btn.disabled=false;btn.textContent='🔄 Atualizar Dados';
 }
-btn.addEventListener('click',()=>atualizar(false));
+btn.addEventListener('click',()=>atualizar(false,true)); // manual força re-testar a função de visitas
 
 /* ===== Entrada ===== */
 function entrarDashboard(){
   document.getElementById('telaLogin').style.display='none';
   document.getElementById('areaDashboard').hidden=false;
   document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-  atualizar(true);
-  setInterval(()=>atualizar(true),30000); // igual ao antigo: refresh a cada 30s
+  atualizar(true,true);
+  setInterval(()=>atualizar(true,false),30000); // igual ao antigo: refresh a cada 30s
 }
 (function init(){
   const token=sessionStorage.getItem('admin_token');
