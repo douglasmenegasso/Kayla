@@ -61,9 +61,8 @@ main{max-width:1440px;margin:0 auto;padding:26px 32px 60px}
 .card-total b{font-weight:700}
 .card-hint{color:var(--muted);font-size:.7rem;transition:color .15s}
 .card:hover .card-hint{color:var(--purple)}
-.panel{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:20px}
+.panel{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px}
 .chart-box{height:300px;position:relative}
-.table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:.84rem}
 th{text-transform:uppercase;font-size:.66rem;letter-spacing:.07em;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
 td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.045);white-space:nowrap}
@@ -94,6 +93,7 @@ select.f-input option{background:var(--card2);color:var(--text)}
 .f-label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.7rem;font-weight:700}
 .f-count{color:var(--muted);font-size:.7rem;margin-top:8px}
 .scroll-box{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px}
+.scroll-box.scroll-tall{max-height:420px}
 .scroll-box thead th{position:sticky;top:0;background:var(--card2);z-index:1}
 .scroll-box::-webkit-scrollbar{width:8px}
 .scroll-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
@@ -165,7 +165,25 @@ select.f-input option{background:var(--card2);color:var(--text)}
     <h2 class="section-title">📅 Histórico Diário</h2>
     <section class="panel">
       <div class="chart-box"><canvas id="chartGeral"></canvas></div>
-      <div class="table-wrap"><table id="tabelaGeral"></table></div>
+      <div>
+        <div class="filters">
+          <label class="f-label">De <input class="f-input" type="date" id="fgDe"/></label>
+          <label class="f-label">Até <input class="f-input" type="date" id="fgAte"/></label>
+          <select class="f-input" id="fgTipo">
+            <option value="">Todos os dias</option>
+            <option value="receita">💰 Dias com receita</option>
+            <option value="usuarios">👥 Dias com cadastros</option>
+            <option value="assinaturas">💎 Dias com assinaturas</option>
+            <option value="visitas">🌐 Dias com visitas</option>
+          </select>
+          <select class="f-input" id="fgOrdem">
+            <option value="desc">Mais recente primeiro</option>
+            <option value="asc">Mais antigo primeiro</option>
+          </select>
+        </div>
+        <div class="scroll-box scroll-tall"><table id="tabelaGeral"></table></div>
+        <p class="f-count" id="fgCount"></p>
+      </div>
     </section>
   </main>
 </div>
@@ -282,7 +300,6 @@ async function carregarUsuarios(){
 async function carregarPagamentos(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_pagamentos',{method:'POST',headers:RPC_HDRS,body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_pagamentos HTTP '+r.status);
-  // RPC já retorna do mais recente p/ o mais antigo (ORDER BY created_at DESC)
   PAGAMENTOS=((await r.json())||[]).map(p=>({data:iso(p.created_at||p.data),email:p.email||p.usuario||'—',valor:Number(p.valor||0),metodo:normMetodo(p.metodo_pagamento||p.metodo),status:normPagStatus(p.status)})).filter(p=>p.data);
 }
 async function carregarVisitasDiarias(force){
@@ -348,8 +365,21 @@ function renderCards(){
     </article>`;
   }).join('');
 }
+/* ===== Tabela geral COM FILTROS + ROLAGEM ===== */
 function renderTabelaGeral(){
-  const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data, temV=!!VISITAS_DIARIAS;
+  const hj=ultimo().data, temV=!!VISITAS_DIARIAS;
+  const de=$('fgDe').value, ate=$('fgAte').value, tipo=$('fgTipo').value, ord=$('fgOrdem').value;
+  let dias=HISTORICO.filter(d=>
+    (!de||d.data>=de)&&(!ate||d.data<=ate)&&
+    (!tipo||
+      (tipo==='receita'&&d.receita>0)||
+      (tipo==='usuarios'&&d.usuarios>0)||
+      (tipo==='assinaturas'&&d.assinaturas>0)||
+      (tipo==='visitas'&&(d.visitasSite>0||d.visitasApp>0||d.downloads>0)))));
+  if(ord==='desc')dias=[...dias].reverse();
+  const ft=dias.reduce((s,d)=>{s.visitasSite+=d.visitasSite;s.visitasApp+=d.visitasApp;s.downloads+=d.downloads;s.usuarios+=d.usuarios;s.assinaturas+=d.assinaturas;s.receita+=d.receita;return s;},
+    {visitasSite:0,visitasApp:0,downloads:0,usuarios:0,assinaturas:0,receita:0});
+  const cols=temV?7:4;
   $('tabelaGeral').innerHTML=`
     <thead><tr><th>Data</th>${temV?'<th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>':''}<th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
     <tbody>${dias.map(d=>`
@@ -358,8 +388,9 @@ function renderTabelaGeral(){
         ${temV?`<td>${d.visitasSite}</td><td>${d.visitasApp}</td><td>${d.downloads}</td>`:''}
         <td>${d.usuarios}</td><td>${d.assinaturas}</td>
         <td class="td-money">${d.receita>0?fmtBRL(d.receita):'<span class="mut">—</span>'}</td>
-      </tr>`).join('')}</tbody>
-    <tfoot><tr><td>TOTAL</td>${temV?`<td>${t.visitasSite}</td><td>${t.visitasApp}</td><td>${t.downloads}</td>`:''}<td>${t.usuarios}</td><td>${t.assinaturas}</td><td class="td-money">${fmtBRL(t.receita)}</td></tr></tfoot>`;
+      </tr>`).join('')||`<tr class="no-click"><td colspan="${cols}" style="text-align:center" class="mut">Nenhum dia encontrado com esses filtros</td></tr>`}</tbody>
+    <tfoot><tr><td>TOTAL${dias.length!==HISTORICO.length?' (FILTRO)':''}</td>${temV?`<td>${ft.visitasSite}</td><td>${ft.visitasApp}</td><td>${ft.downloads}</td>`:''}<td>${ft.usuarios}</td><td>${ft.assinaturas}</td><td class="td-money">${fmtBRL(ft.receita)}</td></tr></tfoot>`;
+  $('fgCount').textContent=`Exibindo ${dias.length} de ${HISTORICO.length} dias · Receita do período: ${fmtBRL(ft.receita)}`;
 }
 Chart.defaults.color='#9aa0b5';
 Chart.defaults.font.family="'Inter',sans-serif";
@@ -416,7 +447,7 @@ function wireHistorico(m){
     $('fhBody').innerHTML=dias.map(d=>{
       const i=HISTORICO.indexOf(d), prev=HISTORICO[i-1];
       return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===ultimo().data?' <span class="badge">HOJE</span>':''}</td>
-      <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[m.id]):d[m.id]}</td><td>${deltaHTML(m,prev?d[id2(m)]-prev[id2(m)]:null)}</td></tr>`;
+      <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[m.id]):d[m.id]}</td><td>${deltaHTML(m,prev?d[m.id]-prev[d[m.id==='receita'?'receita':m.id]]:null)}</td></tr>`;
     }).join('')||linhaVazia(3);
     const soma=dias.reduce((s,d)=>s+d[m.id],0);
     $('fhCount').textContent=`Exibindo ${dias.length} de ${HISTORICO.length} dias · Total do período: ${m.money?fmtBRL(soma):soma}`;
@@ -424,7 +455,6 @@ function wireHistorico(m){
   ['fhDe','fhAte','fhOrdem'].forEach(i=>$(i).addEventListener('input',apply));
   apply();
 }
-const id2=m=>m.id;
 
 function secaoPagamentos(){
   return `<div class="extra"><h4>💵 Últimos Pagamentos</h4>
@@ -482,7 +512,7 @@ function wireUsuarios(){
       (!q||u.email.toLowerCase().includes(q))&&
       (!st||u.status===st)&&
       (!de||u.cadastro>=de)&&(!ate||u.cadastro<=ate))
-      .sort((a,b)=>b.cadastro.localeCompare(a.cadastro)); // mais recente em cima
+      .sort((a,b)=>b.cadastro.localeCompare(a.cadastro));
     $('fuBody').innerHTML=rows.map(linhaUsuario).join('')||linhaVazia(3);
     $('fuCount').textContent=`Exibindo ${rows.length} de ${USUARIOS.length} usuários`;
   };
@@ -539,6 +569,8 @@ function openDiaModal(isoD){
 $('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
 $('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
 $('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
+/* Filtros da tabela geral (ligados 1x) */
+['fgDe','fgAte','fgTipo','fgOrdem'].forEach(i=>$(i).addEventListener('input',renderTabelaGeral));
 
 /* ===== Atualizar / auto-refresh ===== */
 const btn=$('btnAtualizar');
