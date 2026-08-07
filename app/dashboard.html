@@ -84,9 +84,23 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 .status.pendente{color:var(--amber);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4)}
 .metodo.pix{color:var(--green);background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.35)}
 .metodo.cartao{color:#c3baff;background:rgba(139,124,247,.14);border:1px solid rgba(139,124,247,.4)}
+/* ===== FILTROS + CAIXAS COM ROLAGEM ===== */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.f-input{background:#191a30;border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:.75rem;padding:7px 10px;outline:none;transition:border-color .15s}
+.f-input:focus{border-color:var(--purple)}
+.f-input::placeholder{color:var(--muted)}
+select.f-input{cursor:pointer}
+select.f-input option{background:var(--card2);color:var(--text)}
+.f-label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.7rem;font-weight:700}
+.f-count{color:var(--muted);font-size:.7rem;margin-top:8px}
+.scroll-box{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:12px}
+.scroll-box thead th{position:sticky;top:0;background:var(--card2);z-index:1}
+.scroll-box::-webkit-scrollbar{width:8px}
+.scroll-box::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+/* ===== MODAL ===== */
 .modal-backdrop{position:fixed;inset:0;background:rgba(9,10,22,.74);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:18px;z-index:50;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-backdrop.open{opacity:1;pointer-events:auto}
-.modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(820px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal{background:var(--card2);border:1px solid var(--border);border-radius:18px;width:min(860px,100%);max-height:88vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .25s;box-shadow:0 24px 60px rgba(0,0,0,.5)}
 .modal-backdrop.open .modal{transform:none}
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card2);z-index:2}
 .modal-head h3{font-size:1rem;font-weight:800}
@@ -111,7 +125,7 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 </head>
 <body>
 
-<!-- ═══════════ LOGIN (senha validada no servidor — Edge Function validar-admin) ═══════════ -->
+<!-- ═══════════ LOGIN ═══════════ -->
 <div class="login-wrap" id="telaLogin">
   <form class="login-card" id="formLogin">
     <div class="login-logo">🔐</div>
@@ -167,12 +181,7 @@ tfoot td{font-weight:800;color:var(--purple);border-top:2px solid var(--border);
 <div class="toast" id="toast"></div>
 
 <script>
-/* ═══════════ FONTES DE DADOS (somente leitura — nada é alterado no banco) ═══════════
-   • GET  /rest/v1/dashboard_stats               (totais — já existia)
-   • POST /rest/v1/rpc/get_dashboard_users       (já existia)
-   • POST /rest/v1/rpc/get_dashboard_pagamentos  (já existia)
-   • POST /rest/v1/rpc/get_visitas_diarias       (NOVA — criada via SQL; se não existir,
-     o painel continua funcionando só com os totais, sem erros no console)   */
+/* ═══════════ FONTES DE DADOS (somente leitura) ═══════════ */
 const SUPABASE_URL='https://xwwklngrkvdwgiinycvt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3d2tsbmdya3Zkd2dpaW55Y3Z0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NDYwODUsImV4cCI6MjA5NjAyMjA4NX0.XhnNESlgV4Q_kkXRYh4QY2e9RBG-u-qgP9sDHyKfEG4';
 const EDGE_FUNCTION_URL=SUPABASE_URL+'/functions/v1/validar-admin';
@@ -180,7 +189,7 @@ const HDRS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
 const RPC_HDRS={...HDRS,'Content-Type':'application/json','Prefer':'return=representation'};
 
 let STATS={}, USUARIOS=[], PAGAMENTOS=[], VISITAS_DIARIAS=null, HISTORICO=[];
-let visitasRpc= sessionStorage.getItem('kayla_visitas_rpc'); // 'ok' | 'none' | null
+let visitasRpc= sessionStorage.getItem('kayla_visitas_rpc');
 
 const METRICAS=[
   {id:'visitasSite',icone:'🌐',titulo:'Visitas Site',cor:'#60a5fa',visita:true},
@@ -227,13 +236,14 @@ function deltaHTML(m,delta){
 function setBanner(tipo,html){const b=document.getElementById('bannerModo');b.hidden=false;b.className='banner'+(tipo==='erro'?' erro':'');b.innerHTML=html;}
 let toastTimer=null;
 function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600);}
+const $=id=>document.getElementById(id);
 
-/* ===== LOGIN (Edge Function validar-admin — igual ao antigo) ===== */
-document.getElementById('formLogin').addEventListener('submit',async e=>{
+/* ===== LOGIN ===== */
+$('formLogin').addEventListener('submit',async e=>{
   e.preventDefault();
-  const senha=document.getElementById('inpSenha').value;
-  const erro=document.getElementById('loginErro');
-  const btn=document.getElementById('btnLogin');
+  const senha=$('inpSenha').value;
+  const erro=$('loginErro');
+  const btn=$('btnLogin');
   if(!senha){erro.textContent='❌ Digite a senha';return;}
   btn.disabled=true;btn.textContent='Verificando...';erro.textContent='';
   try{
@@ -252,7 +262,7 @@ document.getElementById('formLogin').addEventListener('submit',async e=>{
     btn.disabled=false;btn.textContent='Entrar';
   }
 });
-document.getElementById('btnSair').addEventListener('click',()=>{
+$('btnSair').addEventListener('click',()=>{
   sessionStorage.removeItem('admin_token');
   sessionStorage.removeItem('admin_expires');
   location.reload();
@@ -272,10 +282,9 @@ async function carregarUsuarios(){
 async function carregarPagamentos(){
   const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/get_dashboard_pagamentos',{method:'POST',headers:RPC_HDRS,body:'{}'});
   if(!r.ok)throw new Error('get_dashboard_pagamentos HTTP '+r.status);
+  // RPC já retorna do mais recente p/ o mais antigo (ORDER BY created_at DESC)
   PAGAMENTOS=((await r.json())||[]).map(p=>({data:iso(p.created_at||p.data),email:p.email||p.usuario||'—',valor:Number(p.valor||0),metodo:normMetodo(p.metodo_pagamento||p.metodo),status:normPagStatus(p.status)})).filter(p=>p.data);
 }
-/* Visitas diárias: tenta 1x por sessão; se a função não existir, não repete (console limpo).
-   O botão "Atualizar Dados" força nova tentativa. */
 async function carregarVisitasDiarias(force){
   if(!force&&visitasRpc==='none')return;
   try{
@@ -309,7 +318,7 @@ function construirHistorico(){
   });
 }
 
-/* ===== Renderização ===== */
+/* ===== Renderização principal ===== */
 function valorTotal(m){
   switch(m.id){
     case 'visitasSite': return STATS.total_visitas_site||0;
@@ -320,7 +329,7 @@ function valorTotal(m){
 }
 function renderCards(){
   const hoje=ultimo(), t=totais(), temV=!!VISITAS_DIARIAS;
-  document.getElementById('cards').innerHTML=METRICAS.map(m=>{
+  $('cards').innerHTML=METRICAS.map(m=>{
     const ehTotal=m.visita&&!temV;
     const val=ehTotal?valorTotal(m):hoje[m.id];
     let totalTxt;
@@ -341,7 +350,7 @@ function renderCards(){
 }
 function renderTabelaGeral(){
   const dias=[...HISTORICO].reverse(), t=totais(), hj=ultimo().data, temV=!!VISITAS_DIARIAS;
-  document.getElementById('tabelaGeral').innerHTML=`
+  $('tabelaGeral').innerHTML=`
     <thead><tr><th>Data</th>${temV?'<th>🌐 Site</th><th>📱 App</th><th>⬇️ Downloads</th>':''}<th>👥 Usuários</th><th>💎 Assinaturas</th><th>💰 Receita</th></tr></thead>
     <tbody>${dias.map(d=>`
       <tr data-dia="${d.data}" class="${d.data===hj?'row-hoje':''}">
@@ -367,7 +376,7 @@ function renderChartGeral(){
   ds.push({type:'bar',label:'Usuários',data:HISTORICO.map(d=>d.usuarios),backgroundColor:'#f472b6',borderRadius:4});
   ds.push({type:'bar',label:'Assinaturas',data:HISTORICO.map(d=>d.assinaturas),backgroundColor:'#22d3ee',borderRadius:4});
   ds.push({type:'line',label:'Receita (R$)',data:HISTORICO.map(d=>d.receita),borderColor:'#4ade80',backgroundColor:'#4ade80',yAxisID:'y1',tension:.35,pointRadius:3});
-  chartGeral=new Chart(document.getElementById('chartGeral'),{
+  chartGeral=new Chart($('chartGeral'),{
     data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{y:{beginAtZero:true,ticks:{precision:0}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>'R$ '+v}}},
@@ -378,50 +387,141 @@ function renderChartGeral(){
 }
 function renderTudo(){renderCards();renderTabelaGeral();renderChartGeral();}
 
-/* ===== Modais ===== */
-const backdrop=document.getElementById('modalBackdrop');
-const modalTitle=document.getElementById('modalTitle');
-const modalBody=document.getElementById('modalBody');
-function abrirModal(t,html){modalTitle.innerHTML=t;modalBody.innerHTML=html;backdrop.classList.add('open');document.body.style.overflow='hidden';}
-function fecharModal(){backdrop.classList.remove('open');document.body.style.overflow='';if(modalChart){modalChart.destroy();modalChart=null;}}
-backdrop.addEventListener('click',e=>{if(e.target===backdrop)fecharModal();});
-document.getElementById('btnFechar').addEventListener('click',fecharModal);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharModal();});
-function tabelaExtra(titulo,cab,linhas){
-  if(!linhas.length)return '';
-  return `<div class="extra"><h4>${titulo}</h4><div class="table-wrap"><table><thead><tr>${cab.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('')}</tbody></table></div></div>`;
-}
+/* ===== Linhas das listas ===== */
 const linhaUsuario=u=>`<tr class="no-click"><td>${u.email}</td><td><b>${fmtData(u.cadastro)}</b> <span class="mut">${weekday(u.cadastro)}</span></td><td><span class="status ${u.status}">${u.status==='ativo'?'● Ativo':u.status==='pendente'?'● Pendente':'● Cancelado'}</span></td></tr>`;
 const badgePag=p=>`<span class="status ${p.status}">${p.status==='aprovado'?'● Aprovado':p.status==='pendente'?'● Pendente':'● Recusado'}</span>`;
 const linhaPagamento=p=>`<tr class="no-click"><td><b>${fmtData(p.data)}</b> <span class="mut">${weekday(p.data)}</span></td><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`;
+const linhaVazia=cols=>`<tr class="no-click"><td colspan="${cols}" style="text-align:center" class="mut">Nada encontrado com esses filtros</td></tr>`;
+
+/* ===== Seções filtráveis dos modais ===== */
+function secaoHistorico(m){
+  return `<div class="extra"><h4>📅 Histórico diário</h4>
+    <div class="filters">
+      <label class="f-label">De <input class="f-input" type="date" id="fhDe"/></label>
+      <label class="f-label">Até <input class="f-input" type="date" id="fhAte"/></label>
+      <select class="f-input" id="fhOrdem"><option value="desc">Mais recente primeiro</option><option value="asc">Mais antigo primeiro</option></select>
+    </div>
+    <div class="scroll-box"><table>
+      <thead><tr><th>Data</th><th>${m.titulo}</th><th>vs. dia anterior</th></tr></thead>
+      <tbody id="fhBody"></tbody>
+    </table></div>
+    <p class="f-count" id="fhCount"></p>
+  </div>`;
+}
+function wireHistorico(m){
+  const apply=()=>{
+    const de=$('fhDe').value, ate=$('fhAte').value, ord=$('fhOrdem').value;
+    let dias=HISTORICO.filter(d=>(!de||d.data>=de)&&(!ate||d.data<=ate));
+    if(ord==='desc')dias=[...dias].reverse();
+    $('fhBody').innerHTML=dias.map(d=>{
+      const i=HISTORICO.indexOf(d), prev=HISTORICO[i-1];
+      return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===ultimo().data?' <span class="badge">HOJE</span>':''}</td>
+      <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[m.id]):d[m.id]}</td><td>${deltaHTML(m,prev?d[id2(m)]-prev[id2(m)]:null)}</td></tr>`;
+    }).join('')||linhaVazia(3);
+    const soma=dias.reduce((s,d)=>s+d[m.id],0);
+    $('fhCount').textContent=`Exibindo ${dias.length} de ${HISTORICO.length} dias · Total do período: ${m.money?fmtBRL(soma):soma}`;
+  };
+  ['fhDe','fhAte','fhOrdem'].forEach(i=>$(i).addEventListener('input',apply));
+  apply();
+}
+const id2=m=>m.id;
+
+function secaoPagamentos(){
+  return `<div class="extra"><h4>💵 Últimos Pagamentos</h4>
+    <div class="filters">
+      <input class="f-input" type="text" id="fpEmail" placeholder="🔎 Buscar email..."/>
+      <select class="f-input" id="fpMetodo"><option value="">Método: todos</option><option value="pix">PIX</option><option value="cartao">Cartão</option></select>
+      <select class="f-input" id="fpStatus"><option value="">Status: todos</option><option value="aprovado">Aprovado</option><option value="pendente">Pendente</option><option value="recusado">Recusado</option></select>
+      <label class="f-label">De <input class="f-input" type="date" id="fpDe"/></label>
+      <label class="f-label">Até <input class="f-input" type="date" id="fpAte"/></label>
+    </div>
+    <div class="scroll-box"><table>
+      <thead><tr><th>Data</th><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
+      <tbody id="fpBody"></tbody>
+    </table></div>
+    <p class="f-count" id="fpCount"></p>
+  </div>`;
+}
+function wirePagamentos(){
+  const apply=()=>{
+    const q=($('fpEmail').value||'').toLowerCase().trim();
+    const met=$('fpMetodo').value, st=$('fpStatus').value, de=$('fpDe').value, ate=$('fpAte').value;
+    const rows=PAGAMENTOS.filter(p=>
+      (!q||p.email.toLowerCase().includes(q))&&
+      (!met||p.metodo===met)&&
+      (!st||p.status===st)&&
+      (!de||p.data>=de)&&(!ate||p.data<=ate));
+    $('fpBody').innerHTML=rows.map(linhaPagamento).join('')||linhaVazia(5);
+    const soma=rows.filter(p=>p.status==='aprovado').reduce((s,p)=>s+p.valor,0);
+    $('fpCount').textContent=`Exibindo ${rows.length} de ${PAGAMENTOS.length} pagamentos · Aprovados no filtro: ${fmtBRL(soma)}`;
+  };
+  ['fpEmail','fpMetodo','fpStatus','fpDe','fpAte'].forEach(i=>$(i).addEventListener('input',apply));
+  apply();
+}
+
+function secaoUsuarios(){
+  return `<div class="extra"><h4>👥 Usuários Recentes (cadastros grátis)</h4>
+    <div class="filters">
+      <input class="f-input" type="text" id="fuEmail" placeholder="🔎 Buscar email..."/>
+      <select class="f-input" id="fuStatus"><option value="">Status: todos</option><option value="ativo">Ativo</option><option value="cancelado">Cancelado</option></select>
+      <label class="f-label">De <input class="f-input" type="date" id="fuDe"/></label>
+      <label class="f-label">Até <input class="f-input" type="date" id="fuAte"/></label>
+    </div>
+    <div class="scroll-box"><table>
+      <thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead>
+      <tbody id="fuBody"></tbody>
+    </table></div>
+    <p class="f-count" id="fuCount"></p>
+  </div>`;
+}
+function wireUsuarios(){
+  const apply=()=>{
+    const q=($('fuEmail').value||'').toLowerCase().trim();
+    const st=$('fuStatus').value, de=$('fuDe').value, ate=$('fuAte').value;
+    const rows=USUARIOS.filter(u=>
+      (!q||u.email.toLowerCase().includes(q))&&
+      (!st||u.status===st)&&
+      (!de||u.cadastro>=de)&&(!ate||u.cadastro<=ate))
+      .sort((a,b)=>b.cadastro.localeCompare(a.cadastro)); // mais recente em cima
+    $('fuBody').innerHTML=rows.map(linhaUsuario).join('')||linhaVazia(3);
+    $('fuCount').textContent=`Exibindo ${rows.length} de ${USUARIOS.length} usuários`;
+  };
+  ['fuEmail','fuStatus','fuDe','fuAte'].forEach(i=>$(i).addEventListener('input',apply));
+  apply();
+}
+
+/* ===== Modais ===== */
+const backdrop=$('modalBackdrop');
+function abrirModal(t,html){$('modalTitle').innerHTML=t;$('modalBody').innerHTML=html;backdrop.classList.add('open');document.body.style.overflow='hidden';}
+function fecharModal(){backdrop.classList.remove('open');document.body.style.overflow='';if(modalChart){modalChart.destroy();modalChart=null;}}
+backdrop.addEventListener('click',e=>{if(e.target===backdrop)fecharModal();});
+$('btnFechar').addEventListener('click',fecharModal);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharModal();});
+
 function openMetricModal(id){
   const m=METRICAS.find(x=>x.id===id);
   const t=totais(), hoje=ultimo(), temV=!!VISITAS_DIARIAS;
+  const ehTotal=m.visita&&!temV;
   const media=(t[id]||0)/HISTORICO.length;
   const melhor=[...HISTORICO].sort((a,b)=>b[id]-a[id])[0];
-  const dias=[...HISTORICO].reverse();
-  let extra='', nota='';
-  if(id==='usuarios') extra=tabelaExtra('👥 Usuários Recentes (cadastros grátis)',['Email','Data de Cadastro','Status'],[...USUARIOS].reverse().map(linhaUsuario));
-  if(id==='receita')  extra=tabelaExtra('💵 Últimos Pagamentos',['Data','Usuário','Valor','Método','Status'],[...PAGAMENTOS].reverse().map(linhaPagamento));
+  let nota='';
   if(m.visita&&!temV) nota=`<p class="pag-info">ℹ️ O histórico diário de visitas ainda não está ativado: rode no <b>SQL Editor</b> do Supabase o SQL da função <code>get_visitas_diarias</code> e clique em 🔄 Atualizar. Enquanto isso, este card mostra o total acumulado.</p>`;
-  const ehTotal=m.visita&&!temV;
   abrirModal(`${m.icone} ${m.titulo} — Histórico`, `
     <div class="chips">
       <div class="chip"><span>${ehTotal?'Total geral':'Hoje'}</span><b style="color:${m.cor}">${ehTotal?valorTotal(m):hoje[id]}</b></div>
-      ${!ehTotal?`<div class="chip"><span>Total no período</span><b>${t[id]}</b></div>
-      <div class="chip"><span>Média / dia</span><b>${media.toFixed(1)}</b></div>
+      ${!ehTotal?`<div class="chip"><span>Total no período</span><b>${m.money?fmtBRL(t[id]):t[id]}</b></div>
+      <div class="chip"><span>Média / dia</span><b>${m.money?fmtBRL(media):media.toFixed(1)}</b></div>
       <div class="chip"><span>Melhor dia</span><b>${fmtData(melhor.data)}</b></div>`:''}
     </div>
     ${nota}
     <div class="modal-chart"><canvas id="modalChartCanvas"></canvas></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Data</th><th>${m.titulo}</th><th>vs. dia anterior</th></tr></thead>
-      <tbody>${dias.map(d=>{const i=HISTORICO.indexOf(d),prev=HISTORICO[i-1];
-        return `<tr class="no-click"><td><b>${fmtData(d.data)}</b> <span class="mut">${weekday(d.data)}</span>${d.data===hoje.data?' <span class="badge">HOJE</span>':''}</td>
-        <td style="color:${m.cor};font-weight:700">${m.money?fmtBRL(d[id]):d[id]}</td><td>${deltaHTML(m,prev?d[id]-prev[id]:null)}</td></tr>`;}).join('')}</tbody>
-      <tfoot><tr><td>TOTAL</td><td style="color:${m.cor}">${m.money?fmtBRL(t[id]):t[id]}</td><td></td></tr></tfoot>
-    </table></div>${extra}`);
-  modalChart=new Chart(document.getElementById('modalChartCanvas'),{type:'bar',
+    ${secaoHistorico(m)}
+    ${id==='usuarios'?secaoUsuarios():''}
+    ${id==='receita'?secaoPagamentos():''}`);
+  wireHistorico(m);
+  if(id==='usuarios')wireUsuarios();
+  if(id==='receita')wirePagamentos();
+  modalChart=new Chart($('modalChartCanvas'),{type:'bar',
     data:{labels:HISTORICO.map(d=>fmtData(d.data)),datasets:[{label:m.titulo,data:HISTORICO.map(d=>d[id]),backgroundColor:m.cor+'b3',borderColor:m.cor,borderWidth:1,borderRadius:5}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>m.money?fmtBRL(c.parsed.y):' '+c.parsed.y}}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
 }
@@ -433,15 +533,15 @@ function openDiaModal(isoD){
   abrirModal(`📅 ${fmtDataLonga(isoD)}`,`
     <div class="tiles">${METRICAS.filter(m=>temV||!m.visita).map(m=>`<div class="tile" style="--c:${m.cor}"><span>${m.icone} ${m.titulo}</span><b style="color:${m.cor}">${m.money?fmtBRL(d[m.id]):d[m.id]}</b></div>`).join('')}</div>
     ${d.receita>0?`<p class="pag-info" style="color:var(--green);border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.08)">💳 Pagamentos aprovados no dia — PIX: ${d.pix} · Cartão: ${d.cartao}</p>`:`<p class="pag-info">Nenhum pagamento aprovado neste dia.</p>`}
-    ${tabelaExtra('👥 Cadastros grátis do dia',['Email','Data de Cadastro','Status'],regs.map(linhaUsuario))}
-    ${tabelaExtra('💵 Pagamentos do dia',['Usuário','Valor','Método','Status'],pags.map(p=>`<tr class="no-click"><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`))}`);
+    ${regs.length?`<div class="extra"><h4>👥 Cadastros grátis do dia</h4><div class="scroll-box"><table><thead><tr><th>Email</th><th>Data de Cadastro</th><th>Status</th></tr></thead><tbody>${regs.map(linhaUsuario).join('')}</tbody></table></div></div>`:''}
+    ${pags.length?`<div class="extra"><h4>💵 Pagamentos do dia</h4><div class="scroll-box"><table><thead><tr><th>Usuário</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead><tbody>${pags.map(p=>`<tr class="no-click"><td>${p.email}</td><td class="td-money">${fmtBRL(p.valor)}</td><td><span class="metodo ${p.metodo}">${nomeMetodo(p.metodo)}</span></td><td>${badgePag(p)}</td></tr>`).join('')}</tbody></table></div></div>`:''}`);
 }
-document.getElementById('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
-document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
-document.getElementById('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
+$('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)openMetricModal(c.dataset.metric);});
+$('cards').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const c=e.target.closest('.card');if(c){e.preventDefault();openMetricModal(c.dataset.metric);}}});
+$('tabelaGeral').addEventListener('click',e=>{const r=e.target.closest('tr[data-dia]');if(r)openDiaModal(r.dataset.dia);});
 
 /* ===== Atualizar / auto-refresh ===== */
-const btn=document.getElementById('btnAtualizar');
+const btn=$('btnAtualizar');
 async function atualizar(silent,forceVisitas){
   btn.disabled=true;btn.textContent='🔄 Carregando...';
   try{
@@ -457,15 +557,15 @@ async function atualizar(silent,forceVisitas){
   }
   btn.disabled=false;btn.textContent='🔄 Atualizar Dados';
 }
-btn.addEventListener('click',()=>atualizar(false,true)); // manual força re-testar a função de visitas
+btn.addEventListener('click',()=>atualizar(false,true));
 
 /* ===== Entrada ===== */
 function entrarDashboard(){
-  document.getElementById('telaLogin').style.display='none';
-  document.getElementById('areaDashboard').hidden=false;
-  document.getElementById('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  $('telaLogin').style.display='none';
+  $('areaDashboard').hidden=false;
+  $('headerDate').textContent='Hoje: '+new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
   atualizar(true,true);
-  setInterval(()=>atualizar(true,false),30000); // igual ao antigo: refresh a cada 30s
+  setInterval(()=>atualizar(true,false),30000);
 }
 (function init(){
   const token=sessionStorage.getItem('admin_token');
